@@ -45,6 +45,7 @@ export interface MonthBook {
   variableCosts: ExpenseEntry[];
   variablePositions: VariableBudgetPosition[];
   variableBudgetCents: EuroCents;
+  miscBudgetCents: EuroCents;
   miscCosts: ExpenseEntry[];
 }
 

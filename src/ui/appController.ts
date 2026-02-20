@@ -105,6 +105,9 @@ export function createAppController(root: HTMLElement) {
         if (!Array.isArray(month.variablePositions)) {
           month.variablePositions = [];
         }
+        if (typeof month.miscBudgetCents !== "number") {
+          month.miscBudgetCents = 0;
+        }
         month.variableBudgetCents = month.variablePositions.reduce(
           (sum, position) => sum + position.budgetCents,
           0,
@@ -212,6 +215,32 @@ export function createAppController(root: HTMLElement) {
       return "budget-under";
     }
     return "";
+  }
+
+  function renderColumnOverview(
+    budgetCents: number | null,
+    actualCents: number,
+  ): string {
+    const hasBudget = budgetCents !== null;
+    const diffCents = hasBudget ? budgetCents - actualCents : null;
+    const statusClass = hasBudget
+      ? budgetStatusClass(actualCents, budgetCents)
+      : "";
+
+    return `<div class="column-overview">
+      <div class="column-overview-row">
+        <span>Budget</span>
+        <strong>${hasBudget ? `${centsToEuro(budgetCents)} €` : "-"}</strong>
+      </div>
+      <div class="column-overview-row">
+        <span>Ausgegeben</span>
+        <strong>${centsToEuro(actualCents)} €</strong>
+      </div>
+      <div class="column-overview-row ${statusClass}">
+        <span>Diff</span>
+        <strong>${diffCents === null ? "-" : `${centsToEuro(diffCents)} €`}</strong>
+      </div>
+    </div>`;
   }
 
   async function createYear(yearNumber: YearNumber): Promise<void> {
@@ -497,6 +526,16 @@ export function createAppController(root: HTMLElement) {
     render();
   }
 
+  async function updateMonthlyMiscBudget(amountCents: number): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+    month.miscBudgetCents = amountCents;
+    await persistSelectedYear();
+    render();
+  }
+
   async function addVariablePosition(
     name: string,
     budgetCents: number,
@@ -565,6 +604,45 @@ export function createAppController(root: HTMLElement) {
       0,
     );
 
+    await persistSelectedYear();
+    render();
+  }
+
+  async function addMiscExpense(
+    description: string,
+    amountCents: number,
+  ): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+    const cleanDescription = description.trim();
+    if (!cleanDescription) {
+      alert("Bitte Bezeichnung für Sonstiges eingeben.");
+      return;
+    }
+    if (amountCents <= 0) {
+      alert("Bitte einen positiven Betrag eingeben.");
+      return;
+    }
+
+    const entry: ExpenseEntry = createExpense(cleanDescription, amountCents);
+    month.miscCosts = [entry, ...month.miscCosts];
+    await persistSelectedYear();
+    render();
+  }
+
+  async function removeMiscExpense(expenseId: string): Promise<void> {
+    const shouldDelete = confirm("Sonstiges-Position wirklich löschen?");
+    if (!shouldDelete) {
+      return;
+    }
+
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+    month.miscCosts = month.miscCosts.filter((entry) => entry.id !== expenseId);
     await persistSelectedYear();
     render();
   }
@@ -696,6 +774,7 @@ export function createAppController(root: HTMLElement) {
           0,
         )
       : 0;
+    const miscBudgetCents = month ? (month.miscBudgetCents ?? 0) : 0;
     const incomeTotalCents = month
       ? month.incomes.reduce((sum, entry) => sum + entry.amountCents, 0)
       : 0;
@@ -707,6 +786,12 @@ export function createAppController(root: HTMLElement) {
       monthSummary.variableCents,
       variableBudgetCents,
     );
+    const miscSummaryBudgetClass = budgetStatusClass(
+      monthSummary.miscCents,
+      miscBudgetCents,
+    );
+    const foodGoingActualCents =
+      monthSummary.foodCents + monthSummary.goingOutCents;
     const editingFixedTemplate = state.editingFixedTemplateId
       ? state.fixedTemplates.find(
           (template) => template.id === state.editingFixedTemplateId,
@@ -817,7 +902,8 @@ export function createAppController(root: HTMLElement) {
                 <tr><td>3) Variable Kosten</td><td class="${variableSummaryBudgetClass}">${centsToEuro(monthSummary.variableCents)}</td><td>${centsToEuro(yearSummary.variableCents)}</td></tr>
                 <tr><td>3) Variable Kosten Budget</td><td>${centsToEuro(variableBudgetCents)}</td><td>-</td></tr>
                 <tr><td>3) Variable Positionen Budget</td><td>${centsToEuro(variablePositionBudgetCents)}</td><td>-</td></tr>
-                <tr><td>4) Sonstige</td><td>${centsToEuro(monthSummary.miscCents)}</td><td>${centsToEuro(yearSummary.miscCents)}</td></tr>
+                <tr><td>4) Sonstige</td><td class="${miscSummaryBudgetClass}">${centsToEuro(monthSummary.miscCents)}</td><td>${centsToEuro(yearSummary.miscCents)}</td></tr>
+                <tr><td>4) Sonstige Budget</td><td>${centsToEuro(miscBudgetCents)}</td><td>-</td></tr>
                 <tr><th>Gesamt</th><th>${centsToEuro(monthSummary.totalCents)}</th><th>${centsToEuro(yearSummary.totalCents)}</th></tr>
               </tbody>
             </table>
@@ -892,6 +978,7 @@ export function createAppController(root: HTMLElement) {
           <div class="grid grid-4">
             <article class="card">
               <h3>1) Essen, Trinken und Ausgehen (Tage)</h3>
+              ${renderColumnOverview(null, foodGoingActualCents)}
               <table class="daily-table">
                 <thead>
                   <tr><th>Datum</th><th>Essen (€)</th><th>Ausgehen (€)</th></tr>
@@ -916,6 +1003,7 @@ export function createAppController(root: HTMLElement) {
 
             <article class="card">
               <h3>2) Fixe Kosten (Monatssnapshot)</h3>
+              ${renderColumnOverview(fixedBudgetCents, monthSummary.fixedCents)}
               <div class="inline">
                 <label>
                   Budget Fixkosten (€)
@@ -947,6 +1035,7 @@ export function createAppController(root: HTMLElement) {
 
             <article class="card">
               <h3>3) Variable Kosten (>= 30€)</h3>
+              ${renderColumnOverview(variableBudgetCents, monthSummary.variableCents)}
               <div class="inline">
                 <label>
                   Neue Position
@@ -984,9 +1073,27 @@ export function createAppController(root: HTMLElement) {
 
             <article class="card">
               <h3>4) Sonstige (unter 30€)</h3>
+              ${renderColumnOverview(miscBudgetCents, monthSummary.miscCents)}
+              <div class="inline">
+                <label>
+                  Planbudget Sonstige (€)
+                  <input class="amount-input" id="misc-budget" type="number" min="0" step="0.01" value="${centsToEuro(miscBudgetCents)}" ${month ? "" : "disabled"} />
+                </label>
+              </div>
+              <div class="inline">
+                <label>
+                  Neue Position
+                  <input id="misc-description" type="text" placeholder="z.B. Kleinkram" ${month ? "" : "disabled"} />
+                </label>
+                <label>
+                  Betrag (€)
+                  <input class="amount-input" id="misc-amount" type="number" min="0" step="0.01" placeholder="0.00" ${month ? "" : "disabled"} />
+                </label>
+                <button class="btn btn-primary" id="add-misc" ${month ? "" : "disabled"}>Position anlegen</button>
+              </div>
               <table>
                 <thead>
-                  <tr><th>Beschreibung</th><th>Betrag (€)</th></tr>
+                  <tr><th>Beschreibung</th><th>Betrag (€)</th><th></th></tr>
                 </thead>
                 <tbody>
                 ${
@@ -996,6 +1103,7 @@ export function createAppController(root: HTMLElement) {
                           (entry) => `<tr>
                     <td>${entry.description}</td>
                     <td>${centsToEuro(entry.amountCents)}</td>
+                    <td><button class="btn btn-quiet" data-remove-misc="${entry.id}">Löschen</button></td>
                   </tr>`,
                         )
                         .join("")
@@ -1154,6 +1262,12 @@ export function createAppController(root: HTMLElement) {
       await updateMonthlyFixedBudget(euroToCents(fixedBudgetInput.value));
     });
 
+    const miscBudgetInput =
+      root.querySelector<HTMLInputElement>("#misc-budget");
+    miscBudgetInput?.addEventListener("change", async () => {
+      await updateMonthlyMiscBudget(euroToCents(miscBudgetInput.value));
+    });
+
     const variablePositionNameInput = root.querySelector<HTMLInputElement>(
       "#variable-position-name",
     );
@@ -1163,6 +1277,11 @@ export function createAppController(root: HTMLElement) {
     const addVariablePositionButton = root.querySelector<HTMLButtonElement>(
       "#add-variable-position",
     );
+    const miscDescriptionInput =
+      root.querySelector<HTMLInputElement>("#misc-description");
+    const miscAmountInput =
+      root.querySelector<HTMLInputElement>("#misc-amount");
+    const addMiscButton = root.querySelector<HTMLButtonElement>("#add-misc");
     const incomeDescriptionInput = root.querySelector<HTMLInputElement>(
       "#income-description",
     );
@@ -1181,6 +1300,13 @@ export function createAppController(root: HTMLElement) {
       );
       if (variablePositionNameInput) variablePositionNameInput.value = "";
       if (variablePositionBudgetInput) variablePositionBudgetInput.value = "";
+    });
+
+    addMiscButton?.addEventListener("click", async () => {
+      const amountCents = euroToCents(miscAmountInput?.value ?? "0");
+      await addMiscExpense(miscDescriptionInput?.value ?? "", amountCents);
+      if (miscDescriptionInput) miscDescriptionInput.value = "";
+      if (miscAmountInput) miscAmountInput.value = "";
     });
 
     addIncomeButton?.addEventListener("click", async () => {
@@ -1220,6 +1346,16 @@ export function createAppController(root: HTMLElement) {
           const incomeId = button.dataset.removeIncome;
           if (!incomeId) return;
           await removeIncome(incomeId);
+        });
+      });
+
+    root
+      .querySelectorAll<HTMLButtonElement>("[data-remove-misc]")
+      .forEach((button) => {
+        button.addEventListener("click", async () => {
+          const expenseId = button.dataset.removeMisc;
+          if (!expenseId) return;
+          await removeMiscExpense(expenseId);
         });
       });
 

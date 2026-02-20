@@ -68,6 +68,7 @@ export function createYearWithMonths(
     variableCosts: [],
     variablePositions: [],
     variableBudgetCents: 0,
+    miscBudgetCents: 0,
     miscCosts: [],
   }));
 

@@ -363,6 +363,27 @@ tbody tr:nth-child(even) {
   flex-wrap: wrap;
 }
 
+.column-overview {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0 0 0.6rem;
+}
+
+.column-overview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.24rem 0.4rem;
+  border: 1px solid var(--table-border);
+  border-radius: 8px;
+  background: var(--table-stripe);
+}
+
+.column-overview-row strong {
+  font-weight: 700;
+}
+
 .danger {
   color: var(--danger-2);
 }
