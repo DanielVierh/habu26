@@ -62,6 +62,7 @@ export function createYearWithMonths(
   const months: MonthBook[] = monthNumbers.map((month) => ({
     month,
     days: createMonthDays(year, month),
+    incomes: [],
     fixedCosts: seedMonthFromFixedTemplates(fixedTemplates),
     fixedBudgetCents: defaultFixedBudgetCents,
     variableCosts: [],

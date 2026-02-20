@@ -1,11 +1,12 @@
 import type {
   BackupPayload,
+  ExpenseEntry,
   FixedCostTemplate,
   MonthBook,
   YearBook,
   YearNumber,
 } from "../domain/model";
-import { createId, createYearWithMonths } from "../domain/rules";
+import { createExpense, createId, createYearWithMonths } from "../domain/rules";
 import {
   createBackupPayload,
   deleteYear,
@@ -89,6 +90,9 @@ export function createAppController(root: HTMLElement) {
   function normalizeBudgetsForYears(years: YearBook[]): void {
     years.forEach((year) => {
       year.months.forEach((month) => {
+        if (!Array.isArray(month.incomes)) {
+          month.incomes = [];
+        }
         if (typeof month.fixedBudgetCents !== "number") {
           month.fixedBudgetCents = month.fixedCosts.reduce(
             (sum, entry) => sum + entry.plannedCents,
@@ -552,6 +556,46 @@ export function createAppController(root: HTMLElement) {
     render();
   }
 
+  async function addIncome(
+    description: string,
+    amountCents: number,
+  ): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+    const cleanDescription = description.trim();
+    if (!cleanDescription) {
+      alert("Bitte Einkommens-Bezeichnung eingeben.");
+      return;
+    }
+    if (amountCents <= 0) {
+      alert("Bitte einen positiven Einkommensbetrag eingeben.");
+      return;
+    }
+
+    const entry: ExpenseEntry = createExpense(cleanDescription, amountCents);
+    month.incomes = [entry, ...month.incomes];
+
+    await persistSelectedYear();
+    render();
+  }
+
+  async function removeIncome(incomeId: string): Promise<void> {
+    const shouldDelete = confirm("Einkommens-Eintrag wirklich löschen?");
+    if (!shouldDelete) {
+      return;
+    }
+
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+    month.incomes = month.incomes.filter((entry) => entry.id !== incomeId);
+    await persistSelectedYear();
+    render();
+  }
+
   async function exportBackup(): Promise<void> {
     const payload = await createBackupPayload();
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
@@ -638,6 +682,9 @@ export function createAppController(root: HTMLElement) {
           (sum, position) => sum + position.budgetCents,
           0,
         )
+      : 0;
+    const incomeTotalCents = month
+      ? month.incomes.reduce((sum, entry) => sum + entry.amountCents, 0)
       : 0;
     const editingFixedTemplate = state.editingFixedTemplateId
       ? state.fixedTemplates.find(
@@ -783,6 +830,42 @@ export function createAppController(root: HTMLElement) {
                   .join("")}
               </tbody>
             </table>
+          </article>
+
+          <article class="card">
+            <h3>Einkommen (Monat)</h3>
+            <div class="inline">
+              <label>
+                Beschreibung
+                <input id="income-description" type="text" placeholder="z.B. Gehalt" ${month ? "" : "disabled"} />
+              </label>
+              <label>
+                Betrag (€)
+                <input class="amount-input" id="income-amount" type="number" min="0" step="0.01" placeholder="0.00" ${month ? "" : "disabled"} />
+              </label>
+              <button class="btn btn-primary" id="add-income" ${month ? "" : "disabled"}>Einkommen erfassen</button>
+            </div>
+            <table>
+              <thead>
+                <tr><th>Beschreibung</th><th>Betrag (€)</th><th></th></tr>
+              </thead>
+              <tbody>
+                ${
+                  month
+                    ? month.incomes
+                        .map(
+                          (entry) => `<tr>
+                    <td>${entry.description}</td>
+                    <td>${centsToEuro(entry.amountCents)}</td>
+                    <td><button class="btn btn-quiet" data-remove-income="${entry.id}">Löschen</button></td>
+                  </tr>`,
+                        )
+                        .join("")
+                    : ""
+                }
+              </tbody>
+            </table>
+            <p class="muted">Monatliches Einkommen gesamt: ${centsToEuro(incomeTotalCents)} €</p>
           </article>
 
           <div class="grid grid-4">
@@ -1057,6 +1140,13 @@ export function createAppController(root: HTMLElement) {
     const addVariablePositionButton = root.querySelector<HTMLButtonElement>(
       "#add-variable-position",
     );
+    const incomeDescriptionInput = root.querySelector<HTMLInputElement>(
+      "#income-description",
+    );
+    const incomeAmountInput =
+      root.querySelector<HTMLInputElement>("#income-amount");
+    const addIncomeButton =
+      root.querySelector<HTMLButtonElement>("#add-income");
 
     addVariablePositionButton?.addEventListener("click", async () => {
       const budgetCents = euroToCents(
@@ -1068,6 +1158,13 @@ export function createAppController(root: HTMLElement) {
       );
       if (variablePositionNameInput) variablePositionNameInput.value = "";
       if (variablePositionBudgetInput) variablePositionBudgetInput.value = "";
+    });
+
+    addIncomeButton?.addEventListener("click", async () => {
+      const amountCents = euroToCents(incomeAmountInput?.value ?? "0");
+      await addIncome(incomeDescriptionInput?.value ?? "", amountCents);
+      if (incomeDescriptionInput) incomeDescriptionInput.value = "";
+      if (incomeAmountInput) incomeAmountInput.value = "";
     });
 
     root
@@ -1090,6 +1187,16 @@ export function createAppController(root: HTMLElement) {
           const positionId = button.dataset.removeVariablePosition;
           if (!positionId) return;
           await removeVariablePosition(positionId);
+        });
+      });
+
+    root
+      .querySelectorAll<HTMLButtonElement>("[data-remove-income]")
+      .forEach((button) => {
+        button.addEventListener("click", async () => {
+          const incomeId = button.dataset.removeIncome;
+          if (!incomeId) return;
+          await removeIncome(incomeId);
         });
       });
 
