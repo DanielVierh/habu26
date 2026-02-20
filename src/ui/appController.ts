@@ -332,7 +332,10 @@ export function createAppController(root: HTMLElement) {
     });
   }
 
-  async function upsertFixedTemplate(name: string, plannedCents: number): Promise<void> {
+  async function upsertFixedTemplate(
+    name: string,
+    plannedCents: number,
+  ): Promise<void> {
     const cleanName = name.trim();
     if (!cleanName) {
       return;
@@ -358,7 +361,9 @@ export function createAppController(root: HTMLElement) {
       };
 
       state.fixedTemplates = state.fixedTemplates.map((template) =>
-        template.id === state.editingFixedTemplateId ? updatedTemplate : template,
+        template.id === state.editingFixedTemplateId
+          ? updatedTemplate
+          : template,
       );
 
       updateFixedTemplateInFutureMonths(
