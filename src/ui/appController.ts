@@ -24,6 +24,7 @@ interface State {
   selectedMonth: number;
   fixedTemplates: FixedCostTemplate[];
   fixedTemplateVersion: string;
+  editingFixedTemplateId: string | null;
 }
 
 interface CostSummary {
@@ -47,6 +48,7 @@ export function createAppController(root: HTMLElement) {
     selectedMonth: 1,
     fixedTemplates: [],
     fixedTemplateVersion: "",
+    editingFixedTemplateId: null,
   };
 
   async function init(): Promise<void> {
@@ -203,37 +205,208 @@ export function createAppController(root: HTMLElement) {
     state.years = await listYears();
   }
 
-  async function upsertFixedTemplate(
-    templateId: string | null,
-    name: string,
-    plannedCents: number,
-  ): Promise<void> {
+  async function persistAllYears(): Promise<void> {
+    for (const yearItem of state.years) {
+      await saveYear(yearItem);
+    }
+    state.years = await listYears();
+  }
+
+  function monthKey(year: number, month: number): number {
+    return year * 100 + month;
+  }
+
+  function recalculateFixedBudget(month: MonthBook): void {
+    month.fixedBudgetCents = month.fixedCosts.reduce(
+      (sum, entry) => sum + entry.plannedCents,
+      0,
+    );
+  }
+
+  function defaultEffectiveMonthText(): string {
+    if (state.selectedYear) {
+      return `${state.selectedYear}-${String(state.selectedMonth).padStart(2, "0")}`;
+    }
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  function askEffectiveMonth(): { year: number; month: number } | null {
+    const input = prompt(
+      "Ab wann soll die Änderung gelten? Format: YYYY-MM",
+      defaultEffectiveMonthText(),
+    );
+    if (!input) {
+      return null;
+    }
+    const match = input.trim().match(/^(\d{4})-(0[1-9]|1[0-2])$/);
+    if (!match) {
+      alert("Ungültiges Format. Bitte YYYY-MM verwenden.");
+      return null;
+    }
+    const yearText = match[1];
+    const monthText = match[2];
+    if (!yearText || !monthText) {
+      return null;
+    }
+    return {
+      year: Number.parseInt(yearText, 10),
+      month: Number.parseInt(monthText, 10),
+    };
+  }
+
+  function applyFixedTemplateToFutureMonths(
+    template: FixedCostTemplate,
+    effective: { year: number; month: number },
+  ): void {
+    const threshold = monthKey(effective.year, effective.month);
+    state.years.forEach((yearItem) => {
+      yearItem.months.forEach((monthItem) => {
+        if (monthKey(yearItem.year, monthItem.month) < threshold) {
+          return;
+        }
+        const exists = monthItem.fixedCosts.some(
+          (entry) => entry.templateId === template.id,
+        );
+        if (!exists) {
+          monthItem.fixedCosts.push({
+            id: createId("fixed"),
+            templateId: template.id,
+            name: template.name,
+            plannedCents: template.plannedCents,
+            actualCents: template.plannedCents,
+          });
+          recalculateFixedBudget(monthItem);
+        }
+      });
+    });
+  }
+
+  function updateFixedTemplateInFutureMonths(
+    previousTemplate: FixedCostTemplate,
+    updatedTemplate: FixedCostTemplate,
+    effective: { year: number; month: number },
+  ): void {
+    const threshold = monthKey(effective.year, effective.month);
+    state.years.forEach((yearItem) => {
+      yearItem.months.forEach((monthItem) => {
+        if (monthKey(yearItem.year, monthItem.month) < threshold) {
+          return;
+        }
+
+        monthItem.fixedCosts = monthItem.fixedCosts.map((entry) => {
+          if (entry.templateId !== updatedTemplate.id) {
+            return entry;
+          }
+          return {
+            ...entry,
+            name: updatedTemplate.name,
+            plannedCents: updatedTemplate.plannedCents,
+            actualCents:
+              entry.actualCents === previousTemplate.plannedCents
+                ? updatedTemplate.plannedCents
+                : entry.actualCents,
+          };
+        });
+
+        recalculateFixedBudget(monthItem);
+      });
+    });
+  }
+
+  function removeFixedTemplateFromFutureMonths(
+    templateId: string,
+    effective: { year: number; month: number },
+  ): void {
+    const threshold = monthKey(effective.year, effective.month);
+    state.years.forEach((yearItem) => {
+      yearItem.months.forEach((monthItem) => {
+        if (monthKey(yearItem.year, monthItem.month) < threshold) {
+          return;
+        }
+        monthItem.fixedCosts = monthItem.fixedCosts.filter(
+          (entry) => entry.templateId !== templateId,
+        );
+        recalculateFixedBudget(monthItem);
+      });
+    });
+  }
+
+  async function upsertFixedTemplate(name: string, plannedCents: number): Promise<void> {
     const cleanName = name.trim();
     if (!cleanName) {
       return;
     }
-    if (templateId) {
+
+    const effective = askEffectiveMonth();
+    if (!effective) {
+      return;
+    }
+
+    if (state.editingFixedTemplateId) {
+      const existingTemplate = state.fixedTemplates.find(
+        (template) => template.id === state.editingFixedTemplateId,
+      );
+      if (!existingTemplate) {
+        return;
+      }
+
+      const updatedTemplate: FixedCostTemplate = {
+        ...existingTemplate,
+        name: cleanName,
+        plannedCents,
+      };
+
       state.fixedTemplates = state.fixedTemplates.map((template) =>
-        template.id === templateId
-          ? { ...template, name: cleanName, plannedCents }
-          : template,
+        template.id === state.editingFixedTemplateId ? updatedTemplate : template,
+      );
+
+      updateFixedTemplateInFutureMonths(
+        existingTemplate,
+        updatedTemplate,
+        effective,
       );
     } else {
-      state.fixedTemplates = [
-        ...state.fixedTemplates,
-        { id: createId("tpl"), name: cleanName, plannedCents },
-      ];
+      const createdTemplate: FixedCostTemplate = {
+        id: createId("tpl"),
+        name: cleanName,
+        plannedCents,
+      };
+      state.fixedTemplates = [...state.fixedTemplates, createdTemplate];
+      applyFixedTemplateToFutureMonths(createdTemplate, effective);
     }
 
     state.fixedTemplateVersion = await saveFixedTemplates(state.fixedTemplates);
+    state.editingFixedTemplateId = null;
+    await persistAllYears();
+    render();
+  }
+
+  function startEditFixedTemplate(templateId: string): void {
+    state.editingFixedTemplateId = templateId;
+    render();
+  }
+
+  function cancelEditFixedTemplate(): void {
+    state.editingFixedTemplateId = null;
     render();
   }
 
   async function removeFixedTemplate(templateId: string): Promise<void> {
+    const effective = askEffectiveMonth();
+    if (!effective) {
+      return;
+    }
+
     state.fixedTemplates = state.fixedTemplates.filter(
       (template) => template.id !== templateId,
     );
+    removeFixedTemplateFromFutureMonths(templateId, effective);
+    if (state.editingFixedTemplateId === templateId) {
+      state.editingFixedTemplateId = null;
+    }
     state.fixedTemplateVersion = await saveFixedTemplates(state.fixedTemplates);
+    await persistAllYears();
     render();
   }
 
@@ -427,6 +600,11 @@ export function createAppController(root: HTMLElement) {
           0,
         )
       : 0;
+    const editingFixedTemplate = state.editingFixedTemplateId
+      ? state.fixedTemplates.find(
+          (template) => template.id === state.editingFixedTemplateId,
+        )
+      : null;
 
     root.innerHTML = `
       <div class="app grid">
@@ -474,17 +652,18 @@ export function createAppController(root: HTMLElement) {
           <div class="inline">
             <label>
               Name
-              <input id="fixed-template-name" type="text" placeholder="z.B. Miete" />
+              <input id="fixed-template-name" type="text" placeholder="z.B. Miete" value="${editingFixedTemplate?.name ?? ""}" />
             </label>
             <label>
               Betrag (€)
-              <input class="amount-input" id="fixed-template-amount" type="number" min="0" step="0.01" />
+              <input class="amount-input" id="fixed-template-amount" type="number" min="0" step="0.01" value="${editingFixedTemplate ? centsToEuro(editingFixedTemplate.plannedCents) : ""}" />
             </label>
-            <button class="btn btn-primary" id="add-fixed-template">Vorlage speichern</button>
+            <button class="btn btn-primary" id="add-fixed-template">${editingFixedTemplate ? "Änderung speichern" : "Vorlage speichern"}</button>
+            ${editingFixedTemplate ? '<button class="btn btn-quiet" id="cancel-fixed-template-edit">Abbrechen</button>' : ""}
           </div>
           <table>
             <thead>
-              <tr><th>Name</th><th>Geplant (€)</th><th></th></tr>
+              <tr><th>Name</th><th>Geplant (€)</th><th></th><th></th></tr>
             </thead>
             <tbody>
               ${state.fixedTemplates
@@ -493,6 +672,7 @@ export function createAppController(root: HTMLElement) {
                     `<tr>
                       <td>${template.name}</td>
                       <td>${centsToEuro(template.plannedCents)}</td>
+                      <td><button class="btn btn-quiet" data-edit-fixed-template="${template.id}">Bearbeiten</button></td>
                       <td><button class="btn btn-quiet" data-remove-fixed-template="${template.id}">Löschen</button></td>
                     </tr>`,
                 )
@@ -733,14 +913,31 @@ export function createAppController(root: HTMLElement) {
     const addFixedTemplateButton = root.querySelector<HTMLButtonElement>(
       "#add-fixed-template",
     );
+    const cancelFixedTemplateEditButton = root.querySelector<HTMLButtonElement>(
+      "#cancel-fixed-template-edit",
+    );
 
     addFixedTemplateButton?.addEventListener("click", async () => {
       const name = fixedNameInput?.value ?? "";
       const amountCents = euroToCents(fixedAmountInput?.value ?? "0");
-      await upsertFixedTemplate(null, name, amountCents);
+      await upsertFixedTemplate(name, amountCents);
       if (fixedNameInput) fixedNameInput.value = "";
       if (fixedAmountInput) fixedAmountInput.value = "";
     });
+
+    cancelFixedTemplateEditButton?.addEventListener("click", () => {
+      cancelEditFixedTemplate();
+    });
+
+    root
+      .querySelectorAll<HTMLButtonElement>("[data-edit-fixed-template]")
+      .forEach((button) => {
+        button.addEventListener("click", () => {
+          const templateId = button.dataset.editFixedTemplate;
+          if (!templateId) return;
+          startEditFixedTemplate(templateId);
+        });
+      });
 
     root
       .querySelectorAll<HTMLButtonElement>("[data-remove-fixed-template]")
