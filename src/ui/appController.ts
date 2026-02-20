@@ -417,6 +417,11 @@ export function createAppController(root: HTMLElement) {
   }
 
   async function removeFixedTemplate(templateId: string): Promise<void> {
+    const shouldDelete = confirm("Fixkosten-Vorlage wirklich löschen?");
+    if (!shouldDelete) {
+      return;
+    }
+
     const effective = askEffectiveMonth();
     if (!effective) {
       return;
@@ -525,6 +530,11 @@ export function createAppController(root: HTMLElement) {
   }
 
   async function removeVariablePosition(positionId: string): Promise<void> {
+    const shouldDelete = confirm("Variable Position wirklich löschen?");
+    if (!shouldDelete) {
+      return;
+    }
+
     const month = getSelectedMonthBook();
     if (!month) {
       return;
@@ -574,6 +584,11 @@ export function createAppController(root: HTMLElement) {
   }
 
   async function removeCurrentYear(): Promise<void> {
+    const shouldDelete = confirm("Aktuelles Jahr wirklich löschen?");
+    if (!shouldDelete) {
+      return;
+    }
+
     if (!state.selectedYear) {
       return;
     }
@@ -934,10 +949,6 @@ export function createAppController(root: HTMLElement) {
     });
 
     deleteYearButton?.addEventListener("click", async () => {
-      const shouldDelete = confirm("Aktuelles Jahr wirklich löschen?");
-      if (!shouldDelete) {
-        return;
-      }
       await removeCurrentYear();
     });
 
