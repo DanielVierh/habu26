@@ -201,6 +201,19 @@ export function createAppController(root: HTMLElement) {
       }));
   }
 
+  function budgetStatusClass(actualCents: number, budgetCents: number): string {
+    if (budgetCents <= 0) {
+      return "";
+    }
+    if (actualCents > budgetCents) {
+      return "budget-over";
+    }
+    if (actualCents < budgetCents) {
+      return "budget-under";
+    }
+    return "";
+  }
+
   async function createYear(yearNumber: YearNumber): Promise<void> {
     const existing = await getYear(yearNumber);
     if (existing) {
@@ -686,6 +699,14 @@ export function createAppController(root: HTMLElement) {
     const incomeTotalCents = month
       ? month.incomes.reduce((sum, entry) => sum + entry.amountCents, 0)
       : 0;
+    const fixedSummaryBudgetClass = budgetStatusClass(
+      monthSummary.fixedCents,
+      fixedBudgetCents,
+    );
+    const variableSummaryBudgetClass = budgetStatusClass(
+      monthSummary.variableCents,
+      variableBudgetCents,
+    );
     const editingFixedTemplate = state.editingFixedTemplateId
       ? state.fixedTemplates.find(
           (template) => template.id === state.editingFixedTemplateId,
@@ -791,9 +812,9 @@ export function createAppController(root: HTMLElement) {
               <tbody>
                 <tr><td>1) Essen</td><td>${centsToEuro(monthSummary.foodCents)}</td><td>${centsToEuro(yearSummary.foodCents)}</td></tr>
                 <tr><td>1) Ausgehen</td><td>${centsToEuro(monthSummary.goingOutCents)}</td><td>${centsToEuro(yearSummary.goingOutCents)}</td></tr>
-                <tr><td>2) Fixe Kosten (Ist)</td><td>${centsToEuro(monthSummary.fixedCents)}</td><td>${centsToEuro(yearSummary.fixedCents)}</td></tr>
+                <tr><td>2) Fixe Kosten (Ist)</td><td class="${fixedSummaryBudgetClass}">${centsToEuro(monthSummary.fixedCents)}</td><td>${centsToEuro(yearSummary.fixedCents)}</td></tr>
                 <tr><td>2) Fixe Kosten Budget</td><td>${centsToEuro(fixedBudgetCents)}</td><td>-</td></tr>
-                <tr><td>3) Variable Kosten</td><td>${centsToEuro(monthSummary.variableCents)}</td><td>${centsToEuro(yearSummary.variableCents)}</td></tr>
+                <tr><td>3) Variable Kosten</td><td class="${variableSummaryBudgetClass}">${centsToEuro(monthSummary.variableCents)}</td><td>${centsToEuro(yearSummary.variableCents)}</td></tr>
                 <tr><td>3) Variable Kosten Budget</td><td>${centsToEuro(variableBudgetCents)}</td><td>-</td></tr>
                 <tr><td>3) Variable Positionen Budget</td><td>${centsToEuro(variablePositionBudgetCents)}</td><td>-</td></tr>
                 <tr><td>4) Sonstige</td><td>${centsToEuro(monthSummary.miscCents)}</td><td>${centsToEuro(yearSummary.miscCents)}</td></tr>
@@ -903,7 +924,7 @@ export function createAppController(root: HTMLElement) {
               </div>
               <table>
                 <thead>
-                  <tr><th>Name</th><th>Geplant (€)</th><th>Ist (€)</th></tr>
+                  <tr><th>Name</th><th>Geplant (€)</th><th>Ist (€)</th><th>Abweichung (€)</th></tr>
                 </thead>
                 <tbody>
                 ${
@@ -913,7 +934,8 @@ export function createAppController(root: HTMLElement) {
                           (cost) => `<tr>
                     <td>${cost.name}</td>
                     <td>${centsToEuro(cost.plannedCents)}</td>
-                    <td><input class="amount-input" data-fixed-actual="${cost.id}" type="number" min="0" step="0.01" value="${centsToEuro(cost.actualCents)}" /></td>
+                    <td class="${budgetStatusClass(cost.actualCents, cost.plannedCents)}"><input class="amount-input" data-fixed-actual="${cost.id}" type="number" min="0" step="0.01" value="${centsToEuro(cost.actualCents)}" /></td>
+                    <td class="${budgetStatusClass(cost.actualCents, cost.plannedCents)}">${centsToEuro(cost.actualCents - cost.plannedCents)}</td>
                   </tr>`,
                         )
                         .join("")
@@ -938,7 +960,7 @@ export function createAppController(root: HTMLElement) {
               </div>
               <table>
                 <thead>
-                  <tr><th>Position</th><th>Budget (€)</th><th>Ist (€)</th><th></th></tr>
+                  <tr><th>Position</th><th>Budget (€)</th><th>Ist (€)</th><th>Abweichung (€)</th><th></th></tr>
                 </thead>
                 <tbody>
                 ${
@@ -948,7 +970,8 @@ export function createAppController(root: HTMLElement) {
                           (position) => `<tr>
                     <td>${position.name}</td>
                     <td>${centsToEuro(position.budgetCents)}</td>
-                    <td><input class="amount-input" data-variable-position-actual="${position.id}" type="number" min="0" step="0.01" value="${centsToEuro(position.actualCents)}" /></td>
+                    <td class="${budgetStatusClass(position.actualCents, position.budgetCents)}"><input class="amount-input" data-variable-position-actual="${position.id}" type="number" min="0" step="0.01" value="${centsToEuro(position.actualCents)}" /></td>
+                    <td class="${budgetStatusClass(position.actualCents, position.budgetCents)}">${centsToEuro(position.actualCents - position.budgetCents)}</td>
                     <td><button class="btn btn-quiet" data-remove-variable-position="${position.id}">Löschen</button></td>
                   </tr>`,
                         )

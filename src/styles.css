@@ -35,6 +35,7 @@
   --danger-1: #ef4444;
   --danger-2: #dc2626;
   --danger-3: #b91c1c;
+  --budget-under: #16a34a;
 
   --shadow-1: rgba(15, 23, 42, 0.03);
   --shadow-2: rgba(15, 23, 42, 0.08);
@@ -69,6 +70,7 @@
   --danger-1: #f87171;
   --danger-2: #ef4444;
   --danger-3: #dc2626;
+  --budget-under: #22c55e;
 
   --shadow-1: rgba(2, 6, 23, 0.35);
   --shadow-2: rgba(2, 6, 23, 0.45);
@@ -103,6 +105,7 @@
   --danger-1: #ef4444;
   --danger-2: #dc2626;
   --danger-3: #b91c1c;
+  --budget-under: #16a34a;
 
   --shadow-1: rgba(21, 128, 61, 0.05);
   --shadow-2: rgba(21, 128, 61, 0.14);
@@ -368,4 +371,14 @@ tbody tr:nth-child(even) {
   color: var(--text-muted);
   font-size: 0.84rem;
   line-height: 1.35;
+}
+
+.budget-over {
+  color: var(--danger-2);
+  font-weight: 700;
+}
+
+.budget-under {
+  color: var(--budget-under);
+  font-weight: 700;
 }
