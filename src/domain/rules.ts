@@ -54,11 +54,19 @@ export function createYearWithMonths(
   fixedTemplates: FixedCostTemplate[],
   templateVersion: string,
 ): YearBook {
+  const defaultFixedBudgetCents = fixedTemplates.reduce(
+    (sum, template) => sum + template.plannedCents,
+    0,
+  );
+
   const months: MonthBook[] = monthNumbers.map((month) => ({
     month,
     days: createMonthDays(year, month),
     fixedCosts: seedMonthFromFixedTemplates(fixedTemplates),
+    fixedBudgetCents: defaultFixedBudgetCents,
     variableCosts: [],
+    variablePositions: [],
+    variableBudgetCents: 0,
     miscCosts: [],
   }));
 

@@ -8,8 +8,8 @@ Diese App ist ein lokales Haushaltsbuch als PWA.
 - Einheitliche Monatsstruktur
 - 4 Rechnungskreise:
   1. Essen, Trinken und Ausgehen (pro Tag, 2 Spalten: Essen/Ausgehen)
-  2. Fixe Kosten (zentral verwaltete Vorlagen, neue Monate werden daraus gespeist)
-  3. Variable Kosten (>= 30,00 €)
+  2. Fixe Kosten (zentral verwaltete Vorlagen, neue Monate werden daraus gespeist, inkl. Monatsbudget)
+  3. Variable Kosten (>= 30,00 €, Budget wird automatisch aus Positionen berechnet, Positionen mit Budget + Ist-Wert)
   4. Sonstige (< 30,00 €)
 - Local-first Speicherung in IndexedDB
 - Datensicherung per Export/Import (JSON)

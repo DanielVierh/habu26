@@ -1,17 +1,11 @@
 import type {
   BackupPayload,
-  ExpenseEntry,
   FixedCostTemplate,
   MonthBook,
   YearBook,
   YearNumber,
 } from "../domain/model";
-import {
-  classifyCostByAmount,
-  createExpense,
-  createId,
-  createYearWithMonths,
-} from "../domain/rules";
+import { createId, createYearWithMonths } from "../domain/rules";
 import {
   createBackupPayload,
   deleteYear,
@@ -61,12 +55,43 @@ export function createAppController(root: HTMLElement) {
       getFixedTemplateState(),
     ]);
     state.years = years;
+    normalizeBudgetsForYears(state.years);
     state.fixedTemplates = fixed.templates;
     state.fixedTemplateVersion = fixed.version;
+    await persistNormalizedYears(state.years);
     if (years.length > 0 && years[0]) {
       state.selectedYear = years[0].year;
     }
     render();
+  }
+
+  function normalizeBudgetsForYears(years: YearBook[]): void {
+    years.forEach((year) => {
+      year.months.forEach((month) => {
+        if (typeof month.fixedBudgetCents !== "number") {
+          month.fixedBudgetCents = month.fixedCosts.reduce(
+            (sum, entry) => sum + entry.plannedCents,
+            0,
+          );
+        }
+        if (typeof month.variableBudgetCents !== "number") {
+          month.variableBudgetCents = 0;
+        }
+        if (!Array.isArray(month.variablePositions)) {
+          month.variablePositions = [];
+        }
+        month.variableBudgetCents = month.variablePositions.reduce(
+          (sum, position) => sum + position.budgetCents,
+          0,
+        );
+      });
+    });
+  }
+
+  async function persistNormalizedYears(years: YearBook[]): Promise<void> {
+    for (const yearItem of years) {
+      await saveYear(yearItem);
+    }
   }
 
   function getSelectedYearBook(): YearBook | undefined {
@@ -94,10 +119,12 @@ export function createAppController(root: HTMLElement) {
       (sum, entry) => sum + entry.actualCents,
       0,
     );
-    const variableCents = month.variableCosts.reduce(
-      (sum, entry) => sum + entry.amountCents,
-      0,
-    );
+    const variableCents =
+      month.variableCosts.reduce((sum, entry) => sum + entry.amountCents, 0) +
+      month.variablePositions.reduce(
+        (sum, entry) => sum + entry.actualCents,
+        0,
+      );
     const miscCents = month.miscCosts.reduce(
       (sum, entry) => sum + entry.amountCents,
       0,
@@ -241,41 +268,79 @@ export function createAppController(root: HTMLElement) {
     render();
   }
 
-  async function addExpense(
-    description: string,
-    amountCents: number,
-  ): Promise<void> {
-    if (!description.trim()) {
-      alert("Beschreibung fehlt.");
-      return;
-    }
+  async function updateMonthlyFixedBudget(amountCents: number): Promise<void> {
     const month = getSelectedMonthBook();
     if (!month) {
       return;
     }
+    month.fixedBudgetCents = amountCents;
+    await persistSelectedYear();
+    render();
+  }
 
-    const bucket = classifyCostByAmount(amountCents);
-    const entry: ExpenseEntry = createExpense(description, amountCents);
-
-    if (bucket === "variable") {
-      month.variableCosts = [entry, ...month.variableCosts];
-    } else {
-      month.miscCosts = [entry, ...month.miscCosts];
+  async function addVariablePosition(
+    name: string,
+    budgetCents: number,
+  ): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
     }
+    const cleanName = name.trim();
+    if (!cleanName) {
+      alert("Bitte Bezeichnung für die Position angeben.");
+      return;
+    }
+
+    month.variablePositions = [
+      {
+        id: createId("varpos"),
+        name: cleanName,
+        budgetCents,
+        actualCents: 0,
+      },
+      ...month.variablePositions,
+    ];
+    month.variableBudgetCents = month.variablePositions.reduce(
+      (sum, position) => sum + position.budgetCents,
+      0,
+    );
 
     await persistSelectedYear();
     render();
   }
 
-  async function removeExpense(expenseId: string): Promise<void> {
+  async function updateVariablePositionActual(
+    positionId: string,
+    actualCents: number,
+  ): Promise<void> {
     const month = getSelectedMonthBook();
     if (!month) {
       return;
     }
-    month.variableCosts = month.variableCosts.filter(
-      (entry) => entry.id !== expenseId,
+
+    month.variablePositions = month.variablePositions.map((position) =>
+      position.id === positionId ? { ...position, actualCents } : position,
     );
-    month.miscCosts = month.miscCosts.filter((entry) => entry.id !== expenseId);
+
+    await persistSelectedYear();
+    render();
+  }
+
+  async function removeVariablePosition(positionId: string): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+
+    month.variablePositions = month.variablePositions.filter(
+      (position) => position.id !== positionId,
+    );
+    month.variableBudgetCents = month.variablePositions.reduce(
+      (sum, position) => sum + position.budgetCents,
+      0,
+    );
+
     await persistSelectedYear();
     render();
   }
@@ -302,8 +367,10 @@ export function createAppController(root: HTMLElement) {
       getFixedTemplateState(),
     ]);
     state.years = years;
+    normalizeBudgetsForYears(state.years);
     state.fixedTemplates = fixed.templates;
     state.fixedTemplateVersion = fixed.version;
+    await persistNormalizedYears(state.years);
     state.selectedYear = years[0]?.year ?? null;
     state.selectedMonth = 1;
     render();
@@ -344,6 +411,22 @@ export function createAppController(root: HTMLElement) {
           totalCents: 0,
         };
     const yearByMonth = year ? summarizeYearByMonth(year) : [];
+    const fixedBudgetCents = month
+      ? (month.fixedBudgetCents ??
+        month.fixedCosts.reduce((sum, entry) => sum + entry.plannedCents, 0))
+      : 0;
+    const variableBudgetCents = month
+      ? month.variablePositions.reduce(
+          (sum, position) => sum + position.budgetCents,
+          0,
+        )
+      : 0;
+    const variablePositionBudgetCents = month
+      ? month.variablePositions.reduce(
+          (sum, position) => sum + position.budgetCents,
+          0,
+        )
+      : 0;
 
     root.innerHTML = `
       <div class="app grid">
@@ -431,7 +514,10 @@ export function createAppController(root: HTMLElement) {
                 <tr><td>1) Essen</td><td>${centsToEuro(monthSummary.foodCents)}</td><td>${centsToEuro(yearSummary.foodCents)}</td></tr>
                 <tr><td>1) Ausgehen</td><td>${centsToEuro(monthSummary.goingOutCents)}</td><td>${centsToEuro(yearSummary.goingOutCents)}</td></tr>
                 <tr><td>2) Fixe Kosten (Ist)</td><td>${centsToEuro(monthSummary.fixedCents)}</td><td>${centsToEuro(yearSummary.fixedCents)}</td></tr>
+                <tr><td>2) Fixe Kosten Budget</td><td>${centsToEuro(fixedBudgetCents)}</td><td>-</td></tr>
                 <tr><td>3) Variable Kosten</td><td>${centsToEuro(monthSummary.variableCents)}</td><td>${centsToEuro(yearSummary.variableCents)}</td></tr>
+                <tr><td>3) Variable Kosten Budget</td><td>${centsToEuro(variableBudgetCents)}</td><td>-</td></tr>
+                <tr><td>3) Variable Positionen Budget</td><td>${centsToEuro(variablePositionBudgetCents)}</td><td>-</td></tr>
                 <tr><td>4) Sonstige</td><td>${centsToEuro(monthSummary.miscCents)}</td><td>${centsToEuro(yearSummary.miscCents)}</td></tr>
                 <tr><th>Gesamt</th><th>${centsToEuro(monthSummary.totalCents)}</th><th>${centsToEuro(yearSummary.totalCents)}</th></tr>
               </tbody>
@@ -495,6 +581,12 @@ export function createAppController(root: HTMLElement) {
 
             <article class="card">
               <h3>2) Fixe Kosten (Monatssnapshot)</h3>
+              <div class="inline">
+                <label>
+                  Budget Fixkosten (€)
+                  <input class="amount-input" id="fixed-budget" type="number" min="0" step="0.01" value="${centsToEuro(fixedBudgetCents)}" ${month ? "" : "disabled"} />
+                </label>
+              </div>
               <table>
                 <thead>
                   <tr><th>Name</th><th>Geplant (€)</th><th>Ist (€)</th></tr>
@@ -520,23 +612,30 @@ export function createAppController(root: HTMLElement) {
             <article class="card">
               <h3>3) Variable Kosten (>= 30€)</h3>
               <div class="inline">
-                <input id="expense-description" type="text" placeholder="Beschreibung" />
-                <input class="amount-input" id="expense-amount" type="number" min="0" step="0.01" placeholder="Betrag (€)" />
-                <button class="btn btn-primary" id="add-expense">Erfassen</button>
+                <label>
+                  Neue Position
+                  <input id="variable-position-name" type="text" placeholder="z.B. Urlaub" ${month ? "" : "disabled"} />
+                </label>
+                <label>
+                  Positionsbudget (€)
+                  <input class="amount-input" id="variable-position-budget" type="number" min="0" step="0.01" placeholder="500.00" ${month ? "" : "disabled"} />
+                </label>
+                <button class="btn btn-primary" id="add-variable-position" ${month ? "" : "disabled"}>Position anlegen</button>
               </div>
               <table>
                 <thead>
-                  <tr><th>Beschreibung</th><th>Betrag (€)</th><th></th></tr>
+                  <tr><th>Position</th><th>Budget (€)</th><th>Ist (€)</th><th></th></tr>
                 </thead>
                 <tbody>
                 ${
                   month
-                    ? month.variableCosts
+                    ? month.variablePositions
                         .map(
-                          (entry) => `<tr>
-                    <td>${entry.description}</td>
-                    <td>${centsToEuro(entry.amountCents)}</td>
-                    <td><button class="btn btn-quiet" data-remove-expense="${entry.id}">Löschen</button></td>
+                          (position) => `<tr>
+                    <td>${position.name}</td>
+                    <td>${centsToEuro(position.budgetCents)}</td>
+                    <td><input class="amount-input" data-variable-position-actual="${position.id}" type="number" min="0" step="0.01" value="${centsToEuro(position.actualCents)}" /></td>
+                    <td><button class="btn btn-quiet" data-remove-variable-position="${position.id}">Löschen</button></td>
                   </tr>`,
                         )
                         .join("")
@@ -550,7 +649,7 @@ export function createAppController(root: HTMLElement) {
               <h3>4) Sonstige (unter 30€)</h3>
               <table>
                 <thead>
-                  <tr><th>Beschreibung</th><th>Betrag (€)</th><th></th></tr>
+                  <tr><th>Beschreibung</th><th>Betrag (€)</th></tr>
                 </thead>
                 <tbody>
                 ${
@@ -560,7 +659,6 @@ export function createAppController(root: HTMLElement) {
                           (entry) => `<tr>
                     <td>${entry.description}</td>
                     <td>${centsToEuro(entry.amountCents)}</td>
-                    <td><button class="btn btn-quiet" data-remove-expense="${entry.id}">Löschen</button></td>
                   </tr>`,
                         )
                         .join("")
@@ -688,28 +786,54 @@ export function createAppController(root: HTMLElement) {
         });
       });
 
-    const expenseDescription = root.querySelector<HTMLInputElement>(
-      "#expense-description",
-    );
-    const expenseAmount =
-      root.querySelector<HTMLInputElement>("#expense-amount");
-    const addExpenseButton =
-      root.querySelector<HTMLButtonElement>("#add-expense");
+    const fixedBudgetInput =
+      root.querySelector<HTMLInputElement>("#fixed-budget");
+    fixedBudgetInput?.addEventListener("change", async () => {
+      await updateMonthlyFixedBudget(euroToCents(fixedBudgetInput.value));
+    });
 
-    addExpenseButton?.addEventListener("click", async () => {
-      const amountCents = euroToCents(expenseAmount?.value ?? "0");
-      await addExpense(expenseDescription?.value ?? "", amountCents);
-      if (expenseDescription) expenseDescription.value = "";
-      if (expenseAmount) expenseAmount.value = "";
+    const variablePositionNameInput = root.querySelector<HTMLInputElement>(
+      "#variable-position-name",
+    );
+    const variablePositionBudgetInput = root.querySelector<HTMLInputElement>(
+      "#variable-position-budget",
+    );
+    const addVariablePositionButton = root.querySelector<HTMLButtonElement>(
+      "#add-variable-position",
+    );
+
+    addVariablePositionButton?.addEventListener("click", async () => {
+      const budgetCents = euroToCents(
+        variablePositionBudgetInput?.value ?? "0",
+      );
+      await addVariablePosition(
+        variablePositionNameInput?.value ?? "",
+        budgetCents,
+      );
+      if (variablePositionNameInput) variablePositionNameInput.value = "";
+      if (variablePositionBudgetInput) variablePositionBudgetInput.value = "";
     });
 
     root
-      .querySelectorAll<HTMLButtonElement>("[data-remove-expense]")
+      .querySelectorAll<HTMLInputElement>("[data-variable-position-actual]")
+      .forEach((input) => {
+        input.addEventListener("change", async () => {
+          const positionId = input.dataset.variablePositionActual;
+          if (!positionId) return;
+          await updateVariablePositionActual(
+            positionId,
+            euroToCents(input.value),
+          );
+        });
+      });
+
+    root
+      .querySelectorAll<HTMLButtonElement>("[data-remove-variable-position]")
       .forEach((button) => {
         button.addEventListener("click", async () => {
-          const expenseId = button.dataset.removeExpense;
-          if (!expenseId) return;
-          await removeExpense(expenseId);
+          const positionId = button.dataset.removeVariablePosition;
+          if (!positionId) return;
+          await removeVariablePosition(positionId);
         });
       });
 

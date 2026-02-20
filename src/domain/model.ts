@@ -29,11 +29,21 @@ export interface ExpenseEntry {
   createdAt: string;
 }
 
+export interface VariableBudgetPosition {
+  id: string;
+  name: string;
+  budgetCents: EuroCents;
+  actualCents: EuroCents;
+}
+
 export interface MonthBook {
   month: MonthNumber;
   days: DayEntry[];
   fixedCosts: FixedCostEntry[];
+  fixedBudgetCents: EuroCents;
   variableCosts: ExpenseEntry[];
+  variablePositions: VariableBudgetPosition[];
+  variableBudgetCents: EuroCents;
   miscCosts: ExpenseEntry[];
 }
 

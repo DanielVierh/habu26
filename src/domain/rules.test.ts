@@ -31,5 +31,8 @@ describe("rules", () => {
 
     expect(year.months).toHaveLength(12);
     expect(year.months[0]?.fixedCosts).toHaveLength(1);
+    expect(year.months[0]?.fixedBudgetCents).toBe(90000);
+    expect(year.months[0]?.variablePositions).toEqual([]);
+    expect(year.months[0]?.variableBudgetCents).toBe(0);
   });
 });
