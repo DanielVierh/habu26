@@ -25,6 +25,7 @@ interface State {
   fixedTemplates: FixedCostTemplate[];
   fixedTemplateVersion: string;
   editingFixedTemplateId: string | null;
+  theme: "light" | "dark" | "forest";
 }
 
 interface CostSummary {
@@ -49,9 +50,27 @@ export function createAppController(root: HTMLElement) {
     fixedTemplates: [],
     fixedTemplateVersion: "",
     editingFixedTemplateId: null,
+    theme: "light",
   };
 
+  const THEME_STORAGE_KEY = "habu-theme";
+
+  function loadTheme(): "light" | "dark" | "forest" {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === "light" || stored === "dark" || stored === "forest") {
+      return stored;
+    }
+    return "light";
+  }
+
+  function applyTheme(theme: "light" | "dark" | "forest"): void {
+    state.theme = theme;
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }
+
   async function init(): Promise<void> {
+    applyTheme(loadTheme());
     const [years, fixed] = await Promise.all([
       listYears(),
       getFixedTemplateState(),
@@ -613,7 +632,17 @@ export function createAppController(root: HTMLElement) {
 
     root.innerHTML = `
       <div class="app grid">
-        <h1 class="app-title">Haushaltsbuch (Local First)</h1>
+        <div class="app-header inline">
+          <h1 class="app-title">Haushaltsbuch (Local First)</h1>
+          <label>
+            Theme
+            <select id="theme-select">
+              <option value="light" ${state.theme === "light" ? "selected" : ""}>Light</option>
+              <option value="dark" ${state.theme === "dark" ? "selected" : ""}>Dark</option>
+              <option value="forest" ${state.theme === "forest" ? "selected" : ""}>Forest</option>
+            </select>
+          </label>
+        </div>
 
         <section class="card grid">
           <h2>Jahre</h2>
@@ -875,6 +904,7 @@ export function createAppController(root: HTMLElement) {
   }
 
   function bindEvents(): void {
+    const themeSelect = root.querySelector<HTMLSelectElement>("#theme-select");
     const newYearInput = root.querySelector<HTMLInputElement>("#new-year");
     const createYearButton =
       root.querySelector<HTMLButtonElement>("#create-year");
@@ -882,6 +912,17 @@ export function createAppController(root: HTMLElement) {
       root.querySelector<HTMLButtonElement>("#delete-year");
     const yearSelect = root.querySelector<HTMLSelectElement>("#year-select");
     const monthSelect = root.querySelector<HTMLSelectElement>("#month-select");
+
+    themeSelect?.addEventListener("change", () => {
+      const selectedTheme = themeSelect.value;
+      if (
+        selectedTheme === "light" ||
+        selectedTheme === "dark" ||
+        selectedTheme === "forest"
+      ) {
+        applyTheme(selectedTheme);
+      }
+    });
 
     createYearButton?.addEventListener("click", async () => {
       const yearValue = Number.parseInt(newYearInput?.value ?? "", 10);
