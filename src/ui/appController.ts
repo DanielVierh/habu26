@@ -347,7 +347,7 @@ export function createAppController(root: HTMLElement) {
 
     root.innerHTML = `
       <div class="app grid">
-        <h1>Haushaltsbuch (Local First)</h1>
+        <h1 class="app-title">Haushaltsbuch (Local First)</h1>
 
         <section class="card grid">
           <h2>Jahre</h2>
@@ -356,8 +356,8 @@ export function createAppController(root: HTMLElement) {
               Neues Jahr
               <input id="new-year" type="number" min="2000" max="2100" value="${new Date().getFullYear()}" />
             </label>
-            <button id="create-year">Jahr anlegen (12 Monate automatisch)</button>
-            <button id="delete-year" ${state.selectedYear ? "" : "disabled"}>Aktuelles Jahr löschen</button>
+            <button class="btn btn-primary" id="create-year">Jahr anlegen (12 Monate automatisch)</button>
+            <button class="btn btn-danger" id="delete-year" ${state.selectedYear ? "" : "disabled"}>Aktuelles Jahr löschen</button>
           </div>
           <div class="inline">
             <label>
@@ -395,9 +395,9 @@ export function createAppController(root: HTMLElement) {
             </label>
             <label>
               Betrag (€)
-              <input id="fixed-template-amount" type="number" min="0" step="0.01" />
+              <input class="amount-input" id="fixed-template-amount" type="number" min="0" step="0.01" />
             </label>
-            <button id="add-fixed-template">Vorlage speichern</button>
+            <button class="btn btn-primary" id="add-fixed-template">Vorlage speichern</button>
           </div>
           <table>
             <thead>
@@ -410,7 +410,7 @@ export function createAppController(root: HTMLElement) {
                     `<tr>
                       <td>${template.name}</td>
                       <td>${centsToEuro(template.plannedCents)}</td>
-                      <td><button data-remove-fixed-template="${template.id}">Löschen</button></td>
+                      <td><button class="btn btn-quiet" data-remove-fixed-template="${template.id}">Löschen</button></td>
                     </tr>`,
                 )
                 .join("")}
@@ -471,7 +471,7 @@ export function createAppController(root: HTMLElement) {
           <div class="grid grid-4">
             <article class="card">
               <h3>1) Essen, Trinken und Ausgehen (Tage)</h3>
-              <table>
+              <table class="daily-table">
                 <thead>
                   <tr><th>Datum</th><th>Essen (€)</th><th>Ausgehen (€)</th></tr>
                 </thead>
@@ -482,8 +482,8 @@ export function createAppController(root: HTMLElement) {
                           .map(
                             (day) => `<tr>
                       <td>${new Date(day.isoDate).toLocaleDateString("de-DE")}</td>
-                      <td><input data-day-food="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuro(day.foodCents)}" /></td>
-                      <td><input data-day-going="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuro(day.goingOutCents)}" /></td>
+                      <td><input class="amount-input" data-day-food="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuro(day.foodCents)}" /></td>
+                      <td><input class="amount-input" data-day-going="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuro(day.goingOutCents)}" /></td>
                     </tr>`,
                           )
                           .join("")
@@ -507,7 +507,7 @@ export function createAppController(root: HTMLElement) {
                           (cost) => `<tr>
                     <td>${cost.name}</td>
                     <td>${centsToEuro(cost.plannedCents)}</td>
-                    <td><input data-fixed-actual="${cost.id}" type="number" min="0" step="0.01" value="${centsToEuro(cost.actualCents)}" /></td>
+                    <td><input class="amount-input" data-fixed-actual="${cost.id}" type="number" min="0" step="0.01" value="${centsToEuro(cost.actualCents)}" /></td>
                   </tr>`,
                         )
                         .join("")
@@ -521,8 +521,8 @@ export function createAppController(root: HTMLElement) {
               <h3>3) Variable Kosten (>= 30€)</h3>
               <div class="inline">
                 <input id="expense-description" type="text" placeholder="Beschreibung" />
-                <input id="expense-amount" type="number" min="0" step="0.01" placeholder="Betrag (€)" />
-                <button id="add-expense">Erfassen</button>
+                <input class="amount-input" id="expense-amount" type="number" min="0" step="0.01" placeholder="Betrag (€)" />
+                <button class="btn btn-primary" id="add-expense">Erfassen</button>
               </div>
               <table>
                 <thead>
@@ -536,7 +536,7 @@ export function createAppController(root: HTMLElement) {
                           (entry) => `<tr>
                     <td>${entry.description}</td>
                     <td>${centsToEuro(entry.amountCents)}</td>
-                    <td><button data-remove-expense="${entry.id}">Löschen</button></td>
+                    <td><button class="btn btn-quiet" data-remove-expense="${entry.id}">Löschen</button></td>
                   </tr>`,
                         )
                         .join("")
@@ -560,7 +560,7 @@ export function createAppController(root: HTMLElement) {
                           (entry) => `<tr>
                     <td>${entry.description}</td>
                     <td>${centsToEuro(entry.amountCents)}</td>
-                    <td><button data-remove-expense="${entry.id}">Löschen</button></td>
+                    <td><button class="btn btn-quiet" data-remove-expense="${entry.id}">Löschen</button></td>
                   </tr>`,
                         )
                         .join("")
@@ -575,7 +575,7 @@ export function createAppController(root: HTMLElement) {
         <section class="card grid">
           <h2>Lokale Datensicherung</h2>
           <div class="inline">
-            <button id="backup-export">Backup exportieren (JSON)</button>
+            <button class="btn btn-primary" id="backup-export">Backup exportieren (JSON)</button>
             <label>
               Backup importieren (JSON)
               <input id="backup-import" type="file" accept="application/json" />
