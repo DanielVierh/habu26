@@ -56,6 +56,14 @@ export function createAppController(root: HTMLElement) {
 
   const THEME_STORAGE_KEY = "habu-theme";
 
+  function getCurrentMonthNumber(): number {
+    return new Date().getMonth() + 1;
+  }
+
+  function getTodayIsoDate(): string {
+    return new Date().toISOString().slice(0, 10);
+  }
+
   function loadTheme(): "light" | "dark" | "forest" {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
     if (stored === "light" || stored === "dark" || stored === "forest") {
@@ -83,6 +91,7 @@ export function createAppController(root: HTMLElement) {
     await persistNormalizedYears(state.years);
     if (years.length > 0 && years[0]) {
       state.selectedYear = years[0].year;
+      state.selectedMonth = getCurrentMonthNumber();
     }
     render();
   }
@@ -257,7 +266,7 @@ export function createAppController(root: HTMLElement) {
     await saveYear(created);
     state.years = await listYears();
     state.selectedYear = yearNumber;
-    state.selectedMonth = 1;
+    state.selectedMonth = getCurrentMonthNumber();
     render();
   }
 
@@ -714,7 +723,7 @@ export function createAppController(root: HTMLElement) {
     state.fixedTemplateVersion = fixed.version;
     await persistNormalizedYears(state.years);
     state.selectedYear = years[0]?.year ?? null;
-    state.selectedMonth = 1;
+    state.selectedMonth = getCurrentMonthNumber();
     render();
   }
 
@@ -730,13 +739,14 @@ export function createAppController(root: HTMLElement) {
     await deleteYear(state.selectedYear);
     state.years = await listYears();
     state.selectedYear = state.years[0]?.year ?? null;
-    state.selectedMonth = 1;
+    state.selectedMonth = getCurrentMonthNumber();
     render();
   }
 
   function render(): void {
     const year = getSelectedYearBook();
     const month = getSelectedMonthBook();
+    const todayIsoDate = getTodayIsoDate();
     const monthSummary = month
       ? summarizeMonth(month)
       : {
@@ -988,7 +998,9 @@ export function createAppController(root: HTMLElement) {
                     month
                       ? month.days
                           .map(
-                            (day) => `<tr>
+                            (
+                              day,
+                            ) => `<tr class="${day.isoDate === todayIsoDate ? "today-row" : ""}">
                       <td>${new Date(day.isoDate).toLocaleDateString("de-DE")}</td>
                       <td><input class="amount-input" data-day-food="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuro(day.foodCents)}" /></td>
                       <td><input class="amount-input" data-day-going="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuro(day.goingOutCents)}" /></td>
@@ -1168,7 +1180,7 @@ export function createAppController(root: HTMLElement) {
 
     yearSelect?.addEventListener("change", () => {
       state.selectedYear = Number.parseInt(yearSelect.value, 10);
-      state.selectedMonth = 1;
+      state.selectedMonth = getCurrentMonthNumber();
       render();
     });
 

@@ -351,6 +351,10 @@ tbody tr:nth-child(even) {
   width: 92px;
 }
 
+.daily-table .today-row td {
+  background: var(--focus-ring);
+}
+
 .amount-input {
   max-width: 92px;
   width: 92px;
