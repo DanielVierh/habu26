@@ -48,6 +48,28 @@ h3 {
   gap: 1.25rem;
 }
 
+.grid-4 > .card {
+  font-size: 0.86rem;
+}
+
+.grid-4 > .card h3 {
+  font-size: 0.9rem;
+}
+
+.grid-4 > .card th,
+.grid-4 > .card td {
+  font-size: 0.82rem;
+  padding: 0.42rem 0.36rem;
+}
+
+.grid-4 > .card input,
+.grid-4 > .card select,
+.grid-4 > .card button,
+.grid-4 > .card textarea,
+.grid-4 > .card label {
+  font-size: 0.82rem;
+}
+
 @media (min-width: 1500px) {
   .grid-4 {
     grid-template-columns: repeat(4, minmax(360px, 1fr));
