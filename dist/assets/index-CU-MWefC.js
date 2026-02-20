@@ -21,12 +21,6 @@
                 ${_.years.map(M=>`<option value="${M.year}" ${M.year===_.selectedYear?"selected":""}>${M.year}</option>`).join("")}
               </select>
             </label>
-            <label>
-              Monat wählen
-              <select id="month-select" ${_.selectedYear?"":"disabled"}>
-                ${Array.from({length:12},(M,ke)=>ke+1).map(M=>`<option value="${M}" ${M===_.selectedMonth?"selected":""}>${Qn(M)}</option>`).join("")}
-              </select>
-            </label>
           </div>
           <p class="muted">Neue Monate werden automatisch aus zentralen Fixkosten-Vorlagen gespeist. 30,00€ und mehr zählen als variable Kosten.</p>
         </section>
@@ -62,6 +56,14 @@
 
         <section class="card grid">
           <h2>Monat: ${C?`${Qn(_.selectedMonth)} ${C.year}`:"-"}</h2>
+          <div class="inline">
+            <label>
+              Monat wählen
+              <select id="month-select" ${_.selectedYear?"":"disabled"}>
+                ${Array.from({length:12},(M,ke)=>ke+1).map(M=>`<option value="${M}" ${M===_.selectedMonth?"selected":""}>${Qn(M)}</option>`).join("")}
+              </select>
+            </label>
+          </div>
 
           <article class="card">
             <h3>Auswertung (Monat & Jahr)</h3>

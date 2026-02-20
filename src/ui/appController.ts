@@ -637,17 +637,6 @@ export function createAppController(root: HTMLElement) {
                   .join("")}
               </select>
             </label>
-            <label>
-              Monat wählen
-              <select id="month-select" ${state.selectedYear ? "" : "disabled"}>
-                ${Array.from({ length: 12 }, (_, index) => index + 1)
-                  .map(
-                    (monthNumber) =>
-                      `<option value="${monthNumber}" ${monthNumber === state.selectedMonth ? "selected" : ""}>${monthLabel(monthNumber)}</option>`,
-                  )
-                  .join("")}
-              </select>
-            </label>
           </div>
           <p class="muted">Neue Monate werden automatisch aus zentralen Fixkosten-Vorlagen gespeist. 30,00€ und mehr zählen als variable Kosten.</p>
         </section>
@@ -688,6 +677,19 @@ export function createAppController(root: HTMLElement) {
 
         <section class="card grid">
           <h2>Monat: ${year ? `${monthLabel(state.selectedMonth)} ${year.year}` : "-"}</h2>
+          <div class="inline">
+            <label>
+              Monat wählen
+              <select id="month-select" ${state.selectedYear ? "" : "disabled"}>
+                ${Array.from({ length: 12 }, (_, index) => index + 1)
+                  .map(
+                    (monthNumber) =>
+                      `<option value="${monthNumber}" ${monthNumber === state.selectedMonth ? "selected" : ""}>${monthLabel(monthNumber)}</option>`,
+                  )
+                  .join("")}
+              </select>
+            </label>
+          </div>
 
           <article class="card">
             <h3>Auswertung (Monat & Jahr)</h3>
