@@ -657,8 +657,8 @@ tbody tr:nth-child(even) {
 }
 
 .amount-input {
-  max-width: 82px;
-  width: 82px;
+  max-width: 64px;
+  width: 64px;
   font-size: 0.8rem;
 }
 

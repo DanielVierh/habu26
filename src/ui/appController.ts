@@ -986,6 +986,9 @@ export function createAppController(root: HTMLElement) {
     const selectedIncomeFlow = year
       ? incomeFlowByMonth.get(monthKey(year.year, state.selectedMonth))
       : undefined;
+    const firstMonthInYear = year
+      ? year.months.slice().sort((left, right) => left.month - right.month)[0]
+      : undefined;
     const carryoverCents = selectedIncomeFlow?.carriedFromPreviousCents ?? 0;
     const hasCarryoverFromPreviousMonth =
       selectedIncomeFlow?.hasPreviousMonth ?? false;
@@ -998,6 +1001,33 @@ export function createAppController(root: HTMLElement) {
       carryoverCents < 0 ? "danger" : carryoverCents > 0 ? "budget-under" : "";
     const monthNetClass =
       monthNetCents < 0 ? "danger" : monthNetCents > 0 ? "budget-under" : "";
+    const yearRecordedIncomeTotalCents = year
+      ? year.months.reduce(
+          (sum, monthItem) =>
+            sum +
+            monthItem.incomes.reduce(
+              (monthSum, entry) => monthSum + entry.amountCents,
+              0,
+            ),
+          0,
+        )
+      : 0;
+    const yearOpeningCarryoverCents =
+      year && firstMonthInYear
+        ? (incomeFlowByMonth.get(monthKey(year.year, firstMonthInYear.month))
+            ?.carriedFromPreviousCents ?? 0)
+        : 0;
+    const yearEffectiveIncomeTotalCents =
+      yearRecordedIncomeTotalCents + yearOpeningCarryoverCents;
+    const yearNetCents = yearEffectiveIncomeTotalCents - yearSummary.totalCents;
+    const yearOpeningCarryoverClass =
+      yearOpeningCarryoverCents < 0
+        ? "danger"
+        : yearOpeningCarryoverCents > 0
+          ? "budget-under"
+          : "";
+    const yearNetClass =
+      yearNetCents < 0 ? "danger" : yearNetCents > 0 ? "budget-under" : "";
     const fixedSummaryBudgetClass = budgetStatusClass(
       monthSummary.fixedCents,
       fixedBudgetCents,
@@ -1122,6 +1152,9 @@ export function createAppController(root: HTMLElement) {
                 <tr><th>Rechnungskreis</th><th>Monat (€)</th><th>Jahr (€)</th></tr>
               </thead>
               <tbody>
+                <tr><td>0) Einkommen (erfasst)</td><td>${centsToEuro(recordedIncomeTotalCents)}</td><td>${centsToEuro(yearRecordedIncomeTotalCents)}</td></tr>
+                <tr><td>0) Übernahme aus Vormonat</td><td class="${carryoverClass}">${hasCarryoverFromPreviousMonth ? centsToEuro(carryoverCents) : "-"}</td><td class="${yearOpeningCarryoverClass}">${year ? centsToEuro(yearOpeningCarryoverCents) : "-"}</td></tr>
+                <tr><td>0) Einkommen gesamt</td><td>${centsToEuro(effectiveIncomeTotalCents)}</td><td>${centsToEuro(yearEffectiveIncomeTotalCents)}</td></tr>
                 <tr><td>1) Essen</td><td class="${foodSummaryBudgetClass}">${centsToEuro(monthSummary.foodCents)}</td><td>${centsToEuro(yearSummary.foodCents)}</td></tr>
                 <tr><td>1) Essen Budget</td><td>${centsToEuro(foodBudgetCents)}</td><td>-</td></tr>
                 <tr><td>1) Ausgehen</td><td class="${goingOutSummaryBudgetClass}">${centsToEuro(monthSummary.goingOutCents)}</td><td>${centsToEuro(yearSummary.goingOutCents)}</td></tr>
@@ -1134,6 +1167,7 @@ export function createAppController(root: HTMLElement) {
                 <tr><td>4) Sonstige</td><td class="${miscSummaryBudgetClass}">${centsToEuro(monthSummary.miscCents)}</td><td>${centsToEuro(yearSummary.miscCents)}</td></tr>
                 <tr><td>4) Sonstige Budget</td><td>${centsToEuro(miscBudgetCents)}</td><td>-</td></tr>
                 <tr><th>Gesamt</th><th>${centsToEuro(monthSummary.totalCents)}</th><th>${centsToEuro(yearSummary.totalCents)}</th></tr>
+                <tr><th>Saldo nach Einkommen</th><th class="${monthNetClass}">${centsToEuro(monthNetCents)}</th><th class="${yearNetClass}">${centsToEuro(yearNetCents)}</th></tr>
               </tbody>
             </table>
 
