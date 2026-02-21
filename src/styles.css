@@ -740,8 +740,8 @@ tbody tr:nth-child(even) {
   border-radius: 10px;
   border: 1px solid var(--card-border);
   border-left: 4px solid var(--primary-2);
-  background: var(--card-bg);
-  color: var(--text-main);
+  background: green;
+  color: white;
   box-shadow:
     0 1px 1px var(--shadow-1),
     0 10px 24px var(--shadow-2);
