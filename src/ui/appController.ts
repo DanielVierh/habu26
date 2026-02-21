@@ -108,6 +108,49 @@ export function createAppController(root: HTMLElement) {
   };
 
   const THEME_STORAGE_KEY = "habu-theme";
+  let toastRoot: HTMLDivElement | null = null;
+
+  function ensureToastRoot(): HTMLDivElement {
+    if (toastRoot && document.body.contains(toastRoot)) {
+      return toastRoot;
+    }
+    const existing = document.getElementById("toast-root");
+    if (existing instanceof HTMLDivElement) {
+      toastRoot = existing;
+      return existing;
+    }
+    const created = document.createElement("div");
+    created.id = "toast-root";
+    created.className = "toast-root";
+    created.setAttribute("aria-live", "polite");
+    created.setAttribute("aria-atomic", "true");
+    document.body.appendChild(created);
+    toastRoot = created;
+    return created;
+  }
+
+  function showToast(
+    message: string,
+    variant: "success" | "error" = "success",
+  ): void {
+    const container = ensureToastRoot();
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${variant}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => {
+      toast.classList.add("toast-visible");
+    });
+
+    const timeoutMs = variant === "error" ? 5000 : 3000;
+    window.setTimeout(() => {
+      toast.classList.remove("toast-visible");
+      window.setTimeout(() => {
+        toast.remove();
+      }, 220);
+    }, timeoutMs);
+  }
 
   function getCurrentMonthNumber(): number {
     return new Date().getMonth() + 1;
@@ -132,6 +175,7 @@ export function createAppController(root: HTMLElement) {
   }
 
   async function init(): Promise<void> {
+    ensureToastRoot();
     applyTheme(loadTheme());
     const [years, fixed] = await Promise.all([
       listYears(),
@@ -326,6 +370,7 @@ export function createAppController(root: HTMLElement) {
     state.years = await listYears();
     state.selectedYear = yearNumber;
     state.selectedMonth = getCurrentMonthNumber();
+    showToast(`Jahr ${yearNumber} wurde angelegt.`);
     render();
   }
 
@@ -479,6 +524,7 @@ export function createAppController(root: HTMLElement) {
       return;
     }
 
+    const isUpdate = Boolean(state.editingFixedTemplateId);
     if (state.editingFixedTemplateId) {
       const existingTemplate = state.fixedTemplates.find(
         (template) => template.id === state.editingFixedTemplateId,
@@ -517,6 +563,11 @@ export function createAppController(root: HTMLElement) {
     state.fixedTemplateVersion = await saveFixedTemplates(state.fixedTemplates);
     state.editingFixedTemplateId = null;
     await persistAllYears();
+    showToast(
+      isUpdate
+        ? "Fixkosten-Vorlage wurde aktualisiert."
+        : "Fixkosten-Vorlage wurde hinzugefügt.",
+    );
     render();
   }
 
@@ -550,6 +601,7 @@ export function createAppController(root: HTMLElement) {
     }
     state.fixedTemplateVersion = await saveFixedTemplates(state.fixedTemplates);
     await persistAllYears();
+    showToast("Fixkosten-Vorlage wurde gelöscht.");
     render();
   }
 
@@ -655,6 +707,7 @@ export function createAppController(root: HTMLElement) {
     );
 
     await persistSelectedYear();
+    showToast("Variable Position wurde hinzugefügt.");
     render();
   }
 
@@ -695,6 +748,7 @@ export function createAppController(root: HTMLElement) {
     );
 
     await persistSelectedYear();
+    showToast("Variable Position wurde gelöscht.");
     render();
   }
 
@@ -719,6 +773,7 @@ export function createAppController(root: HTMLElement) {
     const entry: ExpenseEntry = createExpense(cleanDescription, amountCents);
     month.miscCosts = [entry, ...month.miscCosts];
     await persistSelectedYear();
+    showToast("Sonstige Position wurde hinzugefügt.");
     render();
   }
 
@@ -734,6 +789,7 @@ export function createAppController(root: HTMLElement) {
     }
     month.miscCosts = month.miscCosts.filter((entry) => entry.id !== expenseId);
     await persistSelectedYear();
+    showToast("Sonstige Position wurde gelöscht.");
     render();
   }
 
@@ -759,6 +815,7 @@ export function createAppController(root: HTMLElement) {
     month.incomes = [entry, ...month.incomes];
 
     await persistSelectedYear();
+    showToast("Einkommen wurde hinzugefügt.");
     render();
   }
 
@@ -774,6 +831,7 @@ export function createAppController(root: HTMLElement) {
     }
     month.incomes = month.incomes.filter((entry) => entry.id !== incomeId);
     await persistSelectedYear();
+    showToast("Einkommen wurde gelöscht.");
     render();
   }
 
@@ -788,6 +846,7 @@ export function createAppController(root: HTMLElement) {
     anchor.download = `haushaltsbuch-backup-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
+    showToast("Backup wurde exportiert.");
   }
 
   async function importBackup(file: File): Promise<void> {
@@ -805,6 +864,7 @@ export function createAppController(root: HTMLElement) {
     await persistNormalizedYears(state.years);
     state.selectedYear = years[0]?.year ?? null;
     state.selectedMonth = getCurrentMonthNumber();
+    showToast("Backup wurde importiert.");
     render();
   }
 
@@ -817,10 +877,12 @@ export function createAppController(root: HTMLElement) {
     if (!state.selectedYear) {
       return;
     }
-    await deleteYear(state.selectedYear);
+    const deletedYear = state.selectedYear;
+    await deleteYear(deletedYear);
     state.years = await listYears();
     state.selectedYear = state.years[0]?.year ?? null;
     state.selectedMonth = getCurrentMonthNumber();
+    showToast(`Jahr ${deletedYear} wurde gelöscht.`);
     render();
   }
 
@@ -1497,7 +1559,12 @@ export function createAppController(root: HTMLElement) {
       if (!file) {
         return;
       }
-      await importBackup(file);
+      try {
+        await importBackup(file);
+      } catch (error) {
+        console.error("Backup-Import fehlgeschlagen", error);
+        showToast("Backup konnte nicht importiert werden.", "error");
+      }
       backupImport.value = "";
     });
   }
