@@ -96,6 +96,15 @@ interface MonthSummaryRow {
   summary: CostSummary;
 }
 
+interface IncomeFlowSummary {
+  hasPreviousMonth: boolean;
+  carriedFromPreviousCents: number;
+  recordedIncomeCents: number;
+  effectiveIncomeCents: number;
+  expenseCents: number;
+  netCents: number;
+}
+
 export function createAppController(root: HTMLElement) {
   const state: State = {
     years: [],
@@ -314,6 +323,46 @@ export function createAppController(root: HTMLElement) {
         month: monthItem.month,
         summary: summarizeMonth(monthItem),
       }));
+  }
+
+  function summarizeIncomeFlowByMonth(): Map<number, IncomeFlowSummary> {
+    const orderedMonths = state.years
+      .slice()
+      .sort((left, right) => left.year - right.year)
+      .flatMap((yearItem) =>
+        yearItem.months
+          .slice()
+          .sort((left, right) => left.month - right.month)
+          .map((monthItem) => ({ year: yearItem.year, month: monthItem })),
+      );
+
+    const summaryMap = new Map<number, IncomeFlowSummary>();
+    let carryoverCents = 0;
+    let hasPreviousMonth = false;
+
+    orderedMonths.forEach(({ year, month }) => {
+      const recordedIncomeCents = month.incomes.reduce(
+        (sum, entry) => sum + entry.amountCents,
+        0,
+      );
+      const expenseCents = summarizeMonth(month).totalCents;
+      const effectiveIncomeCents = recordedIncomeCents + carryoverCents;
+      const netCents = effectiveIncomeCents - expenseCents;
+
+      summaryMap.set(monthKey(year, month.month), {
+        hasPreviousMonth,
+        carriedFromPreviousCents: carryoverCents,
+        recordedIncomeCents,
+        effectiveIncomeCents,
+        expenseCents,
+        netCents,
+      });
+
+      carryoverCents = netCents;
+      hasPreviousMonth = true;
+    });
+
+    return summaryMap;
   }
 
   function budgetStatusClass(actualCents: number, budgetCents: number): string {
@@ -930,9 +979,25 @@ export function createAppController(root: HTMLElement) {
         )
       : 0;
     const miscBudgetCents = month ? (month.miscBudgetCents ?? 0) : 0;
-    const incomeTotalCents = month
+    const recordedIncomeTotalCents = month
       ? month.incomes.reduce((sum, entry) => sum + entry.amountCents, 0)
       : 0;
+    const incomeFlowByMonth = summarizeIncomeFlowByMonth();
+    const selectedIncomeFlow = year
+      ? incomeFlowByMonth.get(monthKey(year.year, state.selectedMonth))
+      : undefined;
+    const carryoverCents = selectedIncomeFlow?.carriedFromPreviousCents ?? 0;
+    const hasCarryoverFromPreviousMonth =
+      selectedIncomeFlow?.hasPreviousMonth ?? false;
+    const effectiveIncomeTotalCents =
+      selectedIncomeFlow?.effectiveIncomeCents ?? recordedIncomeTotalCents;
+    const monthNetCents =
+      selectedIncomeFlow?.netCents ??
+      recordedIncomeTotalCents - monthSummary.totalCents;
+    const carryoverClass =
+      carryoverCents < 0 ? "danger" : carryoverCents > 0 ? "budget-under" : "";
+    const monthNetClass =
+      monthNetCents < 0 ? "danger" : monthNetCents > 0 ? "budget-under" : "";
     const fixedSummaryBudgetClass = budgetStatusClass(
       monthSummary.fixedCents,
       fixedBudgetCents,
@@ -1123,7 +1188,15 @@ export function createAppController(root: HTMLElement) {
               <tbody>
                 ${
                   month
-                    ? month.incomes
+                    ? `${
+                        hasCarryoverFromPreviousMonth
+                          ? `<tr>
+                    <td>Übernahme aus Vormonat</td>
+                    <td class="${carryoverClass}">${centsToEuro(carryoverCents)}</td>
+                    <td>-</td>
+                  </tr>`
+                          : ""
+                      }${month.incomes
                         .map(
                           (entry) => `<tr>
                     <td>${entry.description}</td>
@@ -1131,12 +1204,31 @@ export function createAppController(root: HTMLElement) {
                     <td><button class="btn btn-quiet" data-remove-income="${entry.id}">Löschen</button></td>
                   </tr>`,
                         )
-                        .join("")
+                        .join("")}`
                     : ""
                 }
               </tbody>
             </table>
-            <p class="muted">Monatliches Einkommen gesamt: ${centsToEuro(incomeTotalCents)} €</p>
+            <div class="column-overview income-flow-overview">
+              <div class="column-overview-grid">
+                <div class="column-overview-row">
+                  <span>Erfasstes Einkommen</span>
+                  <strong>${centsToEuro(recordedIncomeTotalCents)} €</strong>
+                </div>
+                <div class="column-overview-row ${carryoverClass}">
+                  <span>Übernahme Vormonat</span>
+                  <strong>${hasCarryoverFromPreviousMonth ? `${centsToEuro(carryoverCents)} €` : "-"}</strong>
+                </div>
+                <div class="column-overview-row">
+                  <span>Einkommen gesamt (inkl. Übernahme)</span>
+                  <strong>${centsToEuro(effectiveIncomeTotalCents)} €</strong>
+                </div>
+                <div class="column-overview-row ${monthNetClass}">
+                  <span>Monatsergebnis (Übernahme Folgemonat)</span>
+                  <strong>${centsToEuro(monthNetCents)} €</strong>
+                </div>
+              </div>
+            </div>
           </article>
 
           <div class="grid grid-4">

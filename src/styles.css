@@ -682,6 +682,10 @@ tbody tr:nth-child(even) {
   margin: 0 0 0.6rem;
 }
 
+.income-flow-overview {
+  margin-top: 0.6rem;
+}
+
 .column-overview-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
