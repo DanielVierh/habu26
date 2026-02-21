@@ -414,6 +414,7 @@
 body {
   margin: 0;
   color: var(--text-main);
+  font-size: 1rem;
   background:
     radial-gradient(circle at 0% 0%, var(--bg-accent-1) 0, transparent 42%),
     radial-gradient(circle at 100% 0%, var(--bg-accent-2) 0, transparent 36%),
@@ -658,6 +659,14 @@ tbody tr:nth-child(even) {
 .amount-input {
   max-width: 82px;
   width: 82px;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 768px) {
+  .grid-4 > .card input.amount-input,
+  .amount-input {
+    font-size: 1rem;
+  }
 }
 
 .inline {
