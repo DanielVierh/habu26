@@ -19,6 +19,59 @@ import {
 } from "../storage/repository";
 import { centsToEuro, euroToCents, monthLabel } from "./format";
 
+const AVAILABLE_THEMES = [
+  "light",
+  "dark",
+  "forest",
+  "midnight",
+  "graphite",
+  "violet-night",
+  "ocean-dark",
+  "ember-dark",
+  "neon-dark",
+  "slate-dark",
+  "plum-dark",
+  "moss-dark",
+  "cyber-dark",
+] as const;
+
+type ThemeName = (typeof AVAILABLE_THEMES)[number];
+
+function isThemeName(value: string): value is ThemeName {
+  return (AVAILABLE_THEMES as readonly string[]).includes(value);
+}
+
+function themeLabel(theme: ThemeName): string {
+  switch (theme) {
+    case "light":
+      return "Light";
+    case "dark":
+      return "Dark";
+    case "forest":
+      return "Forest";
+    case "midnight":
+      return "Midnight";
+    case "graphite":
+      return "Graphite";
+    case "violet-night":
+      return "Violet Night";
+    case "ocean-dark":
+      return "Ocean Dark";
+    case "ember-dark":
+      return "Ember Dark";
+    case "neon-dark":
+      return "Neon Dark";
+    case "slate-dark":
+      return "Slate Dark";
+    case "plum-dark":
+      return "Plum Dark";
+    case "moss-dark":
+      return "Moss Dark";
+    case "cyber-dark":
+      return "Cyber Dark";
+  }
+}
+
 interface State {
   years: YearBook[];
   selectedYear: number | null;
@@ -26,7 +79,7 @@ interface State {
   fixedTemplates: FixedCostTemplate[];
   fixedTemplateVersion: string;
   editingFixedTemplateId: string | null;
-  theme: "light" | "dark" | "forest";
+  theme: ThemeName;
 }
 
 interface CostSummary {
@@ -64,15 +117,15 @@ export function createAppController(root: HTMLElement) {
     return new Date().toISOString().slice(0, 10);
   }
 
-  function loadTheme(): "light" | "dark" | "forest" {
+  function loadTheme(): ThemeName {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
-    if (stored === "light" || stored === "dark" || stored === "forest") {
+    if (stored && isThemeName(stored)) {
       return stored;
     }
     return "light";
   }
 
-  function applyTheme(theme: "light" | "dark" | "forest"): void {
+  function applyTheme(theme: ThemeName): void {
     state.theme = theme;
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem(THEME_STORAGE_KEY, theme);
@@ -851,9 +904,10 @@ export function createAppController(root: HTMLElement) {
           <label>
             Theme
             <select id="theme-select">
-              <option value="light" ${state.theme === "light" ? "selected" : ""}>Light</option>
-              <option value="dark" ${state.theme === "dark" ? "selected" : ""}>Dark</option>
-              <option value="forest" ${state.theme === "forest" ? "selected" : ""}>Forest</option>
+              ${AVAILABLE_THEMES.map(
+                (theme) =>
+                  `<option value="${theme}" ${state.theme === theme ? "selected" : ""}>${themeLabel(theme)}</option>`,
+              ).join("")}
             </select>
           </label>
         </div>
@@ -1207,11 +1261,7 @@ export function createAppController(root: HTMLElement) {
 
     themeSelect?.addEventListener("change", () => {
       const selectedTheme = themeSelect.value;
-      if (
-        selectedTheme === "light" ||
-        selectedTheme === "dark" ||
-        selectedTheme === "forest"
-      ) {
+      if (isThemeName(selectedTheme)) {
         applyTheme(selectedTheme);
       }
     });
