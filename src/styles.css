@@ -373,6 +373,12 @@ tbody tr:nth-child(even) {
   margin: 0 0 0.6rem;
 }
 
+.column-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
 .column-overview-row {
   display: flex;
   align-items: center;

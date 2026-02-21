@@ -99,6 +99,12 @@ export function createAppController(root: HTMLElement) {
   function normalizeBudgetsForYears(years: YearBook[]): void {
     years.forEach((year) => {
       year.months.forEach((month) => {
+        if (typeof month.foodBudgetCents !== "number") {
+          month.foodBudgetCents = 0;
+        }
+        if (typeof month.goingOutBudgetCents !== "number") {
+          month.goingOutBudgetCents = 0;
+        }
         if (!Array.isArray(month.incomes)) {
           month.incomes = [];
         }
@@ -535,6 +541,28 @@ export function createAppController(root: HTMLElement) {
     render();
   }
 
+  async function updateMonthlyFoodBudget(amountCents: number): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+    month.foodBudgetCents = amountCents;
+    await persistSelectedYear();
+    render();
+  }
+
+  async function updateMonthlyGoingOutBudget(
+    amountCents: number,
+  ): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+    month.goingOutBudgetCents = amountCents;
+    await persistSelectedYear();
+    render();
+  }
+
   async function updateMonthlyMiscBudget(amountCents: number): Promise<void> {
     const month = getSelectedMonthBook();
     if (!month) {
@@ -768,6 +796,8 @@ export function createAppController(root: HTMLElement) {
           totalCents: 0,
         };
     const yearByMonth = year ? summarizeYearByMonth(year) : [];
+    const foodBudgetCents = month ? (month.foodBudgetCents ?? 0) : 0;
+    const goingOutBudgetCents = month ? (month.goingOutBudgetCents ?? 0) : 0;
     const fixedBudgetCents = month
       ? (month.fixedBudgetCents ??
         month.fixedCosts.reduce((sum, entry) => sum + entry.plannedCents, 0))
@@ -792,6 +822,14 @@ export function createAppController(root: HTMLElement) {
       monthSummary.fixedCents,
       fixedBudgetCents,
     );
+    const foodSummaryBudgetClass = budgetStatusClass(
+      monthSummary.foodCents,
+      foodBudgetCents,
+    );
+    const goingOutSummaryBudgetClass = budgetStatusClass(
+      monthSummary.goingOutCents,
+      goingOutBudgetCents,
+    );
     const variableSummaryBudgetClass = budgetStatusClass(
       monthSummary.variableCents,
       variableBudgetCents,
@@ -800,8 +838,6 @@ export function createAppController(root: HTMLElement) {
       monthSummary.miscCents,
       miscBudgetCents,
     );
-    const foodGoingActualCents =
-      monthSummary.foodCents + monthSummary.goingOutCents;
     const editingFixedTemplate = state.editingFixedTemplateId
       ? state.fixedTemplates.find(
           (template) => template.id === state.editingFixedTemplateId,
@@ -905,8 +941,10 @@ export function createAppController(root: HTMLElement) {
                 <tr><th>Rechnungskreis</th><th>Monat (€)</th><th>Jahr (€)</th></tr>
               </thead>
               <tbody>
-                <tr><td>1) Essen</td><td>${centsToEuro(monthSummary.foodCents)}</td><td>${centsToEuro(yearSummary.foodCents)}</td></tr>
-                <tr><td>1) Ausgehen</td><td>${centsToEuro(monthSummary.goingOutCents)}</td><td>${centsToEuro(yearSummary.goingOutCents)}</td></tr>
+                <tr><td>1) Essen</td><td class="${foodSummaryBudgetClass}">${centsToEuro(monthSummary.foodCents)}</td><td>${centsToEuro(yearSummary.foodCents)}</td></tr>
+                <tr><td>1) Essen Budget</td><td>${centsToEuro(foodBudgetCents)}</td><td>-</td></tr>
+                <tr><td>1) Ausgehen</td><td class="${goingOutSummaryBudgetClass}">${centsToEuro(monthSummary.goingOutCents)}</td><td>${centsToEuro(yearSummary.goingOutCents)}</td></tr>
+                <tr><td>1) Ausgehen Budget</td><td>${centsToEuro(goingOutBudgetCents)}</td><td>-</td></tr>
                 <tr><td>2) Fixe Kosten (Ist)</td><td class="${fixedSummaryBudgetClass}">${centsToEuro(monthSummary.fixedCents)}</td><td>${centsToEuro(yearSummary.fixedCents)}</td></tr>
                 <tr><td>2) Fixe Kosten Budget</td><td>${centsToEuro(fixedBudgetCents)}</td><td>-</td></tr>
                 <tr><td>3) Variable Kosten</td><td class="${variableSummaryBudgetClass}">${centsToEuro(monthSummary.variableCents)}</td><td>${centsToEuro(yearSummary.variableCents)}</td></tr>
@@ -988,7 +1026,20 @@ export function createAppController(root: HTMLElement) {
           <div class="grid grid-4">
             <article class="card">
               <h3>1) Essen, Trinken und Ausgehen (Tage)</h3>
-              ${renderColumnOverview(null, foodGoingActualCents)}
+              <div class="column-overview-grid">
+                ${renderColumnOverview(foodBudgetCents, monthSummary.foodCents)}
+                ${renderColumnOverview(goingOutBudgetCents, monthSummary.goingOutCents)}
+              </div>
+              <div class="inline">
+                <label>
+                  Budget Essen (€)
+                  <input class="amount-input" id="food-budget" type="number" min="0" step="0.01" value="${centsToEuro(foodBudgetCents)}" ${month ? "" : "disabled"} />
+                </label>
+                <label>
+                  Budget Ausgehen (€)
+                  <input class="amount-input" id="going-out-budget" type="number" min="0" step="0.01" value="${centsToEuro(goingOutBudgetCents)}" ${month ? "" : "disabled"} />
+                </label>
+              </div>
               <table class="daily-table">
                 <thead>
                   <tr><th>Datum</th><th>Essen (€)</th><th>Ausgehen (€)</th></tr>
@@ -1272,6 +1323,18 @@ export function createAppController(root: HTMLElement) {
       root.querySelector<HTMLInputElement>("#fixed-budget");
     fixedBudgetInput?.addEventListener("change", async () => {
       await updateMonthlyFixedBudget(euroToCents(fixedBudgetInput.value));
+    });
+
+    const foodBudgetInput =
+      root.querySelector<HTMLInputElement>("#food-budget");
+    foodBudgetInput?.addEventListener("change", async () => {
+      await updateMonthlyFoodBudget(euroToCents(foodBudgetInput.value));
+    });
+
+    const goingOutBudgetInput =
+      root.querySelector<HTMLInputElement>("#going-out-budget");
+    goingOutBudgetInput?.addEventListener("change", async () => {
+      await updateMonthlyGoingOutBudget(euroToCents(goingOutBudgetInput.value));
     });
 
     const miscBudgetInput =

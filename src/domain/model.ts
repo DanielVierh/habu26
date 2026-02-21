@@ -39,6 +39,8 @@ export interface VariableBudgetPosition {
 export interface MonthBook {
   month: MonthNumber;
   days: DayEntry[];
+  foodBudgetCents: EuroCents;
+  goingOutBudgetCents: EuroCents;
   incomes: ExpenseEntry[];
   fixedCosts: FixedCostEntry[];
   fixedBudgetCents: EuroCents;
