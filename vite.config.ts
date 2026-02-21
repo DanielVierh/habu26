@@ -1,7 +1,10 @@
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+const repoBase = "/habu26/";
+
 export default defineConfig({
+  base: repoBase,
   plugins: [
     VitePWA({
       registerType: "autoUpdate",
@@ -13,7 +16,8 @@ export default defineConfig({
         theme_color: "#0f172a",
         background_color: "#f8fafc",
         display: "standalone",
-        start_url: "/",
+        start_url: repoBase,
+        scope: repoBase,
         icons: [
           {
             src: "icon.svg",
