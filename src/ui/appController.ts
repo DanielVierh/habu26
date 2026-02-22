@@ -1218,6 +1218,48 @@ export function createAppController(root: HTMLElement) {
       )
       : 0;
     const miscBudgetCents = month ? (month.miscBudgetCents ?? 0) : 0;
+
+    const yearFoodBudgetCents = year
+      ? year.months.reduce(
+        (sum, monthItem) => sum + (monthItem.foodBudgetCents ?? 0),
+        0,
+      )
+      : 0;
+    const yearGoingOutBudgetCents = year
+      ? year.months.reduce(
+        (sum, monthItem) => sum + (monthItem.goingOutBudgetCents ?? 0),
+        0,
+      )
+      : 0;
+    const yearFixedBudgetCents = year
+      ? year.months.reduce(
+        (sum, monthItem) =>
+          sum +
+          (monthItem.fixedBudgetCents ??
+            monthItem.fixedCosts.reduce(
+              (fixedSum, entry) => fixedSum + entry.plannedCents,
+              0,
+            )),
+        0,
+      )
+      : 0;
+    const yearVariableBudgetCents = year
+      ? year.months.reduce(
+        (sum, monthItem) =>
+          sum +
+          monthItem.variablePositions.reduce(
+            (positionSum, position) => positionSum + position.budgetCents,
+            0,
+          ),
+        0,
+      )
+      : 0;
+    const yearMiscBudgetCents = year
+      ? year.months.reduce(
+        (sum, monthItem) => sum + (monthItem.miscBudgetCents ?? 0),
+        0,
+      )
+      : 0;
     const recordedIncomeTotalCents = month
       ? month.incomes.reduce((sum, entry) => sum + entry.amountCents, 0)
       : 0;
@@ -1267,6 +1309,45 @@ export function createAppController(root: HTMLElement) {
           : "";
     const yearNetClass =
       yearNetCents < 0 ? "danger" : yearNetCents > 0 ? "budget-under" : "";
+
+    const monthPlannedBudgetTotalCents =
+      foodBudgetCents +
+      goingOutBudgetCents +
+      fixedBudgetCents +
+      variableBudgetCents +
+      miscBudgetCents;
+    const yearPlannedBudgetTotalCents =
+      yearFoodBudgetCents +
+      yearGoingOutBudgetCents +
+      yearFixedBudgetCents +
+      yearVariableBudgetCents +
+      yearMiscBudgetCents;
+
+    const incomeMinusFoodBudgetCents = effectiveIncomeTotalCents - foodBudgetCents;
+    const incomeMinusGoingOutBudgetCents =
+      effectiveIncomeTotalCents - goingOutBudgetCents;
+    const incomeMinusFixedBudgetCents = effectiveIncomeTotalCents - fixedBudgetCents;
+    const incomeMinusVariableBudgetCents =
+      effectiveIncomeTotalCents - variableBudgetCents;
+    const incomeMinusMiscBudgetCents = effectiveIncomeTotalCents - miscBudgetCents;
+    const incomeMinusPlannedBudgetsCents =
+      effectiveIncomeTotalCents - monthPlannedBudgetTotalCents;
+
+    const yearIncomeMinusFoodBudgetCents =
+      yearEffectiveIncomeTotalCents - yearFoodBudgetCents;
+    const yearIncomeMinusGoingOutBudgetCents =
+      yearEffectiveIncomeTotalCents - yearGoingOutBudgetCents;
+    const yearIncomeMinusFixedBudgetCents =
+      yearEffectiveIncomeTotalCents - yearFixedBudgetCents;
+    const yearIncomeMinusVariableBudgetCents =
+      yearEffectiveIncomeTotalCents - yearVariableBudgetCents;
+    const yearIncomeMinusMiscBudgetCents =
+      yearEffectiveIncomeTotalCents - yearMiscBudgetCents;
+    const yearIncomeMinusPlannedBudgetsCents =
+      yearEffectiveIncomeTotalCents - yearPlannedBudgetTotalCents;
+
+    const incomeBudgetBalanceClass = (value: number): string =>
+      value < 0 ? "danger" : value > 0 ? "budget-under" : "";
     const fixedSummaryBudgetClass = budgetStatusClass(
       monthSummary.fixedCents,
       fixedBudgetCents,
@@ -1391,29 +1472,153 @@ export function createAppController(root: HTMLElement) {
 
           <article class="card">
             <h3>Auswertung (Monat & Jahr)</h3>
-            <table>
-              <thead>
-                <tr><th>Rechnungskreis</th><th>Monat (€)</th><th>Jahr (€)</th></tr>
-              </thead>
-              <tbody>
-                <tr><td>0) Einkommen (erfasst)</td><td>${centsToEuro(recordedIncomeTotalCents)}</td><td>${centsToEuro(yearRecordedIncomeTotalCents)}</td></tr>
-                <tr><td>0) Übernahme aus Vormonat</td><td class="${carryoverClass}">${hasCarryoverFromPreviousMonth ? centsToEuro(carryoverCents) : "-"}</td><td class="${yearOpeningCarryoverClass}">${year ? centsToEuro(yearOpeningCarryoverCents) : "-"}</td></tr>
-                <tr><td>0) Einkommen gesamt</td><td>${centsToEuro(effectiveIncomeTotalCents)}</td><td>${centsToEuro(yearEffectiveIncomeTotalCents)}</td></tr>
-                <tr><td>1) Essen</td><td class="${foodSummaryBudgetClass}">${centsToEuro(monthSummary.foodCents)}</td><td>${centsToEuro(yearSummary.foodCents)}</td></tr>
-                <tr><td>1) Essen Budget</td><td>${centsToEuro(foodBudgetCents)}</td><td>-</td></tr>
-                <tr><td>1) Ausgehen</td><td class="${goingOutSummaryBudgetClass}">${centsToEuro(monthSummary.goingOutCents)}</td><td>${centsToEuro(yearSummary.goingOutCents)}</td></tr>
-                <tr><td>1) Ausgehen Budget</td><td>${centsToEuro(goingOutBudgetCents)}</td><td>-</td></tr>
-                <tr><td>2) Fixe Kosten (Ist)</td><td class="${fixedSummaryBudgetClass}">${centsToEuro(monthSummary.fixedCents)}</td><td>${centsToEuro(yearSummary.fixedCents)}</td></tr>
-                <tr><td>2) Fixe Kosten Budget</td><td>${centsToEuro(fixedBudgetCents)}</td><td>-</td></tr>
-                <tr><td>3) Variable Kosten</td><td class="${variableSummaryBudgetClass}">${centsToEuro(monthSummary.variableCents)}</td><td>${centsToEuro(yearSummary.variableCents)}</td></tr>
-                <tr><td>3) Variable Kosten Budget</td><td>${centsToEuro(variableBudgetCents)}</td><td>-</td></tr>
-                <tr><td>3) Variable Positionen Budget</td><td>${centsToEuro(variablePositionBudgetCents)}</td><td>-</td></tr>
-                <tr><td>4) Sonstige</td><td class="${miscSummaryBudgetClass}">${centsToEuro(monthSummary.miscCents)}</td><td>${centsToEuro(yearSummary.miscCents)}</td></tr>
-                <tr><td>4) Sonstige Budget</td><td>${centsToEuro(miscBudgetCents)}</td><td>-</td></tr>
-                <tr><th>Gesamt</th><th>${centsToEuro(monthSummary.totalCents)}</th><th>${centsToEuro(yearSummary.totalCents)}</th></tr>
-                <tr><th>Saldo nach Einkommen</th><th class="${monthNetClass}">${centsToEuro(monthNetCents)}</th><th class="${yearNetClass}">${centsToEuro(yearNetCents)}</th></tr>
-              </tbody>
-            </table>
+            <div class="eval-grid">
+              <section class="eval-tile">
+                <header class="eval-tile-header">
+                  <h4>Einkommen</h4>
+                  <div class="eval-tile-columns"><span>Monat</span><span>Jahr</span></div>
+                </header>
+                <div class="eval-rows">
+                  <div class="eval-row">
+                    <div class="eval-label">Einkommen (erfasst)</div>
+                    <div class="eval-value">${centsToEuro(recordedIncomeTotalCents)}</div>
+                    <div class="eval-value">${centsToEuro(yearRecordedIncomeTotalCents)}</div>
+                  </div>
+                  <div class="eval-row">
+                    <div class="eval-label">Übernahme aus Vormonat</div>
+                    <div class="eval-value ${carryoverClass}">${hasCarryoverFromPreviousMonth ? centsToEuro(carryoverCents) : "-"}</div>
+                    <div class="eval-value ${yearOpeningCarryoverClass}">${year ? centsToEuro(yearOpeningCarryoverCents) : "-"}</div>
+                  </div>
+                  <div class="eval-row eval-strong">
+                    <div class="eval-label">Einkommen gesamt</div>
+                    <div class="eval-value">${centsToEuro(effectiveIncomeTotalCents)}</div>
+                    <div class="eval-value">${centsToEuro(yearEffectiveIncomeTotalCents)}</div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="eval-tile">
+                <header class="eval-tile-header">
+                  <h4>Budgets (geplant)</h4>
+                  <div class="eval-tile-columns"><span>Monat</span><span>Jahr</span></div>
+                </header>
+                <div class="eval-rows">
+                  <div class="eval-row">
+                    <div class="eval-label">Essen</div>
+                    <div class="eval-value">${centsToEuro(foodBudgetCents)}</div>
+                    <div class="eval-value">${centsToEuro(yearFoodBudgetCents)}</div>
+                  </div>
+                  <div class="eval-row">
+                    <div class="eval-label">Ausgehen</div>
+                    <div class="eval-value">${centsToEuro(goingOutBudgetCents)}</div>
+                    <div class="eval-value">${centsToEuro(yearGoingOutBudgetCents)}</div>
+                  </div>
+                  <div class="eval-row">
+                    <div class="eval-label">Fixkosten</div>
+                    <div class="eval-value">${centsToEuro(fixedBudgetCents)}</div>
+                    <div class="eval-value">${centsToEuro(yearFixedBudgetCents)}</div>
+                  </div>
+                  <div class="eval-row">
+                    <div class="eval-label">Variable</div>
+                    <div class="eval-value">${centsToEuro(variableBudgetCents)}</div>
+                    <div class="eval-value">${centsToEuro(yearVariableBudgetCents)}</div>
+                  </div>
+                  <div class="eval-row">
+                    <div class="eval-label">Sonstige</div>
+                    <div class="eval-value">${centsToEuro(miscBudgetCents)}</div>
+                    <div class="eval-value">${centsToEuro(yearMiscBudgetCents)}</div>
+                  </div>
+                  <div class="eval-row eval-strong">
+                    <div class="eval-label">Budgets gesamt</div>
+                    <div class="eval-value">${centsToEuro(monthPlannedBudgetTotalCents)}</div>
+                    <div class="eval-value">${centsToEuro(yearPlannedBudgetTotalCents)}</div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="eval-tile">
+                <header class="eval-tile-header">
+                  <h4>Realkosten (Ist)</h4>
+                  <div class="eval-tile-columns"><span>Monat</span><span>Jahr</span></div>
+                </header>
+                <div class="eval-rows">
+                  <div class="eval-row">
+                    <div class="eval-label">Essen</div>
+                    <div class="eval-value ${foodSummaryBudgetClass}">${centsToEuro(monthSummary.foodCents)}</div>
+                    <div class="eval-value">${centsToEuro(yearSummary.foodCents)}</div>
+                  </div>
+                  <div class="eval-row">
+                    <div class="eval-label">Ausgehen</div>
+                    <div class="eval-value ${goingOutSummaryBudgetClass}">${centsToEuro(monthSummary.goingOutCents)}</div>
+                    <div class="eval-value">${centsToEuro(yearSummary.goingOutCents)}</div>
+                  </div>
+                  <div class="eval-row">
+                    <div class="eval-label">Fixkosten</div>
+                    <div class="eval-value ${fixedSummaryBudgetClass}">${centsToEuro(monthSummary.fixedCents)}</div>
+                    <div class="eval-value">${centsToEuro(yearSummary.fixedCents)}</div>
+                  </div>
+                  <div class="eval-row">
+                    <div class="eval-label">Variable</div>
+                    <div class="eval-value ${variableSummaryBudgetClass}">${centsToEuro(monthSummary.variableCents)}</div>
+                    <div class="eval-value">${centsToEuro(yearSummary.variableCents)}</div>
+                  </div>
+                  <div class="eval-row">
+                    <div class="eval-label">Sonstige</div>
+                    <div class="eval-value ${miscSummaryBudgetClass}">${centsToEuro(monthSummary.miscCents)}</div>
+                    <div class="eval-value">${centsToEuro(yearSummary.miscCents)}</div>
+                  </div>
+                  <div class="eval-row eval-strong">
+                    <div class="eval-label">Gesamt</div>
+                    <div class="eval-value">${centsToEuro(monthSummary.totalCents)}</div>
+                    <div class="eval-value">${centsToEuro(yearSummary.totalCents)}</div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="eval-tile">
+                <header class="eval-tile-header">
+                  <h4>Salden</h4>
+                  <div class="eval-tile-columns"><span>Monat</span><span>Jahr</span></div>
+                </header>
+                <div class="eval-rows">
+                  <div class="eval-row">
+                    <div class="eval-label">Einkommen - Essen Budget</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(incomeMinusFoodBudgetCents)}">${centsToEuro(incomeMinusFoodBudgetCents)}</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(yearIncomeMinusFoodBudgetCents)}">${centsToEuro(yearIncomeMinusFoodBudgetCents)}</div>
+                  </div>
+                  <div class="eval-row">
+                    <div class="eval-label">Einkommen - Ausgehen Budget</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(incomeMinusGoingOutBudgetCents)}">${centsToEuro(incomeMinusGoingOutBudgetCents)}</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(yearIncomeMinusGoingOutBudgetCents)}">${centsToEuro(yearIncomeMinusGoingOutBudgetCents)}</div>
+                  </div>
+                  <div class="eval-row">
+                    <div class="eval-label">Einkommen - Fixkosten Budget</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(incomeMinusFixedBudgetCents)}">${centsToEuro(incomeMinusFixedBudgetCents)}</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(yearIncomeMinusFixedBudgetCents)}">${centsToEuro(yearIncomeMinusFixedBudgetCents)}</div>
+                  </div>
+                  <div class="eval-row">
+                    <div class="eval-label">Einkommen - Variable Budget</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(incomeMinusVariableBudgetCents)}">${centsToEuro(incomeMinusVariableBudgetCents)}</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(yearIncomeMinusVariableBudgetCents)}">${centsToEuro(yearIncomeMinusVariableBudgetCents)}</div>
+                  </div>
+                  <div class="eval-row">
+                    <div class="eval-label">Einkommen - Sonstige Budget</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(incomeMinusMiscBudgetCents)}">${centsToEuro(incomeMinusMiscBudgetCents)}</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(yearIncomeMinusMiscBudgetCents)}">${centsToEuro(yearIncomeMinusMiscBudgetCents)}</div>
+                  </div>
+                  <div class="eval-row eval-strong">
+                    <div class="eval-label">Einkommen - Budgets gesamt</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(incomeMinusPlannedBudgetsCents)}">${centsToEuro(incomeMinusPlannedBudgetsCents)}</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(yearIncomeMinusPlannedBudgetsCents)}">${centsToEuro(yearIncomeMinusPlannedBudgetsCents)}</div>
+                  </div>
+                  <div class="eval-row eval-strong">
+                    <div class="eval-label">Einnahmen - echte Ausgaben</div>
+                    <div class="eval-value ${monthNetClass}">${centsToEuro(monthNetCents)}</div>
+                    <div class="eval-value ${yearNetClass}">${centsToEuro(yearNetCents)}</div>
+                  </div>
+                </div>
+              </section>
+            </div>
 
             <h3>Jahresvergleich (Monat zu Monat)</h3>
             <table>

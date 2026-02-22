@@ -699,6 +699,72 @@ tbody tr:nth-child(even) {
   margin: 0 0 0.6rem;
 }
 
+.eval-grid {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  margin: 0.35rem 0 0.75rem;
+}
+
+.eval-tile {
+  border: 1px solid var(--table-border);
+  border-radius: 12px;
+  padding: 0.8rem;
+  background: var(--table-stripe);
+}
+
+.eval-tile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.eval-tile h4 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.eval-tile-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(90px, max-content));
+  gap: 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.eval-rows {
+  display: grid;
+}
+
+.eval-row {
+  display: grid;
+  grid-template-columns: 1fr minmax(90px, max-content) minmax(90px, max-content);
+  gap: 0.6rem;
+  padding: 0.28rem 0;
+  border-top: 1px solid var(--table-border);
+  align-items: baseline;
+}
+
+.eval-row:first-child {
+  border-top: 0;
+}
+
+.eval-label {
+  color: var(--text-soft);
+}
+
+.eval-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.eval-strong .eval-label,
+.eval-strong .eval-value {
+  font-weight: 700;
+}
+
 .income-flow-overview {
   margin-top: 0.6rem;
 }
