@@ -80,6 +80,8 @@ interface State {
   fixedTemplateVersion: string;
   editingFixedTemplateId: string | null;
   theme: ThemeName;
+  hasImportedBackup: boolean;
+  hasUnexportedChangesSinceImport: boolean;
 }
 
 interface CostSummary {
@@ -114,6 +116,8 @@ export function createAppController(root: HTMLElement) {
     fixedTemplateVersion: "",
     editingFixedTemplateId: null,
     theme: "light",
+    hasImportedBackup: false,
+    hasUnexportedChangesSinceImport: false,
   };
 
   const THEME_STORAGE_KEY = "habu-theme";
@@ -417,10 +421,27 @@ export function createAppController(root: HTMLElement) {
     );
     await saveYear(created);
     state.years = await listYears();
+    markDataChanged();
     state.selectedYear = yearNumber;
     state.selectedMonth = getCurrentMonthNumber();
     showToast(`Jahr ${yearNumber} wurde angelegt.`);
     render();
+  }
+
+  function markDataChanged(): void {
+    if (!state.hasImportedBackup) {
+      return;
+    }
+    state.hasUnexportedChangesSinceImport = true;
+  }
+
+  function markImportStateClean(): void {
+    state.hasImportedBackup = true;
+    state.hasUnexportedChangesSinceImport = false;
+  }
+
+  function markExportCompleted(): void {
+    state.hasUnexportedChangesSinceImport = false;
   }
 
   async function persistSelectedYear(): Promise<void> {
@@ -430,6 +451,7 @@ export function createAppController(root: HTMLElement) {
     }
     await saveYear(year);
     state.years = await listYears();
+    markDataChanged();
   }
 
   async function persistAllYears(): Promise<void> {
@@ -437,6 +459,7 @@ export function createAppController(root: HTMLElement) {
       await saveYear(yearItem);
     }
     state.years = await listYears();
+    markDataChanged();
   }
 
   function monthKey(year: number, month: number): number {
@@ -895,6 +918,8 @@ export function createAppController(root: HTMLElement) {
     anchor.download = `haushaltsbuch-backup-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
+    markExportCompleted();
+    render();
     showToast("Backup wurde exportiert.");
   }
 
@@ -913,6 +938,7 @@ export function createAppController(root: HTMLElement) {
     await persistNormalizedYears(state.years);
     state.selectedYear = years[0]?.year ?? null;
     state.selectedMonth = getCurrentMonthNumber();
+    markImportStateClean();
     showToast("Backup wurde importiert.");
     render();
   }
@@ -929,6 +955,7 @@ export function createAppController(root: HTMLElement) {
     const deletedYear = state.selectedYear;
     await deleteYear(deletedYear);
     state.years = await listYears();
+    markDataChanged();
     state.selectedYear = state.years[0]?.year ?? null;
     state.selectedMonth = getCurrentMonthNumber();
     showToast(`Jahr ${deletedYear} wurde gelöscht.`);
@@ -1053,20 +1080,25 @@ export function createAppController(root: HTMLElement) {
           (template) => template.id === state.editingFixedTemplateId,
         )
       : null;
+    const showUnexportedChangesHint =
+      state.hasImportedBackup && state.hasUnexportedChangesSinceImport;
 
     root.innerHTML = `
       <div class="app grid">
         <div class="app-header inline">
           <h1 class="app-title">Haushaltsbuch (HaBu)</h1>
-          <label>
-            Theme
-            <select id="theme-select">
-              ${AVAILABLE_THEMES.map(
-                (theme) =>
-                  `<option value="${theme}" ${state.theme === theme ? "selected" : ""}>${themeLabel(theme)}</option>`,
-              ).join("")}
-            </select>
-          </label>
+          <div class="header-actions inline">
+            ${showUnexportedChangesHint ? '<span class="export-warning">Änderungen noch nicht exportiert</span>' : ""}
+            <label>
+              Theme
+              <select id="theme-select">
+                ${AVAILABLE_THEMES.map(
+                  (theme) =>
+                    `<option value="${theme}" ${state.theme === theme ? "selected" : ""}>${themeLabel(theme)}</option>`,
+                ).join("")}
+              </select>
+            </label>
+          </div>
         </div>
 
         <section class="card grid">
