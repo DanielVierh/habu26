@@ -1348,6 +1348,80 @@ export function createAppController(root: HTMLElement) {
 
     const incomeBudgetBalanceClass = (value: number): string =>
       value < 0 ? "danger" : value > 0 ? "budget-under" : "";
+
+    const percent = (value: number, max: number): string => {
+      if (max <= 0) return "0%";
+      const clamped = Math.max(0, value);
+      const pct = (clamped / max) * 100;
+      return `${Math.min(100, Math.max(0, pct)).toFixed(1)}%`;
+    };
+
+    const budgetVsActualChartRows = [
+      {
+        label: "Essen",
+        budgetCents: foodBudgetCents,
+        actualCents: monthSummary.foodCents,
+      },
+      {
+        label: "Ausgehen",
+        budgetCents: goingOutBudgetCents,
+        actualCents: monthSummary.goingOutCents,
+      },
+      {
+        label: "Fixkosten",
+        budgetCents: fixedBudgetCents,
+        actualCents: monthSummary.fixedCents,
+      },
+      {
+        label: "Variable",
+        budgetCents: variableBudgetCents,
+        actualCents: monthSummary.variableCents,
+      },
+      {
+        label: "Sonstige",
+        budgetCents: miscBudgetCents,
+        actualCents: monthSummary.miscCents,
+      },
+    ];
+    const budgetVsActualMaxCents = Math.max(
+      1,
+      ...budgetVsActualChartRows.flatMap((row) => [
+        row.budgetCents,
+        row.actualCents,
+      ]),
+    );
+    const budgetBarClass = (budgetCents: number, actualCents: number): string => {
+      if (actualCents <= 0) return "bar-positive";
+      if (budgetCents <= 0) return "bar-negative";
+      return actualCents > budgetCents ? "bar-negative" : "bar-positive";
+    };
+
+    const incomeExpenseChartRows = [
+      {
+        label: "Einkommen gesamt",
+        valueCents: effectiveIncomeTotalCents,
+        className: "bar-income",
+      },
+      {
+        label: "Echte Ausgaben",
+        valueCents: monthSummary.totalCents,
+        className: "bar-expense",
+      },
+      {
+        label: "Netto",
+        valueCents: monthNetCents,
+        className: monthNetCents < 0 ? "bar-negative" : "bar-positive",
+      },
+    ];
+    const incomeExpenseMaxCents = Math.max(
+      1,
+      ...incomeExpenseChartRows.map((row) => Math.abs(row.valueCents)),
+    );
+
+    const yearExpenseMaxCents = Math.max(
+      1,
+      ...yearByMonth.map((row) => row.summary.totalCents),
+    );
     const fixedSummaryBudgetClass = budgetStatusClass(
       monthSummary.fixedCents,
       fixedBudgetCents,
@@ -1472,6 +1546,117 @@ export function createAppController(root: HTMLElement) {
 
           <article class="card">
             <h3>Auswertung (Monat & Jahr)</h3>
+            <div class="chart-grid">
+              <section class="chart-tile">
+                <header class="chart-tile-header">
+                  <h4>Budget vs. Ist (Monat)</h4>
+                  <div class="chart-legend">
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-budget"></span>Budget</span>
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-actual"></span>Ist</span>
+                  </div>
+                </header>
+                <div class="bar-chart">
+                  ${budgetVsActualChartRows
+        .map((row) => {
+          const budgetWidth = percent(row.budgetCents, budgetVsActualMaxCents);
+          const actualWidth = percent(row.actualCents, budgetVsActualMaxCents);
+          const actualClass = budgetBarClass(
+            row.budgetCents,
+            row.actualCents,
+          );
+          const diffCents = row.budgetCents - row.actualCents;
+          const diffClass =
+            diffCents < 0
+              ? "danger"
+              : diffCents > 0
+                ? "budget-under"
+                : "";
+
+          return `
+                        <div class="bar-row">
+                          <div class="bar-label">${row.label}</div>
+                          <div class="bar-track" title="Budget: ${centsToEuro(row.budgetCents)} | Ist: ${centsToEuro(row.actualCents)}">
+                            <div class="bar bar-budget" style="width:${budgetWidth}"></div>
+                            <div class="bar bar-actual ${actualClass}" style="width:${actualWidth}"></div>
+                          </div>
+                          <div class="bar-meta">
+                            <span class="muted">B ${centsToEuro(row.budgetCents)}</span>
+                            <span class="muted">I ${centsToEuro(row.actualCents)}</span>
+                            <span class="${diffClass}">${diffCents >= 0 ? "+" : ""}${centsToEuro(diffCents)}</span>
+                          </div>
+                        </div>
+                      `;
+        })
+        .join("")}
+                </div>
+              </section>
+
+              <section class="chart-tile">
+                <header class="chart-tile-header">
+                  <h4>Einkommen / Ausgaben / Netto (Monat)</h4>
+                  <div class="chart-legend">
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-income"></span>Einkommen</span>
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ausgaben</span>
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-net"></span>Netto</span>
+                  </div>
+                </header>
+                <div class="bar-chart">
+                  ${incomeExpenseChartRows
+        .map((row) => {
+          const width = percent(Math.abs(row.valueCents), incomeExpenseMaxCents);
+          const sign = row.valueCents >= 0 ? "+" : "";
+          const valueClass =
+            row.label === "Netto"
+              ? row.valueCents < 0
+                ? "danger"
+                : row.valueCents > 0
+                  ? "budget-under"
+                  : ""
+              : "";
+
+          return `
+                        <div class="bar-row">
+                          <div class="bar-label">${row.label}</div>
+                          <div class="bar-track" title="${centsToEuro(row.valueCents)}">
+                            <div class="bar ${row.className}" style="width:${width}"></div>
+                          </div>
+                          <div class="bar-meta"><span class="${valueClass}">${sign}${centsToEuro(row.valueCents)}</span></div>
+                        </div>
+                      `;
+        })
+        .join("")}
+                </div>
+              </section>
+
+              <section class="chart-tile">
+                <header class="chart-tile-header">
+                  <h4>Jahresverlauf Gesamtausgaben</h4>
+                  <div class="chart-legend">
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ausgaben</span>
+                  </div>
+                </header>
+                ${year
+        ? `
+                    <div class="spark-bars" aria-label="Jahresverlauf Gesamtausgaben">
+                      ${yearByMonth
+          .map((row) => {
+            const height = percent(
+              row.summary.totalCents,
+              yearExpenseMaxCents,
+            );
+            return `
+                            <div class="spark-bar" title="${monthLabel(row.month)}: ${centsToEuro(row.summary.totalCents)}">
+                              <div class="spark-bar-fill" style="height:${height}"></div>
+                              <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
+                            </div>
+                          `;
+          })
+          .join("")}
+                    </div>
+                  `
+        : `<p class="muted">Kein Jahr gewählt.</p>`}
+              </section>
+            </div>
             <div class="eval-grid">
               <section class="eval-tile">
                 <header class="eval-tile-header">

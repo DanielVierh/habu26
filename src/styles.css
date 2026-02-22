@@ -765,6 +765,171 @@ tbody tr:nth-child(even) {
   font-weight: 700;
 }
 
+.chart-grid {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  margin: 0.6rem 0 1rem;
+}
+
+.chart-tile {
+  border: 1px solid var(--table-border);
+  border-radius: 12px;
+  padding: 0.8rem;
+  background: var(--card-bg);
+}
+
+.chart-tile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.chart-tile h4 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.chart-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid var(--table-border);
+  background: var(--table-border);
+}
+
+.chart-dot-budget {
+  background: var(--text-muted);
+}
+
+.chart-dot-actual,
+.chart-dot-net {
+  background: var(--budget-under);
+}
+
+.chart-dot-income {
+  background: var(--primary-1);
+}
+
+.chart-dot-expense {
+  background: var(--danger-2);
+}
+
+.bar-chart {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 1fr) 2fr minmax(140px, 1.2fr);
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.bar-label {
+  color: var(--text-soft);
+  font-size: 0.86rem;
+}
+
+.bar-track {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  border: 1px solid var(--table-border);
+  background: var(--table-stripe);
+  overflow: hidden;
+}
+
+.bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: 999px;
+}
+
+.bar-budget {
+  background: var(--text-muted);
+  opacity: 0.25;
+}
+
+.bar-actual.bar-positive,
+.bar-positive {
+  background: var(--budget-under);
+}
+
+.bar-actual.bar-negative,
+.bar-negative {
+  background: var(--danger-2);
+}
+
+.bar-income {
+  background: var(--primary-1);
+}
+
+.bar-expense {
+  background: var(--danger-2);
+}
+
+.bar-meta {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.spark-bars {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.3rem;
+  align-items: end;
+  height: 140px;
+  padding: 0.35rem 0.2rem;
+  border: 1px solid var(--table-border);
+  border-radius: 12px;
+  background: var(--table-stripe);
+}
+
+.spark-bar {
+  display: grid;
+  gap: 0.2rem;
+  align-items: end;
+  justify-items: center;
+  min-width: 0;
+}
+
+.spark-bar-fill {
+  width: 100%;
+  max-width: 18px;
+  border-radius: 8px;
+  background: var(--danger-2);
+  min-height: 6px;
+}
+
+.spark-bar-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 .income-flow-overview {
   margin-top: 0.6rem;
 }
