@@ -128,6 +128,7 @@
                           <div class="bar-label">${x.label}</div>
                           <div class="bar-track" title="Budget: ${D(x.budgetCents)} | Ist: ${D(x.actualCents)}">
                             <div class="bar bar-budget" style="width:${N}"></div>
+                            <div class="bar-marker" style="left:${N}" aria-hidden="true"></div>
                             <div class="bar bar-actual ${Ee}" style="width:${Pe}"></div>
                           </div>
                           <div class="bar-meta">

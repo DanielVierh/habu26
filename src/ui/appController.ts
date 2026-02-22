@@ -1577,6 +1577,7 @@ export function createAppController(root: HTMLElement) {
                           <div class="bar-label">${row.label}</div>
                           <div class="bar-track" title="Budget: ${centsToEuro(row.budgetCents)} | Ist: ${centsToEuro(row.actualCents)}">
                             <div class="bar bar-budget" style="width:${budgetWidth}"></div>
+                            <div class="bar-marker" style="left:${budgetWidth}" aria-hidden="true"></div>
                             <div class="bar bar-actual ${actualClass}" style="width:${actualWidth}"></div>
                           </div>
                           <div class="bar-meta">

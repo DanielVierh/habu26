@@ -862,11 +862,28 @@ tbody tr:nth-child(even) {
   inset: 0 auto 0 0;
   width: 0;
   border-radius: 999px;
+  z-index: 1;
 }
 
 .bar-budget {
   background: var(--text-muted);
-  opacity: 0.25;
+  opacity: 0.18;
+  z-index: 1;
+}
+
+.bar-marker {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 2px;
+  transform: translateX(-1px);
+  background: var(--text-muted);
+  opacity: 0.55;
+  z-index: 3;
+}
+
+.bar-actual {
+  z-index: 2;
 }
 
 .bar-actual.bar-positive,
@@ -910,6 +927,8 @@ tbody tr:nth-child(even) {
 
 .spark-bar {
   display: grid;
+  height: 100%;
+  grid-template-rows: 1fr auto;
   gap: 0.2rem;
   align-items: end;
   justify-items: center;
@@ -922,6 +941,7 @@ tbody tr:nth-child(even) {
   border-radius: 8px;
   background: var(--danger-2);
   min-height: 6px;
+  align-self: end;
 }
 
 .spark-bar-label {
