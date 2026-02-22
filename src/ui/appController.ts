@@ -17,7 +17,7 @@ import {
   saveFixedTemplates,
   saveYear,
 } from "../storage/repository";
-import { centsToEuro, euroToCents, monthLabel } from "./format";
+import { centsToEuro, centsToEuroInput, euroToCents, monthLabel } from "./format";
 
 const AVAILABLE_THEMES = [
   "light",
@@ -1136,7 +1136,7 @@ export function createAppController(root: HTMLElement) {
             </label>
             <label>
               Betrag (€)
-              <input class="amount-input" id="fixed-template-amount" type="number" min="0" step="0.01" value="${editingFixedTemplate ? centsToEuro(editingFixedTemplate.plannedCents) : ""}" />
+              <input class="amount-input" id="fixed-template-amount" type="number" min="0" step="0.01" value="${editingFixedTemplate ? centsToEuroInput(editingFixedTemplate.plannedCents) : ""}" />
             </label>
             <button class="btn btn-primary" id="add-fixed-template">${editingFixedTemplate ? "Änderung speichern" : "Vorlage speichern"}</button>
             ${editingFixedTemplate ? '<button class="btn btn-quiet" id="cancel-fixed-template-edit">Abbrechen</button>' : ""}
@@ -1307,11 +1307,11 @@ export function createAppController(root: HTMLElement) {
               <div class="inline">
                 <label>
                   Budget Essen (€)
-                  <input class="amount-input" id="food-budget" type="number" min="0" step="0.01" value="${centsToEuro(foodBudgetCents)}" ${month ? "" : "disabled"} />
+                  <input class="amount-input" id="food-budget" type="number" min="0" step="0.01" value="${centsToEuroInput(foodBudgetCents)}" ${month ? "" : "disabled"} />
                 </label>
                 <label>
                   Budget Ausgehen (€)
-                  <input class="amount-input" id="going-out-budget" type="number" min="0" step="0.01" value="${centsToEuro(goingOutBudgetCents)}" ${month ? "" : "disabled"} />
+                  <input class="amount-input" id="going-out-budget" type="number" min="0" step="0.01" value="${centsToEuroInput(goingOutBudgetCents)}" ${month ? "" : "disabled"} />
                 </label>
               </div>
               <table class="daily-table">
@@ -1327,8 +1327,8 @@ export function createAppController(root: HTMLElement) {
                               day,
                             ) => `<tr class="${day.isoDate === todayIsoDate ? "today-row" : ""}">
                       <td>${new Date(day.isoDate).toLocaleDateString("de-DE")}</td>
-                      <td><input class="amount-input" data-day-food="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuro(day.foodCents)}" /></td>
-                      <td><input class="amount-input" data-day-going="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuro(day.goingOutCents)}" /></td>
+                      <td><input class="amount-input" data-day-food="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuroInput(day.foodCents)}" /></td>
+                      <td><input class="amount-input" data-day-going="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuroInput(day.goingOutCents)}" /></td>
                     </tr>`,
                           )
                           .join("")
@@ -1344,7 +1344,7 @@ export function createAppController(root: HTMLElement) {
               <div class="inline">
                 <label>
                   Budget Fixkosten (€)
-                  <input class="amount-input" id="fixed-budget" type="number" min="0" step="0.01" value="${centsToEuro(fixedBudgetCents)}" ${month ? "" : "disabled"} />
+                  <input class="amount-input" id="fixed-budget" type="number" min="0" step="0.01" value="${centsToEuroInput(fixedBudgetCents)}" ${month ? "" : "disabled"} />
                 </label>
               </div>
               <table>
@@ -1359,7 +1359,7 @@ export function createAppController(root: HTMLElement) {
                           (cost) => `<tr>
                     <td>${cost.name}</td>
                     <td>${centsToEuro(cost.plannedCents)}</td>
-                    <td class="${budgetStatusClass(cost.actualCents, cost.plannedCents)}"><input class="amount-input" data-fixed-actual="${cost.id}" type="number" min="0" step="0.01" value="${centsToEuro(cost.actualCents)}" /></td>
+                    <td class="${budgetStatusClass(cost.actualCents, cost.plannedCents)}"><input class="amount-input" data-fixed-actual="${cost.id}" type="number" min="0" step="0.01" value="${centsToEuroInput(cost.actualCents)}" /></td>
                     <td class="${budgetStatusClass(cost.actualCents, cost.plannedCents)}">${centsToEuro(cost.actualCents - cost.plannedCents)}</td>
                   </tr>`,
                         )
@@ -1396,7 +1396,7 @@ export function createAppController(root: HTMLElement) {
                           (position) => `<tr>
                     <td>${position.name}</td>
                     <td>${centsToEuro(position.budgetCents)}</td>
-                    <td class="${budgetStatusClass(position.actualCents, position.budgetCents)}"><input class="amount-input" data-variable-position-actual="${position.id}" type="number" min="0" step="0.01" value="${centsToEuro(position.actualCents)}" /></td>
+                    <td class="${budgetStatusClass(position.actualCents, position.budgetCents)}"><input class="amount-input" data-variable-position-actual="${position.id}" type="number" min="0" step="0.01" value="${centsToEuroInput(position.actualCents)}" /></td>
                     <td class="${budgetStatusClass(position.actualCents, position.budgetCents)}">${centsToEuro(position.actualCents - position.budgetCents)}</td>
                     <td><button class="btn btn-quiet" data-remove-variable-position="${position.id}">Löschen</button></td>
                   </tr>`,
@@ -1414,7 +1414,7 @@ export function createAppController(root: HTMLElement) {
               <div class="inline">
                 <label>
                   Planbudget Sonstige (€)
-                  <input class="amount-input" id="misc-budget" type="number" min="0" step="0.01" value="${centsToEuro(miscBudgetCents)}" ${month ? "" : "disabled"} />
+                  <input class="amount-input" id="misc-budget" type="number" min="0" step="0.01" value="${centsToEuroInput(miscBudgetCents)}" ${month ? "" : "disabled"} />
                 </label>
               </div>
               <div class="inline">

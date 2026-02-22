@@ -10,7 +10,17 @@ export function euroToCents(value: string): number {
   return Math.round(asNumber * 100);
 }
 
+const EURO_DISPLAY_FORMATTER = new Intl.NumberFormat("de-DE", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+  useGrouping: true,
+});
+
 export function centsToEuro(cents: number): string {
+  return EURO_DISPLAY_FORMATTER.format(cents / 100);
+}
+
+export function centsToEuroInput(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
