@@ -1057,7 +1057,7 @@ export function createAppController(root: HTMLElement) {
     root.innerHTML = `
       <div class="app grid">
         <div class="app-header inline">
-          <h1 class="app-title">Haushaltsbuch (Local First)</h1>
+          <h1 class="app-title">Haushaltsbuch (HaBu)</h1>
           <label>
             Theme
             <select id="theme-select">
