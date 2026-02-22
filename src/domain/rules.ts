@@ -45,7 +45,7 @@ export function seedMonthFromFixedTemplates(
     templateId: template.id,
     name: template.name,
     plannedCents: template.plannedCents,
-    actualCents: template.plannedCents,
+    actualCents: 0,
   }));
 }
 

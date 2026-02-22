@@ -31,6 +31,7 @@ describe("rules", () => {
 
     expect(year.months).toHaveLength(12);
     expect(year.months[0]?.fixedCosts).toHaveLength(1);
+    expect(year.months[0]?.fixedCosts[0]?.actualCents).toBe(0);
     expect(year.months[0]?.foodBudgetCents).toBe(0);
     expect(year.months[0]?.goingOutBudgetCents).toBe(0);
     expect(year.months[0]?.fixedBudgetCents).toBe(90000);
