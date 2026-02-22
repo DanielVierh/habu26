@@ -103,7 +103,7 @@ interface IncomeFlowSummary {
   carriedFromPreviousCents: number;
   recordedIncomeCents: number;
   effectiveIncomeCents: number;
-  expenseCents: number;
+  plannedBudgetCents: number;
   netCents: number;
 }
 
@@ -488,6 +488,27 @@ export function createAppController(root: HTMLElement) {
     };
   }
 
+  function summarizePlannedBudgetsCents(month: MonthBook): number {
+    const foodBudgetCents = month.foodBudgetCents ?? 0;
+    const goingOutBudgetCents = month.goingOutBudgetCents ?? 0;
+    const fixedBudgetCents =
+      month.fixedBudgetCents ??
+      month.fixedCosts.reduce((sum, entry) => sum + entry.plannedCents, 0);
+    const variableBudgetCents = month.variablePositions.reduce(
+      (sum, position) => sum + position.budgetCents,
+      0,
+    );
+    const miscBudgetCents = month.miscBudgetCents ?? 0;
+
+    return (
+      foodBudgetCents +
+      goingOutBudgetCents +
+      fixedBudgetCents +
+      variableBudgetCents +
+      miscBudgetCents
+    );
+  }
+
   function summarizeYear(year: YearBook): CostSummary {
     return year.months.reduce<CostSummary>(
       (acc, monthItem) => {
@@ -546,16 +567,16 @@ export function createAppController(root: HTMLElement) {
         (sum, entry) => sum + entry.amountCents,
         0,
       );
-      const expenseCents = summarizeMonth(month).totalCents;
+      const plannedBudgetCents = summarizePlannedBudgetsCents(month);
       const effectiveIncomeCents = recordedIncomeCents + carriedFromPreviousCents;
-      const netCents = effectiveIncomeCents - expenseCents;
+      const netCents = effectiveIncomeCents - plannedBudgetCents;
 
       summaryMap.set(monthKey(year, month.month), {
         hasPreviousMonth,
         carriedFromPreviousCents,
         recordedIncomeCents,
         effectiveIncomeCents,
-        expenseCents,
+        plannedBudgetCents,
         netCents,
       });
 
@@ -1275,13 +1296,23 @@ export function createAppController(root: HTMLElement) {
       selectedIncomeFlow?.hasPreviousMonth ?? false;
     const effectiveIncomeTotalCents =
       selectedIncomeFlow?.effectiveIncomeCents ?? recordedIncomeTotalCents;
+    const monthPlannedBudgetCentsForNetFallback = month
+      ? summarizePlannedBudgetsCents(month)
+      : 0;
     const monthNetCents =
       selectedIncomeFlow?.netCents ??
-      recordedIncomeTotalCents - monthSummary.totalCents;
+      recordedIncomeTotalCents - monthPlannedBudgetCentsForNetFallback;
+    const monthActualNetCents = effectiveIncomeTotalCents - monthSummary.totalCents;
     const carryoverClass =
       carryoverCents < 0 ? "danger" : carryoverCents > 0 ? "budget-under" : "";
     const monthNetClass =
       monthNetCents < 0 ? "danger" : monthNetCents > 0 ? "budget-under" : "";
+    const monthActualNetClass =
+      monthActualNetCents < 0
+        ? "danger"
+        : monthActualNetCents > 0
+          ? "budget-under"
+          : "";
     const yearRecordedIncomeTotalCents = year
       ? year.months.reduce(
         (sum, monthItem) =>
@@ -1409,8 +1440,8 @@ export function createAppController(root: HTMLElement) {
       },
       {
         label: "Netto",
-        valueCents: monthNetCents,
-        className: monthNetCents < 0 ? "bar-negative" : "bar-positive",
+        valueCents: monthActualNetCents,
+        className: monthActualNetCents < 0 ? "bar-negative" : "bar-positive",
       },
     ];
     const incomeExpenseMaxCents = Math.max(
@@ -1799,7 +1830,7 @@ export function createAppController(root: HTMLElement) {
                   </div>
                   <div class="eval-row eval-strong">
                     <div class="eval-label">Einnahmen - echte Ausgaben</div>
-                    <div class="eval-value ${monthNetClass}">${centsToEuro(monthNetCents)}</div>
+                    <div class="eval-value ${monthActualNetClass}">${centsToEuro(monthActualNetCents)}</div>
                     <div class="eval-value ${yearNetClass}">${centsToEuro(yearNetCents)}</div>
                   </div>
                 </div>
