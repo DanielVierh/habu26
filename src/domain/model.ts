@@ -39,6 +39,7 @@ export interface VariableBudgetPosition {
 export interface MonthBook {
   month: MonthNumber;
   days: DayEntry[];
+  carryoverOverrideCents?: EuroCents | null;
   foodBudgetCents: EuroCents;
   goingOutBudgetCents: EuroCents;
   incomes: ExpenseEntry[];

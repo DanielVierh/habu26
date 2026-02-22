@@ -535,20 +535,24 @@ export function createAppController(root: HTMLElement) {
 
     const summaryMap = new Map<number, IncomeFlowSummary>();
     let carryoverCents = 0;
-    let hasPreviousMonth = false;
 
-    orderedMonths.forEach(({ year, month }) => {
+    orderedMonths.forEach(({ year, month }, index) => {
+      const override = month.carryoverOverrideCents;
+      const hasOverride = typeof override === "number";
+      const carriedFromPreviousCents = hasOverride ? override : carryoverCents;
+      const hasPreviousMonth = index > 0 || hasOverride;
+
       const recordedIncomeCents = month.incomes.reduce(
         (sum, entry) => sum + entry.amountCents,
         0,
       );
       const expenseCents = summarizeMonth(month).totalCents;
-      const effectiveIncomeCents = recordedIncomeCents + carryoverCents;
+      const effectiveIncomeCents = recordedIncomeCents + carriedFromPreviousCents;
       const netCents = effectiveIncomeCents - expenseCents;
 
       summaryMap.set(monthKey(year, month.month), {
         hasPreviousMonth,
-        carriedFromPreviousCents: carryoverCents,
+        carriedFromPreviousCents,
         recordedIncomeCents,
         effectiveIncomeCents,
         expenseCents,
@@ -556,7 +560,6 @@ export function createAppController(root: HTMLElement) {
       });
 
       carryoverCents = netCents;
-      hasPreviousMonth = true;
     });
 
     return summaryMap;
@@ -939,6 +942,22 @@ export function createAppController(root: HTMLElement) {
       return;
     }
     month.miscBudgetCents = amountCents;
+    await persistSelectedYear();
+    render();
+  }
+
+  async function updateMonthlyCarryoverOverride(
+    amountCents: number | null,
+  ): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+    if (amountCents === null) {
+      month.carryoverOverrideCents = null;
+    } else {
+      month.carryoverOverrideCents = amountCents;
+    }
     await persistSelectedYear();
     render();
   }
@@ -1446,14 +1465,13 @@ export function createAppController(root: HTMLElement) {
               </thead>
               <tbody>
                 ${month
-        ? `${hasCarryoverFromPreviousMonth
-          ? `<tr>
+        ? `<tr>
                     <td>Übernahme aus Vormonat</td>
-                    <td class="${carryoverClass}">${centsToEuro(carryoverCents)}</td>
+                    <td class="${carryoverClass}">
+                      <input class="amount-input" id="carryover-override" type="number" step="0.01" value="${centsToEuroInput(carryoverCents)}" />
+                    </td>
                     <td>-</td>
-                  </tr>`
-          : ""
-        }${month.incomes
+                  </tr>${month.incomes
           .map(
             (entry) => `<tr>
                     <td>${entry.description}</td>
@@ -1474,7 +1492,7 @@ export function createAppController(root: HTMLElement) {
                 </div>
                 <div class="column-overview-row ${carryoverClass}">
                   <span>Übernahme Vormonat</span>
-                  <strong>${hasCarryoverFromPreviousMonth ? `${centsToEuro(carryoverCents)} €` : "-"}</strong>
+                  <strong>${month ? `${centsToEuro(carryoverCents)} €` : "-"}</strong>
                 </div>
                 <div class="column-overview-row">
                   <span>Einkommen gesamt (inkl. Übernahme)</span>
@@ -1856,6 +1874,22 @@ export function createAppController(root: HTMLElement) {
       root.querySelector<HTMLInputElement>("#income-amount");
     const addIncomeButton =
       root.querySelector<HTMLButtonElement>("#add-income");
+
+    const carryoverOverrideInput =
+      root.querySelector<HTMLInputElement>("#carryover-override");
+    carryoverOverrideInput?.addEventListener("click", (event) => {
+      event.preventDefault();
+      carryoverOverrideInput.blur();
+      openAmountDeltaModal(carryoverOverrideInput);
+    });
+    carryoverOverrideInput?.addEventListener("change", async () => {
+      const raw = carryoverOverrideInput.value;
+      if (!raw.trim()) {
+        await updateMonthlyCarryoverOverride(null);
+        return;
+      }
+      await updateMonthlyCarryoverOverride(euroToCents(raw));
+    });
 
     addVariablePositionButton?.addEventListener("click", async () => {
       const budgetCents = euroToCents(
