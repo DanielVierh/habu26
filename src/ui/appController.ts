@@ -1516,7 +1516,7 @@ export function createAppController(root: HTMLElement) {
             (
               day,
             ) => `<tr class="${day.isoDate === todayIsoDate ? "today-row" : ""}">
-                      <td>${new Date(day.isoDate).toLocaleDateString("de-DE")}</td>
+                      <td>${new Date(day.isoDate).toLocaleDateString("de-DE", { weekday: "short", year: "numeric", month: "2-digit", day: "2-digit" })}</td>
                       <td><input class="amount-input" data-day-food="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuroInput(day.foodCents)}" /></td>
                       <td><input class="amount-input" data-day-going="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuroInput(day.goingOutCents)}" /></td>
                     </tr>`,
