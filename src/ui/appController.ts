@@ -203,7 +203,7 @@ export function createAppController(root: HTMLElement) {
     amountModalTarget = targetInput;
 
     const existingCents = euroToCents(targetInput.value || "0");
-    const title = "Betrag verrechnen";
+    const title = "Betrag anpassen";
 
     container.innerHTML = `
       <div class="amount-modal-backdrop" role="dialog" aria-modal="true" aria-label="${title}">
@@ -212,15 +212,17 @@ export function createAppController(root: HTMLElement) {
           <div class="amount-modal-body">
             <div class="amount-modal-meta">
               <div>Aktuell: <strong>${centsToEuro(existingCents)} €</strong></div>
-              <div>Neu: <strong id="amount-modal-next">${centsToEuro(existingCents)} €</strong></div>
+              <div>Neu (verrechnen): <strong id="amount-modal-next-delta">${centsToEuro(existingCents)} €</strong></div>
+              <div>Neu (korrigieren): <strong id="amount-modal-next-overwrite">${centsToEuro(existingCents)} €</strong></div>
             </div>
             <label>
-              Betrag (Delta, €)
+              Betrag (€)
               <input id="amount-modal-delta" type="number" step="0.01" value="0.00" />
             </label>
             <div class="amount-modal-actions">
               <button class="btn btn-quiet" id="amount-modal-cancel" type="button">Abbrechen</button>
-              <button class="btn btn-primary" id="amount-modal-apply" type="button">Übernehmen</button>
+              <button class="btn" id="amount-modal-overwrite" type="button">Korrigieren</button>
+              <button class="btn btn-primary" id="amount-modal-apply" type="button">Verrechnen</button>
             </div>
           </div>
         </div>
@@ -233,33 +235,60 @@ export function createAppController(root: HTMLElement) {
     const deltaInput = container.querySelector<HTMLInputElement>(
       "#amount-modal-delta",
     );
-    const nextLabel = container.querySelector<HTMLElement>(
-      "#amount-modal-next",
+    const nextDeltaLabel = container.querySelector<HTMLElement>(
+      "#amount-modal-next-delta",
+    );
+    const nextOverwriteLabel = container.querySelector<HTMLElement>(
+      "#amount-modal-next-overwrite",
     );
     const cancelButton = container.querySelector<HTMLButtonElement>(
       "#amount-modal-cancel",
+    );
+    const overwriteButton = container.querySelector<HTMLButtonElement>(
+      "#amount-modal-overwrite",
     );
     const applyButton = container.querySelector<HTMLButtonElement>(
       "#amount-modal-apply",
     );
 
-    function computeNextCents(): number {
+    function computeNextDeltaCents(): number {
       const deltaCents = euroToCents(deltaInput?.value ?? "0");
       return clampCentsToInputBounds(existingCents + deltaCents, targetInput);
     }
 
-    function refreshPreview(): void {
-      if (!nextLabel) return;
-      nextLabel.textContent = `${centsToEuro(computeNextCents())} €`;
+    function computeOverwriteCents(): number {
+      const nextCents = euroToCents(deltaInput?.value ?? "0");
+      return clampCentsToInputBounds(nextCents, targetInput);
     }
 
-    function applyAndClose(): void {
+    function refreshPreview(): void {
+      if (nextDeltaLabel) {
+        nextDeltaLabel.textContent = `${centsToEuro(computeNextDeltaCents())} €`;
+      }
+      if (nextOverwriteLabel) {
+        nextOverwriteLabel.textContent = `${centsToEuro(computeOverwriteCents())} €`;
+      }
+    }
+
+    function applyDeltaAndClose(): void {
       const target = amountModalTarget;
       if (!target) {
         closeAmountModal();
         return;
       }
-      const nextCents = computeNextCents();
+      const nextCents = computeNextDeltaCents();
+      closeAmountModal();
+      target.value = centsToEuroInput(nextCents);
+      target.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    function overwriteAndClose(): void {
+      const target = amountModalTarget;
+      if (!target) {
+        closeAmountModal();
+        return;
+      }
+      const nextCents = computeOverwriteCents();
       closeAmountModal();
       target.value = centsToEuroInput(nextCents);
       target.dispatchEvent(new Event("change", { bubbles: true }));
@@ -269,8 +298,12 @@ export function createAppController(root: HTMLElement) {
       closeAmountModal();
     });
 
+    overwriteButton?.addEventListener("click", () => {
+      overwriteAndClose();
+    });
+
     applyButton?.addEventListener("click", () => {
-      applyAndClose();
+      applyDeltaAndClose();
     });
 
     deltaInput?.addEventListener("input", () => {
@@ -285,7 +318,7 @@ export function createAppController(root: HTMLElement) {
       }
       if (event.key === "Enter") {
         event.preventDefault();
-        applyAndClose();
+        applyDeltaAndClose();
       }
     });
 
