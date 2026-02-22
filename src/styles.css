@@ -744,6 +744,43 @@ tbody tr:nth-child(even) {
   font-weight: 700;
 }
 
+.amount-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: var(--focus-ring);
+}
+
+.amount-modal {
+  width: min(92vw, 360px);
+}
+
+.amount-modal h3 {
+  margin: 0 0 0.6rem;
+}
+
+.amount-modal .amount-modal-body {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.amount-modal .amount-modal-meta {
+  display: grid;
+  gap: 0.15rem;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.amount-modal .amount-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
 .toast-root {
   position: fixed;
   right: 1rem;

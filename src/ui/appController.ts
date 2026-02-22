@@ -122,6 +122,8 @@ export function createAppController(root: HTMLElement) {
 
   const THEME_STORAGE_KEY = "habu-theme";
   let toastRoot: HTMLDivElement | null = null;
+  let amountModalRoot: HTMLDivElement | null = null;
+  let amountModalTarget: HTMLInputElement | null = null;
 
   function ensureToastRoot(): HTMLDivElement {
     if (toastRoot && document.body.contains(toastRoot)) {
@@ -140,6 +142,164 @@ export function createAppController(root: HTMLElement) {
     document.body.appendChild(created);
     toastRoot = created;
     return created;
+  }
+
+  function ensureAmountModalRoot(): HTMLDivElement {
+    if (amountModalRoot && document.body.contains(amountModalRoot)) {
+      return amountModalRoot;
+    }
+    const existing = document.getElementById("amount-modal-root");
+    if (existing instanceof HTMLDivElement) {
+      amountModalRoot = existing;
+      return existing;
+    }
+    const created = document.createElement("div");
+    created.id = "amount-modal-root";
+    document.body.appendChild(created);
+    amountModalRoot = created;
+    return created;
+  }
+
+  function closeAmountModal(): void {
+    if (!amountModalRoot) {
+      amountModalTarget = null;
+      return;
+    }
+    amountModalRoot.innerHTML = "";
+    amountModalTarget = null;
+  }
+
+  function clampCentsToInputBounds(
+    cents: number,
+    target: HTMLInputElement,
+  ): number {
+    let result = cents;
+    const minText = target.min;
+    if (minText) {
+      const minNumber = Number.parseFloat(minText);
+      if (!Number.isNaN(minNumber)) {
+        const minCents = Math.round(minNumber * 100);
+        result = Math.max(result, minCents);
+      }
+    }
+    const maxText = target.max;
+    if (maxText) {
+      const maxNumber = Number.parseFloat(maxText);
+      if (!Number.isNaN(maxNumber)) {
+        const maxCents = Math.round(maxNumber * 100);
+        result = Math.min(result, maxCents);
+      }
+    }
+    return result;
+  }
+
+  function openAmountDeltaModal(targetInput: HTMLInputElement): void {
+    if (targetInput.disabled) {
+      return;
+    }
+
+    const container = ensureAmountModalRoot();
+    closeAmountModal();
+    amountModalTarget = targetInput;
+
+    const existingCents = euroToCents(targetInput.value || "0");
+    const title = "Betrag verrechnen";
+
+    container.innerHTML = `
+      <div class="amount-modal-backdrop" role="dialog" aria-modal="true" aria-label="${title}">
+        <div class="amount-modal card">
+          <h3>${title}</h3>
+          <div class="amount-modal-body">
+            <div class="amount-modal-meta">
+              <div>Aktuell: <strong>${centsToEuro(existingCents)} €</strong></div>
+              <div>Neu: <strong id="amount-modal-next">${centsToEuro(existingCents)} €</strong></div>
+            </div>
+            <label>
+              Betrag (Delta, €)
+              <input id="amount-modal-delta" type="number" step="0.01" value="0.00" />
+            </label>
+            <div class="amount-modal-actions">
+              <button class="btn btn-quiet" id="amount-modal-cancel" type="button">Abbrechen</button>
+              <button class="btn btn-primary" id="amount-modal-apply" type="button">Übernehmen</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const backdrop = container.querySelector<HTMLDivElement>(
+      ".amount-modal-backdrop",
+    );
+    const deltaInput = container.querySelector<HTMLInputElement>(
+      "#amount-modal-delta",
+    );
+    const nextLabel = container.querySelector<HTMLElement>(
+      "#amount-modal-next",
+    );
+    const cancelButton = container.querySelector<HTMLButtonElement>(
+      "#amount-modal-cancel",
+    );
+    const applyButton = container.querySelector<HTMLButtonElement>(
+      "#amount-modal-apply",
+    );
+
+    function computeNextCents(): number {
+      const deltaCents = euroToCents(deltaInput?.value ?? "0");
+      return clampCentsToInputBounds(existingCents + deltaCents, targetInput);
+    }
+
+    function refreshPreview(): void {
+      if (!nextLabel) return;
+      nextLabel.textContent = `${centsToEuro(computeNextCents())} €`;
+    }
+
+    function applyAndClose(): void {
+      const target = amountModalTarget;
+      if (!target) {
+        closeAmountModal();
+        return;
+      }
+      const nextCents = computeNextCents();
+      closeAmountModal();
+      target.value = centsToEuroInput(nextCents);
+      target.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    cancelButton?.addEventListener("click", () => {
+      closeAmountModal();
+    });
+
+    applyButton?.addEventListener("click", () => {
+      applyAndClose();
+    });
+
+    deltaInput?.addEventListener("input", () => {
+      refreshPreview();
+    });
+
+    deltaInput?.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeAmountModal();
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyAndClose();
+      }
+    });
+
+    backdrop?.addEventListener("click", (event) => {
+      if (event.target === backdrop) {
+        closeAmountModal();
+      }
+    });
+
+    window.setTimeout(() => {
+      deltaInput?.focus();
+      deltaInput?.select();
+      refreshPreview();
+    }, 0);
   }
 
   function showToast(
@@ -969,23 +1129,23 @@ export function createAppController(root: HTMLElement) {
     const monthSummary = month
       ? summarizeMonth(month)
       : {
-          foodCents: 0,
-          goingOutCents: 0,
-          fixedCents: 0,
-          variableCents: 0,
-          miscCents: 0,
-          totalCents: 0,
-        };
+        foodCents: 0,
+        goingOutCents: 0,
+        fixedCents: 0,
+        variableCents: 0,
+        miscCents: 0,
+        totalCents: 0,
+      };
     const yearSummary = year
       ? summarizeYear(year)
       : {
-          foodCents: 0,
-          goingOutCents: 0,
-          fixedCents: 0,
-          variableCents: 0,
-          miscCents: 0,
-          totalCents: 0,
-        };
+        foodCents: 0,
+        goingOutCents: 0,
+        fixedCents: 0,
+        variableCents: 0,
+        miscCents: 0,
+        totalCents: 0,
+      };
     const yearByMonth = year ? summarizeYearByMonth(year) : [];
     const foodBudgetCents = month ? (month.foodBudgetCents ?? 0) : 0;
     const goingOutBudgetCents = month ? (month.goingOutBudgetCents ?? 0) : 0;
@@ -995,15 +1155,15 @@ export function createAppController(root: HTMLElement) {
       : 0;
     const variableBudgetCents = month
       ? month.variablePositions.reduce(
-          (sum, position) => sum + position.budgetCents,
-          0,
-        )
+        (sum, position) => sum + position.budgetCents,
+        0,
+      )
       : 0;
     const variablePositionBudgetCents = month
       ? month.variablePositions.reduce(
-          (sum, position) => sum + position.budgetCents,
-          0,
-        )
+        (sum, position) => sum + position.budgetCents,
+        0,
+      )
       : 0;
     const miscBudgetCents = month ? (month.miscBudgetCents ?? 0) : 0;
     const recordedIncomeTotalCents = month
@@ -1030,19 +1190,19 @@ export function createAppController(root: HTMLElement) {
       monthNetCents < 0 ? "danger" : monthNetCents > 0 ? "budget-under" : "";
     const yearRecordedIncomeTotalCents = year
       ? year.months.reduce(
-          (sum, monthItem) =>
-            sum +
-            monthItem.incomes.reduce(
-              (monthSum, entry) => monthSum + entry.amountCents,
-              0,
-            ),
-          0,
-        )
+        (sum, monthItem) =>
+          sum +
+          monthItem.incomes.reduce(
+            (monthSum, entry) => monthSum + entry.amountCents,
+            0,
+          ),
+        0,
+      )
       : 0;
     const yearOpeningCarryoverCents =
       year && firstMonthInYear
         ? (incomeFlowByMonth.get(monthKey(year.year, firstMonthInYear.month))
-            ?.carriedFromPreviousCents ?? 0)
+          ?.carriedFromPreviousCents ?? 0)
         : 0;
     const yearEffectiveIncomeTotalCents =
       yearRecordedIncomeTotalCents + yearOpeningCarryoverCents;
@@ -1077,8 +1237,8 @@ export function createAppController(root: HTMLElement) {
     );
     const editingFixedTemplate = state.editingFixedTemplateId
       ? state.fixedTemplates.find(
-          (template) => template.id === state.editingFixedTemplateId,
-        )
+        (template) => template.id === state.editingFixedTemplateId,
+      )
       : null;
     const showUnexportedChangesHint =
       state.hasImportedBackup && state.hasUnexportedChangesSinceImport;
@@ -1093,9 +1253,9 @@ export function createAppController(root: HTMLElement) {
               Theme
               <select id="theme-select">
                 ${AVAILABLE_THEMES.map(
-                  (theme) =>
-                    `<option value="${theme}" ${state.theme === theme ? "selected" : ""}>${themeLabel(theme)}</option>`,
-                ).join("")}
+      (theme) =>
+        `<option value="${theme}" ${state.theme === theme ? "selected" : ""}>${themeLabel(theme)}</option>`,
+    ).join("")}
               </select>
             </label>
           </div>
@@ -1116,11 +1276,11 @@ export function createAppController(root: HTMLElement) {
               Jahr wählen
               <select id="year-select">
                 ${state.years
-                  .map(
-                    (item) =>
-                      `<option value="${item.year}" ${item.year === state.selectedYear ? "selected" : ""}>${item.year}</option>`,
-                  )
-                  .join("")}
+        .map(
+          (item) =>
+            `<option value="${item.year}" ${item.year === state.selectedYear ? "selected" : ""}>${item.year}</option>`,
+        )
+        .join("")}
               </select>
             </label>
           </div>
@@ -1147,16 +1307,16 @@ export function createAppController(root: HTMLElement) {
             </thead>
             <tbody>
               ${state.fixedTemplates
-                .map(
-                  (template) =>
-                    `<tr>
+        .map(
+          (template) =>
+            `<tr>
                       <td>${template.name}</td>
                       <td>${centsToEuro(template.plannedCents)}</td>
                       <td><button class="btn btn-quiet" data-edit-fixed-template="${template.id}">Bearbeiten</button></td>
                       <td><button class="btn btn-quiet" data-remove-fixed-template="${template.id}">Löschen</button></td>
                     </tr>`,
-                )
-                .join("")}
+        )
+        .join("")}
             </tbody>
           </table>
         </section>
@@ -1168,11 +1328,11 @@ export function createAppController(root: HTMLElement) {
               Monat wählen
               <select id="month-select" ${state.selectedYear ? "" : "disabled"}>
                 ${Array.from({ length: 12 }, (_, index) => index + 1)
-                  .map(
-                    (monthNumber) =>
-                      `<option value="${monthNumber}" ${monthNumber === state.selectedMonth ? "selected" : ""}>${monthLabel(monthNumber)}</option>`,
-                  )
-                  .join("")}
+        .map(
+          (monthNumber) =>
+            `<option value="${monthNumber}" ${monthNumber === state.selectedMonth ? "selected" : ""}>${monthLabel(monthNumber)}</option>`,
+        )
+        .join("")}
               </select>
             </label>
           </div>
@@ -1218,8 +1378,8 @@ export function createAppController(root: HTMLElement) {
               </thead>
               <tbody>
                 ${yearByMonth
-                  .map(
-                    (row) => `<tr>
+        .map(
+          (row) => `<tr>
                   <td>${monthLabel(row.month)}</td>
                   <td>${centsToEuro(row.summary.foodCents)}</td>
                   <td>${centsToEuro(row.summary.goingOutCents)}</td>
@@ -1228,8 +1388,8 @@ export function createAppController(root: HTMLElement) {
                   <td>${centsToEuro(row.summary.miscCents)}</td>
                   <td>${centsToEuro(row.summary.totalCents)}</td>
                 </tr>`,
-                  )
-                  .join("")}
+        )
+        .join("")}
               </tbody>
             </table>
           </article>
@@ -1252,27 +1412,25 @@ export function createAppController(root: HTMLElement) {
                 <tr><th>Beschreibung</th><th>Betrag (€)</th><th></th></tr>
               </thead>
               <tbody>
-                ${
-                  month
-                    ? `${
-                        hasCarryoverFromPreviousMonth
-                          ? `<tr>
+                ${month
+        ? `${hasCarryoverFromPreviousMonth
+          ? `<tr>
                     <td>Übernahme aus Vormonat</td>
                     <td class="${carryoverClass}">${centsToEuro(carryoverCents)}</td>
                     <td>-</td>
                   </tr>`
-                          : ""
-                      }${month.incomes
-                        .map(
-                          (entry) => `<tr>
+          : ""
+        }${month.incomes
+          .map(
+            (entry) => `<tr>
                     <td>${entry.description}</td>
                     <td>${centsToEuro(entry.amountCents)}</td>
                     <td><button class="btn btn-quiet" data-remove-income="${entry.id}">Löschen</button></td>
                   </tr>`,
-                        )
-                        .join("")}`
-                    : ""
-                }
+          )
+          .join("")}`
+        : ""
+      }
               </tbody>
             </table>
             <div class="column-overview income-flow-overview">
@@ -1319,21 +1477,20 @@ export function createAppController(root: HTMLElement) {
                   <tr><th>Datum</th><th>Essen (€)</th><th>Ausgehen (€)</th></tr>
                 </thead>
                 <tbody>
-                  ${
-                    month
-                      ? month.days
-                          .map(
-                            (
-                              day,
-                            ) => `<tr class="${day.isoDate === todayIsoDate ? "today-row" : ""}">
+                  ${month
+        ? month.days
+          .map(
+            (
+              day,
+            ) => `<tr class="${day.isoDate === todayIsoDate ? "today-row" : ""}">
                       <td>${new Date(day.isoDate).toLocaleDateString("de-DE")}</td>
                       <td><input class="amount-input" data-day-food="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuroInput(day.foodCents)}" /></td>
                       <td><input class="amount-input" data-day-going="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuroInput(day.goingOutCents)}" /></td>
                     </tr>`,
-                          )
-                          .join("")
-                      : ""
-                  }
+          )
+          .join("")
+        : ""
+      }
                 </tbody>
               </table>
             </article>
@@ -1352,20 +1509,19 @@ export function createAppController(root: HTMLElement) {
                   <tr><th>Name</th><th>Geplant (€)</th><th>Ist (€)</th><th>Abweichung (€)</th></tr>
                 </thead>
                 <tbody>
-                ${
-                  month
-                    ? month.fixedCosts
-                        .map(
-                          (cost) => `<tr>
+                ${month
+        ? month.fixedCosts
+          .map(
+            (cost) => `<tr>
                     <td>${cost.name}</td>
                     <td>${centsToEuro(cost.plannedCents)}</td>
                     <td class="${budgetStatusClass(cost.actualCents, cost.plannedCents)}"><input class="amount-input" data-fixed-actual="${cost.id}" type="number" min="0" step="0.01" value="${centsToEuroInput(cost.actualCents)}" /></td>
                     <td class="${budgetStatusClass(cost.actualCents, cost.plannedCents)}">${centsToEuro(cost.actualCents - cost.plannedCents)}</td>
                   </tr>`,
-                        )
-                        .join("")
-                    : ""
-                }
+          )
+          .join("")
+        : ""
+      }
                 </tbody>
               </table>
             </article>
@@ -1389,21 +1545,20 @@ export function createAppController(root: HTMLElement) {
                   <tr><th>Position</th><th>Budget (€)</th><th>Ist (€)</th><th>Abweichung (€)</th><th></th></tr>
                 </thead>
                 <tbody>
-                ${
-                  month
-                    ? month.variablePositions
-                        .map(
-                          (position) => `<tr>
+                ${month
+        ? month.variablePositions
+          .map(
+            (position) => `<tr>
                     <td>${position.name}</td>
                     <td>${centsToEuro(position.budgetCents)}</td>
                     <td class="${budgetStatusClass(position.actualCents, position.budgetCents)}"><input class="amount-input" data-variable-position-actual="${position.id}" type="number" min="0" step="0.01" value="${centsToEuroInput(position.actualCents)}" /></td>
                     <td class="${budgetStatusClass(position.actualCents, position.budgetCents)}">${centsToEuro(position.actualCents - position.budgetCents)}</td>
                     <td><button class="btn btn-quiet" data-remove-variable-position="${position.id}">Löschen</button></td>
                   </tr>`,
-                        )
-                        .join("")
-                    : ""
-                }
+          )
+          .join("")
+        : ""
+      }
                 </tbody>
               </table>
             </article>
@@ -1433,19 +1588,18 @@ export function createAppController(root: HTMLElement) {
                   <tr><th>Beschreibung</th><th>Betrag (€)</th><th></th></tr>
                 </thead>
                 <tbody>
-                ${
-                  month
-                    ? month.miscCosts
-                        .map(
-                          (entry) => `<tr>
+                ${month
+        ? month.miscCosts
+          .map(
+            (entry) => `<tr>
                     <td>${entry.description}</td>
                     <td>${centsToEuro(entry.amountCents)}</td>
                     <td><button class="btn btn-quiet" data-remove-misc="${entry.id}">Löschen</button></td>
                   </tr>`,
-                        )
-                        .join("")
-                    : ""
-                }
+          )
+          .join("")
+        : ""
+      }
                 </tbody>
               </table>
             </article>
@@ -1558,6 +1712,11 @@ export function createAppController(root: HTMLElement) {
     root
       .querySelectorAll<HTMLInputElement>("[data-day-food]")
       .forEach((input) => {
+        input.addEventListener("click", (event) => {
+          event.preventDefault();
+          input.blur();
+          openAmountDeltaModal(input);
+        });
         input.addEventListener("change", async () => {
           const date = input.dataset.dayFood;
           if (!date) return;
@@ -1568,6 +1727,11 @@ export function createAppController(root: HTMLElement) {
     root
       .querySelectorAll<HTMLInputElement>("[data-day-going]")
       .forEach((input) => {
+        input.addEventListener("click", (event) => {
+          event.preventDefault();
+          input.blur();
+          openAmountDeltaModal(input);
+        });
         input.addEventListener("change", async () => {
           const date = input.dataset.dayGoing;
           if (!date) return;
@@ -1582,6 +1746,11 @@ export function createAppController(root: HTMLElement) {
     root
       .querySelectorAll<HTMLInputElement>("[data-fixed-actual]")
       .forEach((input) => {
+        input.addEventListener("click", (event) => {
+          event.preventDefault();
+          input.blur();
+          openAmountDeltaModal(input);
+        });
         input.addEventListener("change", async () => {
           const fixedCostId = input.dataset.fixedActual;
           if (!fixedCostId) return;
@@ -1591,24 +1760,44 @@ export function createAppController(root: HTMLElement) {
 
     const fixedBudgetInput =
       root.querySelector<HTMLInputElement>("#fixed-budget");
+    fixedBudgetInput?.addEventListener("click", (event) => {
+      event.preventDefault();
+      fixedBudgetInput.blur();
+      openAmountDeltaModal(fixedBudgetInput);
+    });
     fixedBudgetInput?.addEventListener("change", async () => {
       await updateMonthlyFixedBudget(euroToCents(fixedBudgetInput.value));
     });
 
     const foodBudgetInput =
       root.querySelector<HTMLInputElement>("#food-budget");
+    foodBudgetInput?.addEventListener("click", (event) => {
+      event.preventDefault();
+      foodBudgetInput.blur();
+      openAmountDeltaModal(foodBudgetInput);
+    });
     foodBudgetInput?.addEventListener("change", async () => {
       await updateMonthlyFoodBudget(euroToCents(foodBudgetInput.value));
     });
 
     const goingOutBudgetInput =
       root.querySelector<HTMLInputElement>("#going-out-budget");
+    goingOutBudgetInput?.addEventListener("click", (event) => {
+      event.preventDefault();
+      goingOutBudgetInput.blur();
+      openAmountDeltaModal(goingOutBudgetInput);
+    });
     goingOutBudgetInput?.addEventListener("change", async () => {
       await updateMonthlyGoingOutBudget(euroToCents(goingOutBudgetInput.value));
     });
 
     const miscBudgetInput =
       root.querySelector<HTMLInputElement>("#misc-budget");
+    miscBudgetInput?.addEventListener("click", (event) => {
+      event.preventDefault();
+      miscBudgetInput.blur();
+      openAmountDeltaModal(miscBudgetInput);
+    });
     miscBudgetInput?.addEventListener("change", async () => {
       await updateMonthlyMiscBudget(euroToCents(miscBudgetInput.value));
     });
@@ -1664,6 +1853,11 @@ export function createAppController(root: HTMLElement) {
     root
       .querySelectorAll<HTMLInputElement>("[data-variable-position-actual]")
       .forEach((input) => {
+        input.addEventListener("click", (event) => {
+          event.preventDefault();
+          input.blur();
+          openAmountDeltaModal(input);
+        });
         input.addEventListener("change", async () => {
           const positionId = input.dataset.variablePositionActual;
           if (!positionId) return;
