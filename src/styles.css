@@ -1105,3 +1105,144 @@ tbody tr:nth-child(even) {
 .toast.toast-error {
   border-left-color: var(--danger-2);
 }
+
+@media (max-width: 1024px) {
+  .app {
+    padding: 1rem;
+  }
+
+  .panel-modal {
+    width: min(98vw, 1100px);
+    max-height: min(92vh, 900px);
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    font-size: 0.9rem;
+  }
+
+  .app {
+    padding: 0.75rem;
+  }
+
+  .card {
+    padding: 0.8rem;
+  }
+
+  .app-header {
+    align-items: flex-start;
+    gap: 0.55rem;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.55rem;
+  }
+
+  .top-shortcuts {
+    justify-content: stretch;
+    gap: 0.5rem;
+  }
+
+  .top-shortcuts .btn {
+    flex: 1 1 48%;
+  }
+
+  .inline {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .inline > * {
+    min-width: 0;
+    width: 100%;
+  }
+
+  input,
+  select,
+  button,
+  textarea {
+    min-height: 42px;
+    padding: 0.55rem 0.7rem;
+  }
+
+  .grid-4 > .card input.amount-input,
+  .amount-input {
+    min-width: 92px;
+    max-width: 120px;
+    width: 100%;
+    font-size: 0.95rem;
+  }
+
+  .card table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-tile {
+    padding: 0.7rem;
+  }
+
+  .chart-tile-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .bar-row {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .bar-meta {
+    justify-content: flex-start;
+  }
+
+  .spark-bars {
+    min-width: 520px;
+  }
+
+  .column-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-modal-backdrop,
+  .amount-modal-backdrop {
+    padding: 0.6rem;
+  }
+
+  .toast-root {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+  }
+
+  .toast {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-title {
+    font-size: 1.3rem;
+  }
+
+  .header-actions .export-warning {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .top-shortcuts .btn {
+    flex-basis: 100%;
+  }
+}
