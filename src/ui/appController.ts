@@ -17,7 +17,12 @@ import {
   saveFixedTemplates,
   saveYear,
 } from "../storage/repository";
-import { centsToEuro, centsToEuroInput, euroToCents, monthLabel } from "./format";
+import {
+  centsToEuro,
+  centsToEuroInput,
+  euroToCents,
+  monthLabel,
+} from "./format";
 
 const AVAILABLE_THEMES = [
   "light",
@@ -80,8 +85,8 @@ interface State {
   fixedTemplateVersion: string;
   editingFixedTemplateId: string | null;
   theme: ThemeName;
-  hasImportedBackup: boolean;
-  hasUnexportedChangesSinceImport: boolean;
+  hasUnexportedChanges: boolean;
+  lastBackupFileName: string | null;
   topModal: "years" | "fixed" | null;
 }
 
@@ -117,12 +122,14 @@ export function createAppController(root: HTMLElement) {
     fixedTemplateVersion: "",
     editingFixedTemplateId: null,
     theme: "light",
-    hasImportedBackup: false,
-    hasUnexportedChangesSinceImport: false,
+    hasUnexportedChanges: false,
+    lastBackupFileName: null,
     topModal: null,
   };
 
   const THEME_STORAGE_KEY = "habu-theme";
+  const BACKUP_DIRTY_STORAGE_KEY = "habu-backup-dirty";
+  const LAST_BACKUP_FILENAME_STORAGE_KEY = "habu-last-backup-filename";
   let toastRoot: HTMLDivElement | null = null;
   let amountModalRoot: HTMLDivElement | null = null;
   let amountModalTarget: HTMLInputElement | null = null;
@@ -399,6 +406,15 @@ export function createAppController(root: HTMLElement) {
     return new Date().toISOString().slice(0, 10);
   }
 
+  function escapeHtml(value: string): string {
+    return value
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
   function loadTheme(): ThemeName {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
     if (stored && isThemeName(stored)) {
@@ -413,9 +429,36 @@ export function createAppController(root: HTMLElement) {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   }
 
+  function loadHasUnexportedChanges(): boolean {
+    return localStorage.getItem(BACKUP_DIRTY_STORAGE_KEY) === "1";
+  }
+
+  function saveHasUnexportedChanges(value: boolean): void {
+    localStorage.setItem(BACKUP_DIRTY_STORAGE_KEY, value ? "1" : "0");
+  }
+
+  function loadLastBackupFileName(): string | null {
+    const stored = localStorage.getItem(LAST_BACKUP_FILENAME_STORAGE_KEY);
+    if (!stored) {
+      return null;
+    }
+    const trimmed = stored.trim();
+    return trimmed ? trimmed : null;
+  }
+
+  function saveLastBackupFileName(fileName: string): void {
+    const trimmed = fileName.trim();
+    if (!trimmed) {
+      return;
+    }
+    localStorage.setItem(LAST_BACKUP_FILENAME_STORAGE_KEY, trimmed);
+  }
+
   async function init(): Promise<void> {
     ensureToastRoot();
     applyTheme(loadTheme());
+    state.hasUnexportedChanges = loadHasUnexportedChanges();
+    state.lastBackupFileName = loadLastBackupFileName();
     bindGlobalModalKeysOnce();
     const [years, fixed] = await Promise.all([
       listYears(),
@@ -602,7 +645,8 @@ export function createAppController(root: HTMLElement) {
         0,
       );
       const plannedBudgetCents = summarizePlannedBudgetsCents(month);
-      const effectiveIncomeCents = recordedIncomeCents + carriedFromPreviousCents;
+      const effectiveIncomeCents =
+        recordedIncomeCents + carriedFromPreviousCents;
       const netCents = effectiveIncomeCents - plannedBudgetCents;
 
       summaryMap.set(monthKey(year, month.month), {
@@ -680,19 +724,23 @@ export function createAppController(root: HTMLElement) {
   }
 
   function markDataChanged(): void {
-    if (!state.hasImportedBackup) {
+    state.hasUnexportedChanges = true;
+    saveHasUnexportedChanges(true);
+  }
+
+  function rememberBackupFile(fileName: string): void {
+    const trimmed = fileName.trim();
+    if (!trimmed) {
       return;
     }
-    state.hasUnexportedChangesSinceImport = true;
+    state.lastBackupFileName = trimmed;
+    saveLastBackupFileName(trimmed);
   }
 
-  function markImportStateClean(): void {
-    state.hasImportedBackup = true;
-    state.hasUnexportedChangesSinceImport = false;
-  }
-
-  function markExportCompleted(): void {
-    state.hasUnexportedChangesSinceImport = false;
+  function markBackupCompleted(fileName: string): void {
+    state.hasUnexportedChanges = false;
+    saveHasUnexportedChanges(false);
+    rememberBackupFile(fileName);
   }
 
   async function persistSelectedYear(): Promise<void> {
@@ -1180,12 +1228,13 @@ export function createAppController(root: HTMLElement) {
       type: "application/json",
     });
     const url = URL.createObjectURL(blob);
+    const backupFileName = `haushaltsbuch-backup-${new Date().toISOString().slice(0, 10)}.json`;
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `haushaltsbuch-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.download = backupFileName;
     anchor.click();
     URL.revokeObjectURL(url);
-    markExportCompleted();
+    markBackupCompleted(backupFileName);
     render();
     showToast("Backup wurde exportiert.");
   }
@@ -1205,7 +1254,7 @@ export function createAppController(root: HTMLElement) {
     await persistNormalizedYears(state.years);
     state.selectedYear = years[0]?.year ?? null;
     state.selectedMonth = getCurrentMonthNumber();
-    markImportStateClean();
+    markBackupCompleted(file.name);
     showToast("Backup wurde importiert.");
     render();
   }
@@ -1236,23 +1285,23 @@ export function createAppController(root: HTMLElement) {
     const monthSummary = month
       ? summarizeMonth(month)
       : {
-        foodCents: 0,
-        goingOutCents: 0,
-        fixedCents: 0,
-        variableCents: 0,
-        miscCents: 0,
-        totalCents: 0,
-      };
+          foodCents: 0,
+          goingOutCents: 0,
+          fixedCents: 0,
+          variableCents: 0,
+          miscCents: 0,
+          totalCents: 0,
+        };
     const yearSummary = year
       ? summarizeYear(year)
       : {
-        foodCents: 0,
-        goingOutCents: 0,
-        fixedCents: 0,
-        variableCents: 0,
-        miscCents: 0,
-        totalCents: 0,
-      };
+          foodCents: 0,
+          goingOutCents: 0,
+          fixedCents: 0,
+          variableCents: 0,
+          miscCents: 0,
+          totalCents: 0,
+        };
     const yearByMonth = year ? summarizeYearByMonth(year) : [];
     const foodBudgetCents = month ? (month.foodBudgetCents ?? 0) : 0;
     const goingOutBudgetCents = month ? (month.goingOutBudgetCents ?? 0) : 0;
@@ -1262,58 +1311,58 @@ export function createAppController(root: HTMLElement) {
       : 0;
     const variableBudgetCents = month
       ? month.variablePositions.reduce(
-        (sum, position) => sum + position.budgetCents,
-        0,
-      )
+          (sum, position) => sum + position.budgetCents,
+          0,
+        )
       : 0;
     const variablePositionBudgetCents = month
       ? month.variablePositions.reduce(
-        (sum, position) => sum + position.budgetCents,
-        0,
-      )
+          (sum, position) => sum + position.budgetCents,
+          0,
+        )
       : 0;
     const miscBudgetCents = month ? (month.miscBudgetCents ?? 0) : 0;
 
     const yearFoodBudgetCents = year
       ? year.months.reduce(
-        (sum, monthItem) => sum + (monthItem.foodBudgetCents ?? 0),
-        0,
-      )
+          (sum, monthItem) => sum + (monthItem.foodBudgetCents ?? 0),
+          0,
+        )
       : 0;
     const yearGoingOutBudgetCents = year
       ? year.months.reduce(
-        (sum, monthItem) => sum + (monthItem.goingOutBudgetCents ?? 0),
-        0,
-      )
+          (sum, monthItem) => sum + (monthItem.goingOutBudgetCents ?? 0),
+          0,
+        )
       : 0;
     const yearFixedBudgetCents = year
       ? year.months.reduce(
-        (sum, monthItem) =>
-          sum +
-          (monthItem.fixedBudgetCents ??
-            monthItem.fixedCosts.reduce(
-              (fixedSum, entry) => fixedSum + entry.plannedCents,
-              0,
-            )),
-        0,
-      )
+          (sum, monthItem) =>
+            sum +
+            (monthItem.fixedBudgetCents ??
+              monthItem.fixedCosts.reduce(
+                (fixedSum, entry) => fixedSum + entry.plannedCents,
+                0,
+              )),
+          0,
+        )
       : 0;
     const yearVariableBudgetCents = year
       ? year.months.reduce(
-        (sum, monthItem) =>
-          sum +
-          monthItem.variablePositions.reduce(
-            (positionSum, position) => positionSum + position.budgetCents,
-            0,
-          ),
-        0,
-      )
+          (sum, monthItem) =>
+            sum +
+            monthItem.variablePositions.reduce(
+              (positionSum, position) => positionSum + position.budgetCents,
+              0,
+            ),
+          0,
+        )
       : 0;
     const yearMiscBudgetCents = year
       ? year.months.reduce(
-        (sum, monthItem) => sum + (monthItem.miscBudgetCents ?? 0),
-        0,
-      )
+          (sum, monthItem) => sum + (monthItem.miscBudgetCents ?? 0),
+          0,
+        )
       : 0;
     const recordedIncomeTotalCents = month
       ? month.incomes.reduce((sum, entry) => sum + entry.amountCents, 0)
@@ -1336,7 +1385,8 @@ export function createAppController(root: HTMLElement) {
     const monthNetCents =
       selectedIncomeFlow?.netCents ??
       recordedIncomeTotalCents - monthPlannedBudgetCentsForNetFallback;
-    const monthActualNetCents = effectiveIncomeTotalCents - monthSummary.totalCents;
+    const monthActualNetCents =
+      effectiveIncomeTotalCents - monthSummary.totalCents;
     const carryoverClass =
       carryoverCents < 0 ? "danger" : carryoverCents > 0 ? "budget-under" : "";
     const monthNetClass =
@@ -1349,19 +1399,19 @@ export function createAppController(root: HTMLElement) {
           : "";
     const yearRecordedIncomeTotalCents = year
       ? year.months.reduce(
-        (sum, monthItem) =>
-          sum +
-          monthItem.incomes.reduce(
-            (monthSum, entry) => monthSum + entry.amountCents,
-            0,
-          ),
-        0,
-      )
+          (sum, monthItem) =>
+            sum +
+            monthItem.incomes.reduce(
+              (monthSum, entry) => monthSum + entry.amountCents,
+              0,
+            ),
+          0,
+        )
       : 0;
     const yearOpeningCarryoverCents =
       year && firstMonthInYear
         ? (incomeFlowByMonth.get(monthKey(year.year, firstMonthInYear.month))
-          ?.carriedFromPreviousCents ?? 0)
+            ?.carriedFromPreviousCents ?? 0)
         : 0;
     const yearEffectiveIncomeTotalCents =
       yearRecordedIncomeTotalCents + yearOpeningCarryoverCents;
@@ -1388,13 +1438,16 @@ export function createAppController(root: HTMLElement) {
       yearVariableBudgetCents +
       yearMiscBudgetCents;
 
-    const incomeMinusFoodBudgetCents = effectiveIncomeTotalCents - foodBudgetCents;
+    const incomeMinusFoodBudgetCents =
+      effectiveIncomeTotalCents - foodBudgetCents;
     const incomeMinusGoingOutBudgetCents =
       effectiveIncomeTotalCents - goingOutBudgetCents;
-    const incomeMinusFixedBudgetCents = effectiveIncomeTotalCents - fixedBudgetCents;
+    const incomeMinusFixedBudgetCents =
+      effectiveIncomeTotalCents - fixedBudgetCents;
     const incomeMinusVariableBudgetCents =
       effectiveIncomeTotalCents - variableBudgetCents;
-    const incomeMinusMiscBudgetCents = effectiveIncomeTotalCents - miscBudgetCents;
+    const incomeMinusMiscBudgetCents =
+      effectiveIncomeTotalCents - miscBudgetCents;
     const incomeMinusPlannedBudgetsCents =
       effectiveIncomeTotalCents - monthPlannedBudgetTotalCents;
 
@@ -1455,7 +1508,10 @@ export function createAppController(root: HTMLElement) {
         row.actualCents,
       ]),
     );
-    const budgetBarClass = (budgetCents: number, actualCents: number): string => {
+    const budgetBarClass = (
+      budgetCents: number,
+      actualCents: number,
+    ): string => {
       if (actualCents <= 0) return "bar-positive";
       if (budgetCents <= 0) return "bar-negative";
       return actualCents > budgetCents ? "bar-negative" : "bar-positive";
@@ -1509,11 +1565,13 @@ export function createAppController(root: HTMLElement) {
     );
     const editingFixedTemplate = state.editingFixedTemplateId
       ? state.fixedTemplates.find(
-        (template) => template.id === state.editingFixedTemplateId,
-      )
+          (template) => template.id === state.editingFixedTemplateId,
+        )
       : null;
-    const showUnexportedChangesHint =
-      state.hasImportedBackup && state.hasUnexportedChangesSinceImport;
+    const showUnexportedChangesHint = state.hasUnexportedChanges;
+    const lastBackupFileNameLabel = state.lastBackupFileName
+      ? escapeHtml(state.lastBackupFileName)
+      : "-";
 
     const yearsPanelHtml = `
       <div class="grid">
@@ -1530,11 +1588,11 @@ export function createAppController(root: HTMLElement) {
             Jahr wählen
             <select id="year-select">
               ${state.years
-        .map(
-          (item) =>
-            `<option value="${item.year}" ${item.year === state.selectedYear ? "selected" : ""}>${item.year}</option>`,
-        )
-        .join("")}
+                .map(
+                  (item) =>
+                    `<option value="${item.year}" ${item.year === state.selectedYear ? "selected" : ""}>${item.year}</option>`,
+                )
+                .join("")}
             </select>
           </label>
         </div>
@@ -1562,16 +1620,16 @@ export function createAppController(root: HTMLElement) {
           </thead>
           <tbody>
             ${state.fixedTemplates
-        .map(
-          (template) =>
-            `<tr>
+              .map(
+                (template) =>
+                  `<tr>
                     <td>${template.name}</td>
                     <td>${centsToEuro(template.plannedCents)}</td>
                     <td><button class="btn btn-quiet" data-edit-fixed-template="${template.id}">Bearbeiten</button></td>
                     <td><button class="btn btn-quiet" data-remove-fixed-template="${template.id}">Löschen</button></td>
                   </tr>`,
-        )
-        .join("")}
+              )
+              .join("")}
           </tbody>
         </table>
       </div>
@@ -1596,14 +1654,14 @@ export function createAppController(root: HTMLElement) {
         <div class="app-header inline">
           <h1 class="app-title">Haushaltsbuch (HaBu)</h1>
           <div class="header-actions inline">
-            ${showUnexportedChangesHint ? '<span class="export-warning">Änderungen noch nicht exportiert</span>' : ""}
+            ${showUnexportedChangesHint ? '<span class="export-warning">Änderungen noch nicht gesichert</span>' : ""}
             <label>
               Theme
               <select id="theme-select">
                 ${AVAILABLE_THEMES.map(
-      (theme) =>
-        `<option value="${theme}" ${state.theme === theme ? "selected" : ""}>${themeLabel(theme)}</option>`,
-    ).join("")}
+                  (theme) =>
+                    `<option value="${theme}" ${state.theme === theme ? "selected" : ""}>${themeLabel(theme)}</option>`,
+                ).join("")}
               </select>
             </label>
           </div>
@@ -1614,8 +1672,9 @@ export function createAppController(root: HTMLElement) {
           <button class="btn" id="open-fixed-modal" type="button">Fixe Kosten (zentral)</button>
         </div>
 
-        ${state.topModal
-        ? `
+        ${
+          state.topModal
+            ? `
             <div class="panel-modal-backdrop" id="panel-modal-backdrop" role="dialog" aria-modal="true" aria-label="${modalTitle}">
               <div class="panel-modal card">
                 <div class="panel-modal-header inline">
@@ -1628,7 +1687,8 @@ export function createAppController(root: HTMLElement) {
               </div>
             </div>
           `
-        : ""}
+            : ""
+        }
 
         <section class="card grid">
           <h2>Monat: ${year ? `${monthLabel(state.selectedMonth)} ${year.year}` : "-"}</h2>
@@ -1637,11 +1697,11 @@ export function createAppController(root: HTMLElement) {
               Monat wählen
               <select id="month-select" ${state.selectedYear ? "" : "disabled"}>
                 ${Array.from({ length: 12 }, (_, index) => index + 1)
-        .map(
-          (monthNumber) =>
-            `<option value="${monthNumber}" ${monthNumber === state.selectedMonth ? "selected" : ""}>${monthLabel(monthNumber)}</option>`,
-        )
-        .join("")}
+                  .map(
+                    (monthNumber) =>
+                      `<option value="${monthNumber}" ${monthNumber === state.selectedMonth ? "selected" : ""}>${monthLabel(monthNumber)}</option>`,
+                  )
+                  .join("")}
               </select>
             </label>
           </div>
@@ -1659,22 +1719,28 @@ export function createAppController(root: HTMLElement) {
                 </header>
                 <div class="bar-chart">
                   ${budgetVsActualChartRows
-        .map((row) => {
-          const budgetWidth = percent(row.budgetCents, budgetVsActualMaxCents);
-          const actualWidth = percent(row.actualCents, budgetVsActualMaxCents);
-          const actualClass = budgetBarClass(
-            row.budgetCents,
-            row.actualCents,
-          );
-          const diffCents = row.budgetCents - row.actualCents;
-          const diffClass =
-            diffCents < 0
-              ? "danger"
-              : diffCents > 0
-                ? "budget-under"
-                : "";
+                    .map((row) => {
+                      const budgetWidth = percent(
+                        row.budgetCents,
+                        budgetVsActualMaxCents,
+                      );
+                      const actualWidth = percent(
+                        row.actualCents,
+                        budgetVsActualMaxCents,
+                      );
+                      const actualClass = budgetBarClass(
+                        row.budgetCents,
+                        row.actualCents,
+                      );
+                      const diffCents = row.budgetCents - row.actualCents;
+                      const diffClass =
+                        diffCents < 0
+                          ? "danger"
+                          : diffCents > 0
+                            ? "budget-under"
+                            : "";
 
-          return `
+                      return `
                         <div class="bar-row">
                           <div class="bar-label">${row.label}</div>
                           <div class="bar-track" title="Budget: ${centsToEuro(row.budgetCents)} | Ist: ${centsToEuro(row.actualCents)}">
@@ -1689,8 +1755,8 @@ export function createAppController(root: HTMLElement) {
                           </div>
                         </div>
                       `;
-        })
-        .join("")}
+                    })
+                    .join("")}
                 </div>
               </section>
 
@@ -1705,19 +1771,22 @@ export function createAppController(root: HTMLElement) {
                 </header>
                 <div class="bar-chart">
                   ${incomeExpenseChartRows
-        .map((row) => {
-          const width = percent(Math.abs(row.valueCents), incomeExpenseMaxCents);
-          const sign = row.valueCents >= 0 ? "+" : "";
-          const valueClass =
-            row.label === "Netto"
-              ? row.valueCents < 0
-                ? "danger"
-                : row.valueCents > 0
-                  ? "budget-under"
-                  : ""
-              : "";
+                    .map((row) => {
+                      const width = percent(
+                        Math.abs(row.valueCents),
+                        incomeExpenseMaxCents,
+                      );
+                      const sign = row.valueCents >= 0 ? "+" : "";
+                      const valueClass =
+                        row.label === "Netto"
+                          ? row.valueCents < 0
+                            ? "danger"
+                            : row.valueCents > 0
+                              ? "budget-under"
+                              : ""
+                          : "";
 
-          return `
+                      return `
                         <div class="bar-row">
                           <div class="bar-label">${row.label}</div>
                           <div class="bar-track" title="${centsToEuro(row.valueCents)}">
@@ -1726,8 +1795,8 @@ export function createAppController(root: HTMLElement) {
                           <div class="bar-meta"><span class="${valueClass}">${sign}${centsToEuro(row.valueCents)}</span></div>
                         </div>
                       `;
-        })
-        .join("")}
+                    })
+                    .join("")}
                 </div>
               </section>
 
@@ -1738,26 +1807,28 @@ export function createAppController(root: HTMLElement) {
                     <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ausgaben</span>
                   </div>
                 </header>
-                ${year
-        ? `
+                ${
+                  year
+                    ? `
                     <div class="spark-bars" aria-label="Jahresverlauf Gesamtausgaben">
                       ${yearByMonth
-          .map((row) => {
-            const height = percent(
-              row.summary.totalCents,
-              yearExpenseMaxCents,
-            );
-            return `
+                        .map((row) => {
+                          const height = percent(
+                            row.summary.totalCents,
+                            yearExpenseMaxCents,
+                          );
+                          return `
                             <div class="spark-bar" title="${monthLabel(row.month)}: ${centsToEuro(row.summary.totalCents)}">
                               <div class="spark-bar-fill" style="height:${height}"></div>
                               <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
                             </div>
                           `;
-          })
-          .join("")}
+                        })
+                        .join("")}
                     </div>
                   `
-        : `<p class="muted">Kein Jahr gewählt.</p>`}
+                    : `<p class="muted">Kein Jahr gewählt.</p>`
+                }
               </section>
             </div>
             <div class="eval-grid">
@@ -1923,8 +1994,8 @@ export function createAppController(root: HTMLElement) {
               </thead>
               <tbody>
                 ${yearByMonth
-        .map(
-          (row) => `<tr>
+                  .map(
+                    (row) => `<tr>
                   <td>${monthLabel(row.month)}</td>
                   <td>${centsToEuro(row.summary.foodCents)}</td>
                   <td>${centsToEuro(row.summary.goingOutCents)}</td>
@@ -1933,8 +2004,8 @@ export function createAppController(root: HTMLElement) {
                   <td>${centsToEuro(row.summary.miscCents)}</td>
                   <td>${centsToEuro(row.summary.totalCents)}</td>
                 </tr>`,
-        )
-        .join("")}
+                  )
+                  .join("")}
               </tbody>
             </table>
           </article>
@@ -1957,24 +2028,25 @@ export function createAppController(root: HTMLElement) {
                 <tr><th>Beschreibung</th><th>Betrag (€)</th><th></th></tr>
               </thead>
               <tbody>
-                ${month
-        ? `<tr>
+                ${
+                  month
+                    ? `<tr>
                     <td>Übernahme aus Vormonat</td>
                     <td class="${carryoverClass}">
                       <input class="amount-input" id="carryover-override" type="number" step="0.01" value="${centsToEuroInput(carryoverCents)}" />
                     </td>
                     <td>-</td>
                   </tr>${month.incomes
-          .map(
-            (entry) => `<tr>
+                    .map(
+                      (entry) => `<tr>
                     <td>${entry.description}</td>
                     <td>${centsToEuro(entry.amountCents)}</td>
                     <td><button class="btn btn-quiet" data-remove-income="${entry.id}">Löschen</button></td>
                   </tr>`,
-          )
-          .join("")}`
-        : ""
-      }
+                    )
+                    .join("")}`
+                    : ""
+                }
               </tbody>
             </table>
             <div class="column-overview income-flow-overview">
@@ -2021,20 +2093,21 @@ export function createAppController(root: HTMLElement) {
                   <tr><th>Datum</th><th>Essen (€)</th><th>Ausgehen (€)</th></tr>
                 </thead>
                 <tbody>
-                  ${month
-        ? month.days
-          .map(
-            (
-              day,
-            ) => `<tr class="${day.isoDate === todayIsoDate ? "today-row" : ""}">
+                  ${
+                    month
+                      ? month.days
+                          .map(
+                            (
+                              day,
+                            ) => `<tr class="${day.isoDate === todayIsoDate ? "today-row" : ""}">
                       <td>${new Date(day.isoDate).toLocaleDateString("de-DE", { weekday: "short", year: "numeric", month: "2-digit", day: "2-digit" })}</td>
                       <td><input class="amount-input" data-day-food="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuroInput(day.foodCents)}" /></td>
                       <td><input class="amount-input" data-day-going="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuroInput(day.goingOutCents)}" /></td>
                     </tr>`,
-          )
-          .join("")
-        : ""
-      }
+                          )
+                          .join("")
+                      : ""
+                  }
                 </tbody>
               </table>
             </article>
@@ -2053,19 +2126,20 @@ export function createAppController(root: HTMLElement) {
                   <tr><th>Name</th><th>Geplant (€)</th><th>Ist (€)</th><th>Abweichung (€)</th></tr>
                 </thead>
                 <tbody>
-                ${month
-        ? month.fixedCosts
-          .map(
-            (cost) => `<tr>
+                ${
+                  month
+                    ? month.fixedCosts
+                        .map(
+                          (cost) => `<tr>
                     <td>${cost.name}</td>
                     <td>${centsToEuro(cost.plannedCents)}</td>
                     <td class="${budgetStatusClass(cost.actualCents, cost.plannedCents)}"><input class="amount-input" data-fixed-actual="${cost.id}" type="number" min="0" step="0.01" value="${centsToEuroInput(cost.actualCents)}" /></td>
                     <td class="${budgetStatusClass(cost.actualCents, cost.plannedCents)}">${centsToEuro(cost.actualCents - cost.plannedCents)}</td>
                   </tr>`,
-          )
-          .join("")
-        : ""
-      }
+                        )
+                        .join("")
+                    : ""
+                }
                 </tbody>
               </table>
             </article>
@@ -2089,20 +2163,21 @@ export function createAppController(root: HTMLElement) {
                   <tr><th>Position</th><th>Budget (€)</th><th>Ist (€)</th><th>Abweichung (€)</th><th></th></tr>
                 </thead>
                 <tbody>
-                ${month
-        ? month.variablePositions
-          .map(
-            (position) => `<tr>
+                ${
+                  month
+                    ? month.variablePositions
+                        .map(
+                          (position) => `<tr>
                     <td>${position.name}</td>
                     <td>${centsToEuro(position.budgetCents)}</td>
                     <td class="${budgetStatusClass(position.actualCents, position.budgetCents)}"><input class="amount-input" data-variable-position-actual="${position.id}" type="number" min="0" step="0.01" value="${centsToEuroInput(position.actualCents)}" /></td>
                     <td class="${budgetStatusClass(position.actualCents, position.budgetCents)}">${centsToEuro(position.actualCents - position.budgetCents)}</td>
                     <td><button class="btn btn-quiet" data-remove-variable-position="${position.id}">Löschen</button></td>
                   </tr>`,
-          )
-          .join("")
-        : ""
-      }
+                        )
+                        .join("")
+                    : ""
+                }
                 </tbody>
               </table>
             </article>
@@ -2132,18 +2207,19 @@ export function createAppController(root: HTMLElement) {
                   <tr><th>Beschreibung</th><th>Betrag (€)</th><th></th></tr>
                 </thead>
                 <tbody>
-                ${month
-        ? month.miscCosts
-          .map(
-            (entry) => `<tr>
+                ${
+                  month
+                    ? month.miscCosts
+                        .map(
+                          (entry) => `<tr>
                     <td>${entry.description}</td>
                     <td>${centsToEuro(entry.amountCents)}</td>
                     <td><button class="btn btn-quiet" data-remove-misc="${entry.id}">Löschen</button></td>
                   </tr>`,
-          )
-          .join("")
-        : ""
-      }
+                        )
+                        .join("")
+                    : ""
+                }
                 </tbody>
               </table>
             </article>
@@ -2159,6 +2235,7 @@ export function createAppController(root: HTMLElement) {
               <input id="backup-import" type="file" accept="application/json" />
             </label>
           </div>
+          <p class="muted">Letztes verwendetes Backup: ${lastBackupFileNameLabel}</p>
           <p class="muted">Die Daten bleiben lokal im Browser (IndexedDB). Zusätzlich kannst du Backups als Datei sichern und später importieren.</p>
         </section>
       </div>
@@ -2172,15 +2249,12 @@ export function createAppController(root: HTMLElement) {
   function bindEvents(): void {
     const themeSelect = root.querySelector<HTMLSelectElement>("#theme-select");
 
-    const openYearsModalButton = root.querySelector<HTMLButtonElement>(
-      "#open-years-modal",
-    );
-    const openFixedModalButton = root.querySelector<HTMLButtonElement>(
-      "#open-fixed-modal",
-    );
-    const panelModalCloseButton = root.querySelector<HTMLButtonElement>(
-      "#panel-modal-close",
-    );
+    const openYearsModalButton =
+      root.querySelector<HTMLButtonElement>("#open-years-modal");
+    const openFixedModalButton =
+      root.querySelector<HTMLButtonElement>("#open-fixed-modal");
+    const panelModalCloseButton =
+      root.querySelector<HTMLButtonElement>("#panel-modal-close");
     const panelModalBackdrop = root.querySelector<HTMLDivElement>(
       "#panel-modal-backdrop",
     );
@@ -2407,8 +2481,9 @@ export function createAppController(root: HTMLElement) {
     const addIncomeButton =
       root.querySelector<HTMLButtonElement>("#add-income");
 
-    const carryoverOverrideInput =
-      root.querySelector<HTMLInputElement>("#carryover-override");
+    const carryoverOverrideInput = root.querySelector<HTMLInputElement>(
+      "#carryover-override",
+    );
     carryoverOverrideInput?.addEventListener("click", (event) => {
       event.preventDefault();
       carryoverOverrideInput.blur();
