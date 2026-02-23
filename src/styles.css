@@ -436,6 +436,42 @@ body {
   justify-content: flex-end;
 }
 
+.top-shortcuts {
+  display: flex;
+  justify-content: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+body.panel-modal-open {
+  overflow: hidden;
+}
+
+.panel-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: var(--focus-ring);
+}
+
+.panel-modal {
+  width: min(96vw, 1100px);
+  max-height: min(86vh, 900px);
+  overflow: auto;
+}
+
+.panel-modal-header {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-modal-body {
+  margin-top: 0.6rem;
+}
+
 .export-warning {
   display: inline-flex;
   align-items: center;

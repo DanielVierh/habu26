@@ -82,6 +82,7 @@ interface State {
   theme: ThemeName;
   hasImportedBackup: boolean;
   hasUnexportedChangesSinceImport: boolean;
+  topModal: "years" | "fixed" | null;
 }
 
 interface CostSummary {
@@ -118,12 +119,44 @@ export function createAppController(root: HTMLElement) {
     theme: "light",
     hasImportedBackup: false,
     hasUnexportedChangesSinceImport: false,
+    topModal: null,
   };
 
   const THEME_STORAGE_KEY = "habu-theme";
   let toastRoot: HTMLDivElement | null = null;
   let amountModalRoot: HTMLDivElement | null = null;
   let amountModalTarget: HTMLInputElement | null = null;
+  let hasBoundGlobalModalKeys = false;
+
+  function openTopModal(kind: "years" | "fixed"): void {
+    state.topModal = kind;
+    render();
+  }
+
+  function closeTopModal(): void {
+    if (!state.topModal) {
+      return;
+    }
+    state.topModal = null;
+    render();
+  }
+
+  function bindGlobalModalKeysOnce(): void {
+    if (hasBoundGlobalModalKeys) {
+      return;
+    }
+    hasBoundGlobalModalKeys = true;
+    window.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      if (!state.topModal) {
+        return;
+      }
+      event.preventDefault();
+      closeTopModal();
+    });
+  }
 
   function ensureToastRoot(): HTMLDivElement {
     if (toastRoot && document.body.contains(toastRoot)) {
@@ -383,6 +416,7 @@ export function createAppController(root: HTMLElement) {
   async function init(): Promise<void> {
     ensureToastRoot();
     applyTheme(loadTheme());
+    bindGlobalModalKeysOnce();
     const [years, fixed] = await Promise.all([
       listYears(),
       getFixedTemplateState(),
@@ -1481,6 +1515,82 @@ export function createAppController(root: HTMLElement) {
     const showUnexportedChangesHint =
       state.hasImportedBackup && state.hasUnexportedChangesSinceImport;
 
+    const yearsPanelHtml = `
+      <div class="grid">
+        <div class="inline">
+          <label>
+            Neues Jahr
+            <input id="new-year" type="number" min="2000" max="2100" value="${new Date().getFullYear()}" />
+          </label>
+          <button class="btn btn-primary" id="create-year">Jahr anlegen (12 Monate automatisch)</button>
+          <button class="btn btn-danger" id="delete-year" ${state.selectedYear ? "" : "disabled"}>Aktuelles Jahr löschen</button>
+        </div>
+        <div class="inline">
+          <label>
+            Jahr wählen
+            <select id="year-select">
+              ${state.years
+        .map(
+          (item) =>
+            `<option value="${item.year}" ${item.year === state.selectedYear ? "selected" : ""}>${item.year}</option>`,
+        )
+        .join("")}
+            </select>
+          </label>
+        </div>
+        <p class="muted">Neue Monate werden automatisch aus zentralen Fixkosten-Vorlagen gespeist. 30,00€ und mehr zählen als variable Kosten.</p>
+      </div>
+    `;
+
+    const fixedTemplatesPanelHtml = `
+      <div class="grid">
+        <div class="inline">
+          <label>
+            Name
+            <input id="fixed-template-name" type="text" placeholder="z.B. Miete" value="${editingFixedTemplate?.name ?? ""}" />
+          </label>
+          <label>
+            Betrag (€)
+            <input class="amount-input" id="fixed-template-amount" type="number" min="0" step="0.01" value="${editingFixedTemplate ? centsToEuroInput(editingFixedTemplate.plannedCents) : ""}" />
+          </label>
+          <button class="btn btn-primary" id="add-fixed-template">${editingFixedTemplate ? "Änderung speichern" : "Vorlage speichern"}</button>
+          ${editingFixedTemplate ? '<button class="btn btn-quiet" id="cancel-fixed-template-edit">Abbrechen</button>' : ""}
+        </div>
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Geplant (€)</th><th></th><th></th></tr>
+          </thead>
+          <tbody>
+            ${state.fixedTemplates
+        .map(
+          (template) =>
+            `<tr>
+                    <td>${template.name}</td>
+                    <td>${centsToEuro(template.plannedCents)}</td>
+                    <td><button class="btn btn-quiet" data-edit-fixed-template="${template.id}">Bearbeiten</button></td>
+                    <td><button class="btn btn-quiet" data-remove-fixed-template="${template.id}">Löschen</button></td>
+                  </tr>`,
+        )
+        .join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    const modalTitle =
+      state.topModal === "years"
+        ? "Jahre"
+        : state.topModal === "fixed"
+          ? "Fixe Kosten (zentral)"
+          : "";
+
+    const modalBody =
+      state.topModal === "years"
+        ? yearsPanelHtml
+        : state.topModal === "fixed"
+          ? fixedTemplatesPanelHtml
+          : "";
+
     root.innerHTML = `
       <div class="app grid">
         <div class="app-header inline">
@@ -1499,65 +1609,26 @@ export function createAppController(root: HTMLElement) {
           </div>
         </div>
 
-        <section class="card grid">
-          <h2>Jahre</h2>
-          <div class="inline">
-            <label>
-              Neues Jahr
-              <input id="new-year" type="number" min="2000" max="2100" value="${new Date().getFullYear()}" />
-            </label>
-            <button class="btn btn-primary" id="create-year">Jahr anlegen (12 Monate automatisch)</button>
-            <button class="btn btn-danger" id="delete-year" ${state.selectedYear ? "" : "disabled"}>Aktuelles Jahr löschen</button>
-          </div>
-          <div class="inline">
-            <label>
-              Jahr wählen
-              <select id="year-select">
-                ${state.years
-        .map(
-          (item) =>
-            `<option value="${item.year}" ${item.year === state.selectedYear ? "selected" : ""}>${item.year}</option>`,
-        )
-        .join("")}
-              </select>
-            </label>
-          </div>
-          <p class="muted">Neue Monate werden automatisch aus zentralen Fixkosten-Vorlagen gespeist. 30,00€ und mehr zählen als variable Kosten.</p>
-        </section>
+        <div class="top-shortcuts" role="navigation" aria-label="Schnellzugriff">
+          <button class="btn" id="open-years-modal" type="button">Jahre</button>
+          <button class="btn" id="open-fixed-modal" type="button">Fixe Kosten (zentral)</button>
+        </div>
 
-        <section class="card">
-          <h2>Fixe Kosten (zentral)</h2>
-          <div class="inline">
-            <label>
-              Name
-              <input id="fixed-template-name" type="text" placeholder="z.B. Miete" value="${editingFixedTemplate?.name ?? ""}" />
-            </label>
-            <label>
-              Betrag (€)
-              <input class="amount-input" id="fixed-template-amount" type="number" min="0" step="0.01" value="${editingFixedTemplate ? centsToEuroInput(editingFixedTemplate.plannedCents) : ""}" />
-            </label>
-            <button class="btn btn-primary" id="add-fixed-template">${editingFixedTemplate ? "Änderung speichern" : "Vorlage speichern"}</button>
-            ${editingFixedTemplate ? '<button class="btn btn-quiet" id="cancel-fixed-template-edit">Abbrechen</button>' : ""}
-          </div>
-          <table>
-            <thead>
-              <tr><th>Name</th><th>Geplant (€)</th><th></th><th></th></tr>
-            </thead>
-            <tbody>
-              ${state.fixedTemplates
-        .map(
-          (template) =>
-            `<tr>
-                      <td>${template.name}</td>
-                      <td>${centsToEuro(template.plannedCents)}</td>
-                      <td><button class="btn btn-quiet" data-edit-fixed-template="${template.id}">Bearbeiten</button></td>
-                      <td><button class="btn btn-quiet" data-remove-fixed-template="${template.id}">Löschen</button></td>
-                    </tr>`,
-        )
-        .join("")}
-            </tbody>
-          </table>
-        </section>
+        ${state.topModal
+        ? `
+            <div class="panel-modal-backdrop" id="panel-modal-backdrop" role="dialog" aria-modal="true" aria-label="${modalTitle}">
+              <div class="panel-modal card">
+                <div class="panel-modal-header inline">
+                  <h2>${modalTitle}</h2>
+                  <button class="btn btn-quiet" id="panel-modal-close" type="button">Schließen</button>
+                </div>
+                <div class="panel-modal-body">
+                  ${modalBody}
+                </div>
+              </div>
+            </div>
+          `
+        : ""}
 
         <section class="card grid">
           <h2>Monat: ${year ? `${monthLabel(state.selectedMonth)} ${year.year}` : "-"}</h2>
@@ -2093,11 +2164,26 @@ export function createAppController(root: HTMLElement) {
       </div>
     `;
 
+    document.body.classList.toggle("panel-modal-open", Boolean(state.topModal));
+
     bindEvents();
   }
 
   function bindEvents(): void {
     const themeSelect = root.querySelector<HTMLSelectElement>("#theme-select");
+
+    const openYearsModalButton = root.querySelector<HTMLButtonElement>(
+      "#open-years-modal",
+    );
+    const openFixedModalButton = root.querySelector<HTMLButtonElement>(
+      "#open-fixed-modal",
+    );
+    const panelModalCloseButton = root.querySelector<HTMLButtonElement>(
+      "#panel-modal-close",
+    );
+    const panelModalBackdrop = root.querySelector<HTMLDivElement>(
+      "#panel-modal-backdrop",
+    );
     const newYearInput = root.querySelector<HTMLInputElement>("#new-year");
     const createYearButton =
       root.querySelector<HTMLButtonElement>("#create-year");
@@ -2112,6 +2198,30 @@ export function createAppController(root: HTMLElement) {
         applyTheme(selectedTheme);
       }
     });
+
+    openYearsModalButton?.addEventListener("click", () => {
+      openTopModal("years");
+    });
+
+    openFixedModalButton?.addEventListener("click", () => {
+      openTopModal("fixed");
+    });
+
+    panelModalCloseButton?.addEventListener("click", () => {
+      closeTopModal();
+    });
+
+    panelModalBackdrop?.addEventListener("click", (event) => {
+      if (event.target === panelModalBackdrop) {
+        closeTopModal();
+      }
+    });
+
+    if (state.topModal) {
+      window.setTimeout(() => {
+        panelModalCloseButton?.focus();
+      }, 0);
+    }
 
     createYearButton?.addEventListener("click", async () => {
       const yearValue = Number.parseInt(newYearInput?.value ?? "", 10);
