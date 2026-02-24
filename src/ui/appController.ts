@@ -2243,12 +2243,50 @@ export function createAppController(root: HTMLElement) {
                   <th>Variable (€)</th>
                   <th>Sonstige (€)</th>
                   <th>Gesamt (€)</th>
+                  <th>Budget gesamt (€)</th>
+                  <th>Kalkulierter Saldo (€)</th>
                 </tr>
               </thead>
               <tbody>
                 ${yearByMonth
-                  .map(
-                    (row) => `<tr>
+                  .map((row, index, rows) => {
+                    const rowIncomeFlow = year
+                      ? incomeFlowByMonth.get(monthKey(year.year, row.month))
+                      : undefined;
+                    const rowPlannedBudgetCents =
+                      rowIncomeFlow?.plannedBudgetCents ?? 0;
+                    const rowNetCents = rowIncomeFlow?.netCents ?? 0;
+                    const rowNetClass =
+                      rowNetCents < 0
+                        ? "danger"
+                        : rowNetCents > 0
+                          ? "budget-under"
+                          : "";
+                    const previousRow = rows[index - 1];
+                    const previousNetCents =
+                      year && previousRow
+                        ? (incomeFlowByMonth.get(
+                            monthKey(year.year, previousRow.month),
+                          )?.netCents ?? 0)
+                        : null;
+                    const monthDiffCents =
+                      previousNetCents === null
+                        ? null
+                        : rowNetCents - previousNetCents;
+                    const monthDiffLabel =
+                      monthDiffCents === null
+                        ? "(Δ -)"
+                        : `(Δ ${monthDiffCents > 0 ? "+" : ""}${centsToEuro(monthDiffCents)})`;
+                    const monthDiffClass =
+                      monthDiffCents === null
+                        ? "muted"
+                        : monthDiffCents < 0
+                          ? "danger"
+                          : monthDiffCents > 0
+                            ? "budget-under"
+                            : "muted";
+
+                    return `<tr>
                   <td>${monthLabel(row.month)}</td>
                   <td>${centsToEuro(row.summary.foodCents)}</td>
                   <td>${centsToEuro(row.summary.goingOutCents)}</td>
@@ -2256,8 +2294,10 @@ export function createAppController(root: HTMLElement) {
                   <td>${centsToEuro(row.summary.variableCents)}</td>
                   <td>${centsToEuro(row.summary.miscCents)}</td>
                   <td>${centsToEuro(row.summary.totalCents)}</td>
-                </tr>`,
-                  )
+                  <td>${centsToEuro(rowPlannedBudgetCents)}</td>
+                  <td class="${rowNetClass}">${centsToEuro(rowNetCents)} <span class="${monthDiffClass}">${monthDiffLabel}</span></td>
+                </tr>`;
+                  })
                   .join("")}
               </tbody>
             </table>
