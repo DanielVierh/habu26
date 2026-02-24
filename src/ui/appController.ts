@@ -1879,30 +1879,32 @@ export function createAppController(root: HTMLElement) {
         }
 
         <section class="card grid">
-          <h2>Monat: ${year ? `${monthLabel(state.selectedMonth)} ${year.year}` : "-"}</h2>
-          <div class="inline">
-            <label>
-              Jahr wählen
-              <select id="year-select">
-                ${state.years
-                  .map(
-                    (item) =>
-                      `<option value="${item.year}" ${item.year === state.selectedYear ? "selected" : ""}>${item.year}</option>`,
-                  )
-                  .join("")}
-              </select>
-            </label>
-            <label>
-              Monat wählen
-              <select id="month-select" ${state.selectedYear ? "" : "disabled"}>
-                ${Array.from({ length: 12 }, (_, index) => index + 1)
-                  .map(
-                    (monthNumber) =>
-                      `<option value="${monthNumber}" ${monthNumber === state.selectedMonth ? "selected" : ""}>${monthLabel(monthNumber)}</option>`,
-                  )
-                  .join("")}
-              </select>
-            </label>
+          <div class="month-year-sticky">
+            <h2>Monat: ${year ? `${monthLabel(state.selectedMonth)} ${year.year}` : "-"}</h2>
+            <div class="inline">
+              <label>
+                Jahr wählen
+                <select id="year-select">
+                  ${state.years
+                    .map(
+                      (item) =>
+                        `<option value="${item.year}" ${item.year === state.selectedYear ? "selected" : ""}>${item.year}</option>`,
+                    )
+                    .join("")}
+                </select>
+              </label>
+              <label>
+                Monat wählen
+                <select id="month-select" ${state.selectedYear ? "" : "disabled"}>
+                  ${Array.from({ length: 12 }, (_, index) => index + 1)
+                    .map(
+                      (monthNumber) =>
+                        `<option value="${monthNumber}" ${monthNumber === state.selectedMonth ? "selected" : ""}>${monthLabel(monthNumber)}</option>`,
+                    )
+                    .join("")}
+                </select>
+              </label>
+            </div>
           </div>
 
           <article class="card">

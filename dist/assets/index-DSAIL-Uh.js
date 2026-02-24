@@ -108,20 +108,22 @@
           `:""}
 
         <section class="card grid">
-          <h2>Monat: ${c?`${En(x.selectedMonth)} ${c.year}`:"-"}</h2>
-          <div class="inline">
-            <label>
-              Jahr wählen
-              <select id="year-select">
-                ${x.years.map(C=>`<option value="${C.year}" ${C.year===x.selectedYear?"selected":""}>${C.year}</option>`).join("")}
-              </select>
-            </label>
-            <label>
-              Monat wählen
-              <select id="month-select" ${x.selectedYear?"":"disabled"}>
-                ${Array.from({length:12},(C,L)=>L+1).map(C=>`<option value="${C}" ${C===x.selectedMonth?"selected":""}>${En(C)}</option>`).join("")}
-              </select>
-            </label>
+          <div class="month-year-sticky">
+            <h2>Monat: ${c?`${En(x.selectedMonth)} ${c.year}`:"-"}</h2>
+            <div class="inline">
+              <label>
+                Jahr wählen
+                <select id="year-select">
+                  ${x.years.map(C=>`<option value="${C.year}" ${C.year===x.selectedYear?"selected":""}>${C.year}</option>`).join("")}
+                </select>
+              </label>
+              <label>
+                Monat wählen
+                <select id="month-select" ${x.selectedYear?"":"disabled"}>
+                  ${Array.from({length:12},(C,L)=>L+1).map(C=>`<option value="${C}" ${C===x.selectedMonth?"selected":""}>${En(C)}</option>`).join("")}
+                </select>
+              </label>
+            </div>
           </div>
 
           <article class="card">

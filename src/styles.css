@@ -620,6 +620,19 @@ h3 {
   gap: 1.1rem;
 }
 
+.month-year-sticky {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 20;
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  backdrop-filter: blur(8px);
+}
+
 .grid-2 {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
@@ -1375,6 +1388,11 @@ tbody tr:nth-child(even) {
 
   .chart-grid {
     grid-template-columns: 1fr;
+  }
+
+  .month-year-sticky {
+    top: 0.3rem;
+    padding: 0.5rem 0.55rem;
   }
 
   .chart-tile {
