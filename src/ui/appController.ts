@@ -1313,7 +1313,8 @@ export function createAppController(root: HTMLElement) {
     amountCents: number,
   ): Promise<void> {
     const month = getSelectedMonthBook();
-    if (!month) {
+    const selectedYear = state.selectedYear;
+    if (!month || !selectedYear) {
       return;
     }
     const cleanDescription = description.trim();
@@ -1328,6 +1329,30 @@ export function createAppController(root: HTMLElement) {
 
     const entry: ExpenseEntry = createExpense(cleanDescription, amountCents);
     month.incomes = [entry, ...month.incomes];
+
+    const shouldApplyFuture = confirm(
+      "Soll dieses Einkommen auch für zukünftige Monate hinzugefügt werden?",
+    );
+
+    if (shouldApplyFuture) {
+      const currentKey = monthKey(selectedYear, state.selectedMonth);
+      state.years.forEach((yearItem) => {
+        yearItem.months.forEach((monthItem) => {
+          if (monthKey(yearItem.year, monthItem.month) <= currentKey) {
+            return;
+          }
+          monthItem.incomes = [
+            createExpense(cleanDescription, amountCents),
+            ...monthItem.incomes,
+          ];
+        });
+      });
+
+      await persistAllYears();
+      showToast("Einkommen wurde für zukünftige Monate hinzugefügt.");
+      render();
+      return;
+    }
 
     await persistSelectedYear();
     showToast("Einkommen wurde hinzugefügt.");
