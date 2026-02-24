@@ -1453,6 +1453,16 @@ export function createAppController(root: HTMLElement) {
       const pct = (clamped / max) * 100;
       return `${Math.min(100, Math.max(0, pct)).toFixed(1)}%`;
     };
+    const budgetUsagePercent = (
+      actualCents: number,
+      budgetCents: number,
+    ): number => {
+      if (budgetCents <= 0) {
+        return actualCents > 0 ? 100 : 0;
+      }
+      const pct = (Math.max(0, actualCents) / budgetCents) * 100;
+      return Math.max(0, pct);
+    };
 
     const budgetVsActualChartRows = [
       {
@@ -1733,6 +1743,33 @@ export function createAppController(root: HTMLElement) {
                             <span class="muted">I ${centsToEuro(row.actualCents)}</span>
                             <span class="${diffClass}">${diffCents >= 0 ? "+" : ""}${centsToEuro(diffCents)}</span>
                           </div>
+                        </div>
+                      `;
+                    })
+                    .join("")}
+                </div>
+                <div class="circle-chart-container" aria-label="Budgetnutzung je Kategorie">
+                  ${budgetVsActualChartRows
+                    .map((row) => {
+                      const usagePercentRaw = budgetUsagePercent(
+                        row.actualCents,
+                        row.budgetCents,
+                      );
+                      const ringPercent = Math.min(100, usagePercentRaw);
+                      const usageText = `${usagePercentRaw.toFixed(0)}%`;
+                      const ringClass =
+                        budgetBarClass(row.budgetCents, row.actualCents) ===
+                        "bar-negative"
+                          ? "circle-negative"
+                          : "circle-positive";
+
+                      return `
+                        <div class="circle-chart-item">
+                          <div class="circle-chart-ring ${ringClass}" style="--circle-pct:${ringPercent.toFixed(1)}%" title="${row.label}: ${centsToEuro(row.actualCents)} von ${centsToEuro(row.budgetCents)}">
+                            <span class="circle-chart-value">${usageText}</span>
+                          </div>
+                          <div class="circle-chart-label">${row.label}</div>
+                          <div class="circle-chart-meta muted">${centsToEuro(row.actualCents)} / ${centsToEuro(row.budgetCents)}</div>
                         </div>
                       `;
                     })

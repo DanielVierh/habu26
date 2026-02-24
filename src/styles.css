@@ -872,6 +872,75 @@ tbody tr:nth-child(even) {
   gap: 0.55rem;
 }
 
+.circle-chart-container {
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--table-border);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.65rem;
+}
+
+.circle-chart-item {
+  display: grid;
+  justify-items: center;
+  gap: 0.22rem;
+  padding: 0.4rem 0.35rem;
+  border: 1px solid var(--table-border);
+  border-radius: 10px;
+  background: var(--table-stripe);
+}
+
+.circle-chart-ring {
+  --circle-pct: 0%;
+  width: 66px;
+  height: 66px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(
+    var(--budget-under) var(--circle-pct),
+    var(--table-border) 0
+  );
+  position: relative;
+}
+
+.circle-chart-ring::after {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 999px;
+  background: var(--card-bg);
+  border: 1px solid var(--table-border);
+}
+
+.circle-chart-ring.circle-negative {
+  background: conic-gradient(
+    var(--danger-2) var(--circle-pct),
+    var(--table-border) 0
+  );
+}
+
+.circle-chart-value {
+  position: relative;
+  z-index: 1;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
+.circle-chart-label {
+  font-size: 0.82rem;
+  color: var(--text-soft);
+}
+
+.circle-chart-meta {
+  font-size: 0.74rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 .bar-row {
   display: grid;
   grid-template-columns: minmax(92px, 1fr) 2fr minmax(140px, 1.2fr);
@@ -954,7 +1023,7 @@ tbody tr:nth-child(even) {
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 0.3rem;
   align-items: end;
-  height: 140px;
+  height: 440px;
   padding: 0.35rem 0.2rem;
   border: 1px solid var(--table-border);
   border-radius: 12px;
@@ -1205,6 +1274,10 @@ tbody tr:nth-child(even) {
 
   .bar-meta {
     justify-content: flex-start;
+  }
+
+  .circle-chart-container {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .spark-bars {
