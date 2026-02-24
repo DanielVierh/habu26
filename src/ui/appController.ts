@@ -1198,7 +1198,8 @@ export function createAppController(root: HTMLElement) {
     budgetCents: number,
   ): Promise<void> {
     const month = getSelectedMonthBook();
-    if (!month) {
+    const selectedYear = state.selectedYear;
+    if (!month || !selectedYear) {
       return;
     }
     const cleanName = name.trim();
@@ -1220,6 +1221,39 @@ export function createAppController(root: HTMLElement) {
       (sum, position) => sum + position.budgetCents,
       0,
     );
+
+    const shouldApplyFuture = confirm(
+      "Soll diese variable Position auch für zukünftige Monate hinzugefügt werden?",
+    );
+
+    if (shouldApplyFuture) {
+      const currentKey = monthKey(selectedYear, state.selectedMonth);
+      state.years.forEach((yearItem) => {
+        yearItem.months.forEach((monthItem) => {
+          if (monthKey(yearItem.year, monthItem.month) <= currentKey) {
+            return;
+          }
+          monthItem.variablePositions = [
+            {
+              id: createId("varpos"),
+              name: cleanName,
+              budgetCents,
+              actualCents: 0,
+            },
+            ...monthItem.variablePositions,
+          ];
+          monthItem.variableBudgetCents = monthItem.variablePositions.reduce(
+            (sum, position) => sum + position.budgetCents,
+            0,
+          );
+        });
+      });
+
+      await persistAllYears();
+      showToast("Variable Position wurde für zukünftige Monate hinzugefügt.");
+      render();
+      return;
+    }
 
     await persistSelectedYear();
     showToast("Variable Position wurde hinzugefügt.");
@@ -1272,7 +1306,8 @@ export function createAppController(root: HTMLElement) {
     amountCents: number,
   ): Promise<void> {
     const month = getSelectedMonthBook();
-    if (!month) {
+    const selectedYear = state.selectedYear;
+    if (!month || !selectedYear) {
       return;
     }
     const cleanDescription = description.trim();
@@ -1287,6 +1322,31 @@ export function createAppController(root: HTMLElement) {
 
     const entry: ExpenseEntry = createExpense(cleanDescription, amountCents);
     month.miscCosts = [entry, ...month.miscCosts];
+
+    const shouldApplyFuture = confirm(
+      "Soll diese Sonstige Position auch für zukünftige Monate hinzugefügt werden?",
+    );
+
+    if (shouldApplyFuture) {
+      const currentKey = monthKey(selectedYear, state.selectedMonth);
+      state.years.forEach((yearItem) => {
+        yearItem.months.forEach((monthItem) => {
+          if (monthKey(yearItem.year, monthItem.month) <= currentKey) {
+            return;
+          }
+          monthItem.miscCosts = [
+            createExpense(cleanDescription, amountCents),
+            ...monthItem.miscCosts,
+          ];
+        });
+      });
+
+      await persistAllYears();
+      showToast("Sonstige Position wurde für zukünftige Monate hinzugefügt.");
+      render();
+      return;
+    }
+
     await persistSelectedYear();
     showToast("Sonstige Position wurde hinzugefügt.");
     render();
@@ -1724,20 +1784,6 @@ export function createAppController(root: HTMLElement) {
             <input id="new-year" type="number" min="2000" max="2100" value="${new Date().getFullYear()}" />
           </label>
           <button class="btn btn-primary" id="create-year">Jahr anlegen (12 Monate automatisch)</button>
-          <button class="btn btn-danger" id="delete-year" ${state.selectedYear ? "" : "disabled"}>Aktuelles Jahr löschen</button>
-        </div>
-        <div class="inline">
-          <label>
-            Jahr wählen
-            <select id="year-select">
-              ${state.years
-                .map(
-                  (item) =>
-                    `<option value="${item.year}" ${item.year === state.selectedYear ? "selected" : ""}>${item.year}</option>`,
-                )
-                .join("")}
-            </select>
-          </label>
         </div>
       </div>
     `;
@@ -1779,7 +1825,7 @@ export function createAppController(root: HTMLElement) {
 
     const modalTitle =
       state.topModal === "years"
-        ? "Jahre"
+        ? "Jahr hinzufügen"
         : state.topModal === "fixed"
           ? "Fixe Kosten (zentral)"
           : "";
@@ -1810,7 +1856,7 @@ export function createAppController(root: HTMLElement) {
         </div>
 
         <div class="top-shortcuts" role="navigation" aria-label="Schnellzugriff">
-          <button class="btn" id="open-years-modal" type="button">Jahre</button>
+          <button class="btn" id="open-years-modal" type="button">Jahr hinzufügen</button>
           <button class="btn" id="open-fixed-modal" type="button">Fixe Kosten (zentral)</button>
         </div>
 
@@ -1835,6 +1881,17 @@ export function createAppController(root: HTMLElement) {
         <section class="card grid">
           <h2>Monat: ${year ? `${monthLabel(state.selectedMonth)} ${year.year}` : "-"}</h2>
           <div class="inline">
+            <label>
+              Jahr wählen
+              <select id="year-select">
+                ${state.years
+                  .map(
+                    (item) =>
+                      `<option value="${item.year}" ${item.year === state.selectedYear ? "selected" : ""}>${item.year}</option>`,
+                  )
+                  .join("")}
+              </select>
+            </label>
             <label>
               Monat wählen
               <select id="month-select" ${state.selectedYear ? "" : "disabled"}>
@@ -2405,8 +2462,6 @@ export function createAppController(root: HTMLElement) {
     const newYearInput = root.querySelector<HTMLInputElement>("#new-year");
     const createYearButton =
       root.querySelector<HTMLButtonElement>("#create-year");
-    const deleteYearButton =
-      root.querySelector<HTMLButtonElement>("#delete-year");
     const yearSelect = root.querySelector<HTMLSelectElement>("#year-select");
     const monthSelect = root.querySelector<HTMLSelectElement>("#month-select");
 
@@ -2448,10 +2503,6 @@ export function createAppController(root: HTMLElement) {
         return;
       }
       await createYear(yearValue);
-    });
-
-    deleteYearButton?.addEventListener("click", async () => {
-      await removeCurrentYear();
     });
 
     yearSelect?.addEventListener("change", () => {
