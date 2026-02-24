@@ -143,8 +143,8 @@
 
 :root[data-theme="mint-light"] {
   --bg-main: #f5fff5;
-  --bg-accent-1: #e3e7ff;
-  --bg-accent-2: #ecefff;
+  --bg-accent-1: rgba(120, 224, 120, 0.462);
+  --bg-accent-2: rgba(120, 224, 120, 0.462);
   --text-main: #1b2344;
   --text-muted: #4b5b95;
   --text-soft: #3b4a7e;
