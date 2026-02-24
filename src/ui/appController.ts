@@ -1438,29 +1438,9 @@ export function createAppController(root: HTMLElement) {
       yearVariableBudgetCents +
       yearMiscBudgetCents;
 
-    const incomeMinusFoodBudgetCents =
-      effectiveIncomeTotalCents - foodBudgetCents;
-    const incomeMinusGoingOutBudgetCents =
-      effectiveIncomeTotalCents - goingOutBudgetCents;
-    const incomeMinusFixedBudgetCents =
-      effectiveIncomeTotalCents - fixedBudgetCents;
-    const incomeMinusVariableBudgetCents =
-      effectiveIncomeTotalCents - variableBudgetCents;
-    const incomeMinusMiscBudgetCents =
-      effectiveIncomeTotalCents - miscBudgetCents;
     const incomeMinusPlannedBudgetsCents =
       effectiveIncomeTotalCents - monthPlannedBudgetTotalCents;
 
-    const yearIncomeMinusFoodBudgetCents =
-      yearEffectiveIncomeTotalCents - yearFoodBudgetCents;
-    const yearIncomeMinusGoingOutBudgetCents =
-      yearEffectiveIncomeTotalCents - yearGoingOutBudgetCents;
-    const yearIncomeMinusFixedBudgetCents =
-      yearEffectiveIncomeTotalCents - yearFixedBudgetCents;
-    const yearIncomeMinusVariableBudgetCents =
-      yearEffectiveIncomeTotalCents - yearVariableBudgetCents;
-    const yearIncomeMinusMiscBudgetCents =
-      yearEffectiveIncomeTotalCents - yearMiscBudgetCents;
     const yearIncomeMinusPlannedBudgetsCents =
       yearEffectiveIncomeTotalCents - yearPlannedBudgetTotalCents;
 
@@ -1940,31 +1920,6 @@ export function createAppController(root: HTMLElement) {
                   <div class="eval-tile-columns"><span>Monat</span><span>Jahr</span></div>
                 </header>
                 <div class="eval-rows">
-                  <div class="eval-row">
-                    <div class="eval-label">Einkommen - Essen Budget</div>
-                    <div class="eval-value ${incomeBudgetBalanceClass(incomeMinusFoodBudgetCents)}">${centsToEuro(incomeMinusFoodBudgetCents)}</div>
-                    <div class="eval-value ${incomeBudgetBalanceClass(yearIncomeMinusFoodBudgetCents)}">${centsToEuro(yearIncomeMinusFoodBudgetCents)}</div>
-                  </div>
-                  <div class="eval-row">
-                    <div class="eval-label">Einkommen - Ausgehen Budget</div>
-                    <div class="eval-value ${incomeBudgetBalanceClass(incomeMinusGoingOutBudgetCents)}">${centsToEuro(incomeMinusGoingOutBudgetCents)}</div>
-                    <div class="eval-value ${incomeBudgetBalanceClass(yearIncomeMinusGoingOutBudgetCents)}">${centsToEuro(yearIncomeMinusGoingOutBudgetCents)}</div>
-                  </div>
-                  <div class="eval-row">
-                    <div class="eval-label">Einkommen - Fixkosten Budget</div>
-                    <div class="eval-value ${incomeBudgetBalanceClass(incomeMinusFixedBudgetCents)}">${centsToEuro(incomeMinusFixedBudgetCents)}</div>
-                    <div class="eval-value ${incomeBudgetBalanceClass(yearIncomeMinusFixedBudgetCents)}">${centsToEuro(yearIncomeMinusFixedBudgetCents)}</div>
-                  </div>
-                  <div class="eval-row">
-                    <div class="eval-label">Einkommen - Variable Budget</div>
-                    <div class="eval-value ${incomeBudgetBalanceClass(incomeMinusVariableBudgetCents)}">${centsToEuro(incomeMinusVariableBudgetCents)}</div>
-                    <div class="eval-value ${incomeBudgetBalanceClass(yearIncomeMinusVariableBudgetCents)}">${centsToEuro(yearIncomeMinusVariableBudgetCents)}</div>
-                  </div>
-                  <div class="eval-row">
-                    <div class="eval-label">Einkommen - Sonstige Budget</div>
-                    <div class="eval-value ${incomeBudgetBalanceClass(incomeMinusMiscBudgetCents)}">${centsToEuro(incomeMinusMiscBudgetCents)}</div>
-                    <div class="eval-value ${incomeBudgetBalanceClass(yearIncomeMinusMiscBudgetCents)}">${centsToEuro(yearIncomeMinusMiscBudgetCents)}</div>
-                  </div>
                   <div class="eval-row eval-strong">
                     <div class="eval-label">Einkommen - Budgets gesamt</div>
                     <div class="eval-value ${incomeBudgetBalanceClass(incomeMinusPlannedBudgetsCents)}">${centsToEuro(incomeMinusPlannedBudgetsCents)}</div>
