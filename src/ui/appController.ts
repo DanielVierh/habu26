@@ -46,6 +46,19 @@ const AVAILABLE_THEMES = [
 
 type ThemeName = (typeof AVAILABLE_THEMES)[number];
 
+type BudgetFieldName =
+  | "foodBudgetCents"
+  | "goingOutBudgetCents"
+  | "fixedBudgetCents"
+  | "miscBudgetCents";
+
+interface RecurringBudgetDefaults {
+  foodBudgetCents: number | null;
+  goingOutBudgetCents: number | null;
+  fixedBudgetCents: number | null;
+  miscBudgetCents: number | null;
+}
+
 function isThemeName(value: string): value is ThemeName {
   return (AVAILABLE_THEMES as readonly string[]).includes(value);
 }
@@ -100,6 +113,7 @@ interface State {
   hasUnexportedChanges: boolean;
   lastBackupFileName: string | null;
   topModal: "years" | "fixed" | null;
+  recurringBudgetDefaults: RecurringBudgetDefaults;
 }
 
 interface CostSummary {
@@ -137,11 +151,19 @@ export function createAppController(root: HTMLElement) {
     hasUnexportedChanges: false,
     lastBackupFileName: null,
     topModal: null,
+    recurringBudgetDefaults: {
+      foodBudgetCents: null,
+      goingOutBudgetCents: null,
+      fixedBudgetCents: null,
+      miscBudgetCents: null,
+    },
   };
 
   const THEME_STORAGE_KEY = "habu-theme";
   const BACKUP_DIRTY_STORAGE_KEY = "habu-backup-dirty";
   const LAST_BACKUP_FILENAME_STORAGE_KEY = "habu-last-backup-filename";
+  const RECURRING_BUDGET_DEFAULTS_STORAGE_KEY =
+    "habu-recurring-budget-defaults";
   let toastRoot: HTMLDivElement | null = null;
   let amountModalRoot: HTMLDivElement | null = null;
   let amountModalTarget: HTMLInputElement | null = null;
@@ -458,6 +480,62 @@ export function createAppController(root: HTMLElement) {
     return trimmed ? trimmed : null;
   }
 
+  function loadRecurringBudgetDefaults(): RecurringBudgetDefaults {
+    const fallback: RecurringBudgetDefaults = {
+      foodBudgetCents: null,
+      goingOutBudgetCents: null,
+      fixedBudgetCents: null,
+      miscBudgetCents: null,
+    };
+
+    const raw = localStorage.getItem(RECURRING_BUDGET_DEFAULTS_STORAGE_KEY);
+    if (!raw) {
+      return fallback;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as Partial<RecurringBudgetDefaults>;
+      const toCentsOrNull = (value: unknown): number | null =>
+        typeof value === "number" && Number.isFinite(value) ? value : null;
+
+      return {
+        foodBudgetCents: toCentsOrNull(parsed.foodBudgetCents),
+        goingOutBudgetCents: toCentsOrNull(parsed.goingOutBudgetCents),
+        fixedBudgetCents: toCentsOrNull(parsed.fixedBudgetCents),
+        miscBudgetCents: toCentsOrNull(parsed.miscBudgetCents),
+      };
+    } catch {
+      return fallback;
+    }
+  }
+
+  function saveRecurringBudgetDefaults(
+    defaults: RecurringBudgetDefaults,
+  ): void {
+    localStorage.setItem(
+      RECURRING_BUDGET_DEFAULTS_STORAGE_KEY,
+      JSON.stringify(defaults),
+    );
+  }
+
+  function applyRecurringBudgetDefaultsToYear(year: YearBook): void {
+    year.months.forEach((month) => {
+      const { recurringBudgetDefaults } = state;
+      if (typeof recurringBudgetDefaults.foodBudgetCents === "number") {
+        month.foodBudgetCents = recurringBudgetDefaults.foodBudgetCents;
+      }
+      if (typeof recurringBudgetDefaults.goingOutBudgetCents === "number") {
+        month.goingOutBudgetCents = recurringBudgetDefaults.goingOutBudgetCents;
+      }
+      if (typeof recurringBudgetDefaults.fixedBudgetCents === "number") {
+        month.fixedBudgetCents = recurringBudgetDefaults.fixedBudgetCents;
+      }
+      if (typeof recurringBudgetDefaults.miscBudgetCents === "number") {
+        month.miscBudgetCents = recurringBudgetDefaults.miscBudgetCents;
+      }
+    });
+  }
+
   function saveLastBackupFileName(fileName: string): void {
     const trimmed = fileName.trim();
     if (!trimmed) {
@@ -471,6 +549,7 @@ export function createAppController(root: HTMLElement) {
     applyTheme(loadTheme());
     state.hasUnexportedChanges = loadHasUnexportedChanges();
     state.lastBackupFileName = loadLastBackupFileName();
+    state.recurringBudgetDefaults = loadRecurringBudgetDefaults();
     bindGlobalModalKeysOnce();
     const [years, fixed] = await Promise.all([
       listYears(),
@@ -726,6 +805,7 @@ export function createAppController(root: HTMLElement) {
       state.fixedTemplates,
       state.fixedTemplateVersion,
     );
+    applyRecurringBudgetDefaultsToYear(created);
     await saveYear(created);
     state.years = await listYears();
     markDataChanged();
@@ -1020,43 +1100,79 @@ export function createAppController(root: HTMLElement) {
   }
 
   async function updateMonthlyFixedBudget(amountCents: number): Promise<void> {
-    const month = getSelectedMonthBook();
-    if (!month) {
-      return;
-    }
-    month.fixedBudgetCents = amountCents;
-    await persistSelectedYear();
-    render();
+    await updateMonthlyBudgetWithPrompt(
+      "fixedBudgetCents",
+      amountCents,
+      "Fixkosten",
+    );
   }
 
   async function updateMonthlyFoodBudget(amountCents: number): Promise<void> {
-    const month = getSelectedMonthBook();
-    if (!month) {
-      return;
-    }
-    month.foodBudgetCents = amountCents;
-    await persistSelectedYear();
-    render();
+    await updateMonthlyBudgetWithPrompt(
+      "foodBudgetCents",
+      amountCents,
+      "Essen",
+    );
   }
 
   async function updateMonthlyGoingOutBudget(
     amountCents: number,
   ): Promise<void> {
-    const month = getSelectedMonthBook();
-    if (!month) {
-      return;
-    }
-    month.goingOutBudgetCents = amountCents;
-    await persistSelectedYear();
-    render();
+    await updateMonthlyBudgetWithPrompt(
+      "goingOutBudgetCents",
+      amountCents,
+      "Ausgehen",
+    );
   }
 
   async function updateMonthlyMiscBudget(amountCents: number): Promise<void> {
+    await updateMonthlyBudgetWithPrompt(
+      "miscBudgetCents",
+      amountCents,
+      "Sonstiges",
+    );
+  }
+
+  async function updateMonthlyBudgetWithPrompt(
+    budgetField: BudgetFieldName,
+    amountCents: number,
+    label: string,
+  ): Promise<void> {
     const month = getSelectedMonthBook();
-    if (!month) {
+    const selectedYear = state.selectedYear;
+    if (!month || !selectedYear) {
       return;
     }
-    month.miscBudgetCents = amountCents;
+
+    if (month[budgetField] === amountCents) {
+      return;
+    }
+
+    month[budgetField] = amountCents;
+
+    const shouldApplyFuture = confirm(
+      `Soll das Budget "${label}" auch für zukünftige Monate übernommen werden?`,
+    );
+
+    if (shouldApplyFuture) {
+      const currentKey = monthKey(selectedYear, state.selectedMonth);
+      state.years.forEach((yearItem) => {
+        yearItem.months.forEach((monthItem) => {
+          if (monthKey(yearItem.year, monthItem.month) <= currentKey) {
+            return;
+          }
+          monthItem[budgetField] = amountCents;
+        });
+      });
+
+      state.recurringBudgetDefaults[budgetField] = amountCents;
+      saveRecurringBudgetDefaults(state.recurringBudgetDefaults);
+      await persistAllYears();
+      showToast(`Budget "${label}" wurde für zukünftige Monate übernommen.`);
+      render();
+      return;
+    }
+
     await persistSelectedYear();
     render();
   }
