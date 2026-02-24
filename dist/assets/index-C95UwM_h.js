@@ -53,7 +53,6 @@
             </select>
           </label>
         </div>
-        <p class="muted">Neue Monate werden automatisch aus zentralen Fixkosten-Vorlagen gespeist. 30,00€ und mehr zählen als variable Kosten.</p>
       </div>
     `,In=`
       <div class="grid">
