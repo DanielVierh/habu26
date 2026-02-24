@@ -2349,15 +2349,22 @@ export function createAppController(root: HTMLElement) {
                   ${
                     month
                       ? month.days
-                          .map(
-                            (
-                              day,
-                            ) => `<tr class="${day.isoDate === todayIsoDate ? "today-row" : ""}">
+                          .map((day) => {
+                            const hasFoodAmount = day.foodCents > 0;
+                            const hasGoingOutAmount = day.goingOutCents > 0;
+                            const rowClass =
+                              `${day.isoDate === todayIsoDate ? "today-row" : ""} ${hasFoodAmount || hasGoingOutAmount ? "day-has-entry" : ""}`.trim();
+                            const foodInputClass =
+                              `amount-input ${hasFoodAmount ? "day-input-has-value" : ""}`.trim();
+                            const goingInputClass =
+                              `amount-input ${hasGoingOutAmount ? "day-input-has-value" : ""}`.trim();
+
+                            return `<tr class="${rowClass}">
                       <td>${new Date(day.isoDate).toLocaleDateString("de-DE", { weekday: "short", year: "numeric", month: "2-digit", day: "2-digit" })}</td>
-                      <td><input class="amount-input" data-day-food="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuroInput(day.foodCents)}" /></td>
-                      <td><input class="amount-input" data-day-going="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuroInput(day.goingOutCents)}" /></td>
-                    </tr>`,
-                          )
+                      <td><input class="${foodInputClass}" data-day-food="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuroInput(day.foodCents)}" /></td>
+                      <td><input class="${goingInputClass}" data-day-going="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuroInput(day.goingOutCents)}" /></td>
+                    </tr>`;
+                          })
                           .join("")
                       : ""
                   }

@@ -844,6 +844,25 @@ tbody tr:nth-child(even) {
   background: var(--focus-ring);
 }
 
+.daily-table .day-has-entry td {
+  background: var(--table-head);
+}
+
+.daily-table .day-has-entry td:first-child {
+  font-weight: 700;
+}
+
+.daily-table .today-row.day-has-entry td {
+  background: var(--focus-ring);
+}
+
+.daily-table .day-input-has-value {
+  border-color: var(--budget-under);
+  background: var(--table-head);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+  font-weight: 700;
+}
+
 .amount-input {
   max-width: 64px;
   width: 64px;
