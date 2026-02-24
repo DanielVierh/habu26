@@ -1284,9 +1284,21 @@ export function createAppController(root: HTMLElement) {
     }
 
     const month = getSelectedMonthBook();
-    if (!month) {
+    const selectedYear = state.selectedYear;
+    if (!month || !selectedYear) {
       return;
     }
+
+    const targetPosition = month.variablePositions.find(
+      (position) => position.id === positionId,
+    );
+    if (!targetPosition) {
+      return;
+    }
+
+    const shouldApplyFuture = confirm(
+      "Soll das Löschen auch für zukünftige Monate gelten?",
+    );
 
     month.variablePositions = month.variablePositions.filter(
       (position) => position.id !== positionId,
@@ -1295,6 +1307,35 @@ export function createAppController(root: HTMLElement) {
       (sum, position) => sum + position.budgetCents,
       0,
     );
+
+    if (shouldApplyFuture) {
+      const currentKey = monthKey(selectedYear, state.selectedMonth);
+      state.years.forEach((yearItem) => {
+        yearItem.months.forEach((monthItem) => {
+          if (monthKey(yearItem.year, monthItem.month) <= currentKey) {
+            return;
+          }
+          monthItem.variablePositions = monthItem.variablePositions.filter(
+            (position) =>
+              !(
+                position.name === targetPosition.name &&
+                position.budgetCents === targetPosition.budgetCents
+              ),
+          );
+          monthItem.variableBudgetCents = monthItem.variablePositions.reduce(
+            (sum, position) => sum + position.budgetCents,
+            0,
+          );
+        });
+      });
+
+      await persistAllYears();
+      showToast(
+        "Variable Position wurde auch in zukünftigen Monaten gelöscht.",
+      );
+      render();
+      return;
+    }
 
     await persistSelectedYear();
     showToast("Variable Position wurde gelöscht.");
@@ -1426,10 +1467,45 @@ export function createAppController(root: HTMLElement) {
     }
 
     const month = getSelectedMonthBook();
-    if (!month) {
+    const selectedYear = state.selectedYear;
+    if (!month || !selectedYear) {
       return;
     }
+
+    const targetIncome = month.incomes.find((entry) => entry.id === incomeId);
+    if (!targetIncome) {
+      return;
+    }
+
+    const shouldApplyFuture = confirm(
+      "Soll das Löschen auch für zukünftige Monate gelten?",
+    );
+
     month.incomes = month.incomes.filter((entry) => entry.id !== incomeId);
+
+    if (shouldApplyFuture) {
+      const currentKey = monthKey(selectedYear, state.selectedMonth);
+      state.years.forEach((yearItem) => {
+        yearItem.months.forEach((monthItem) => {
+          if (monthKey(yearItem.year, monthItem.month) <= currentKey) {
+            return;
+          }
+          monthItem.incomes = monthItem.incomes.filter(
+            (entry) =>
+              !(
+                entry.description === targetIncome.description &&
+                entry.amountCents === targetIncome.amountCents
+              ),
+          );
+        });
+      });
+
+      await persistAllYears();
+      showToast("Einkommen wurde auch in zukünftigen Monaten gelöscht.");
+      render();
+      return;
+    }
+
     await persistSelectedYear();
     showToast("Einkommen wurde gelöscht.");
     render();
