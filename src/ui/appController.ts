@@ -30,6 +30,7 @@ const AVAILABLE_THEMES = [
   "forest",
   "sage-light",
   "mint-light",
+  "pine-light",
   "pine-dark",
   "midnight",
   "graphite",
@@ -61,6 +62,8 @@ function themeLabel(theme: ThemeName): string {
       return "Sage Light";
     case "mint-light":
       return "Mint Light";
+    case "pine-light":
+      return "Pine Light";
     case "pine-dark":
       return "Pine Dark";
     case "midnight":
