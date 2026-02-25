@@ -114,7 +114,9 @@ interface State {
   theme: ThemeName;
   hasUnexportedChanges: boolean;
   lastBackupFileName: string | null;
-  topModal: "years" | "fixed" | null;
+  topModal: "years" | "fixed" | "dashboard" | null;
+  dashboardTab: "year" | "all";
+  dashboardYear: number | null;
   recurringBudgetDefaults: RecurringBudgetDefaults;
 }
 
@@ -153,6 +155,8 @@ export function createAppController(root: HTMLElement) {
     hasUnexportedChanges: false,
     lastBackupFileName: null,
     topModal: null,
+    dashboardTab: "year",
+    dashboardYear: null,
     recurringBudgetDefaults: {
       foodBudgetCents: null,
       goingOutBudgetCents: null,
@@ -172,7 +176,19 @@ export function createAppController(root: HTMLElement) {
   let amountModalTarget: HTMLInputElement | null = null;
   let hasBoundGlobalModalKeys = false;
 
-  function openTopModal(kind: "years" | "fixed"): void {
+  function openTopModal(kind: "years" | "fixed" | "dashboard"): void {
+    if (kind === "dashboard") {
+      const sortedYears = state.years
+        .slice()
+        .sort((left, right) => right.year - left.year);
+      const hasDashboardYear = sortedYears.some(
+        (year) => year.year === state.dashboardYear,
+      );
+      if (!hasDashboardYear) {
+        state.dashboardYear =
+          state.selectedYear ?? sortedYears[0]?.year ?? null;
+      }
+    }
     state.topModal = kind;
     render();
   }
@@ -716,6 +732,86 @@ export function createAppController(root: HTMLElement) {
         month: monthItem.month,
         summary: summarizeMonth(monthItem),
       }));
+  }
+
+  function summarizeYearBudgetByCategory(year: YearBook): {
+    foodCents: number;
+    goingOutCents: number;
+    fixedCents: number;
+    variableCents: number;
+    miscCents: number;
+    totalCents: number;
+  } {
+    const foodCents = year.months.reduce(
+      (sum, monthItem) => sum + (monthItem.foodBudgetCents ?? 0),
+      0,
+    );
+    const goingOutCents = year.months.reduce(
+      (sum, monthItem) => sum + (monthItem.goingOutBudgetCents ?? 0),
+      0,
+    );
+    const fixedCents = year.months.reduce(
+      (sum, monthItem) =>
+        sum +
+        (monthItem.fixedBudgetCents ??
+          monthItem.fixedCosts.reduce(
+            (fixedSum, entry) => fixedSum + entry.plannedCents,
+            0,
+          )),
+      0,
+    );
+    const variableCents = year.months.reduce(
+      (sum, monthItem) =>
+        sum +
+        (monthItem.variableBudgetCents ??
+          monthItem.variablePositions.reduce(
+            (positionSum, position) => positionSum + position.budgetCents,
+            0,
+          )),
+      0,
+    );
+    const miscCents = year.months.reduce(
+      (sum, monthItem) => sum + (monthItem.miscBudgetCents ?? 0),
+      0,
+    );
+
+    return {
+      foodCents,
+      goingOutCents,
+      fixedCents,
+      variableCents,
+      miscCents,
+      totalCents:
+        foodCents + goingOutCents + fixedCents + variableCents + miscCents,
+    };
+  }
+
+  function summarizeRecordedIncomeCents(year: YearBook): number {
+    return year.months.reduce(
+      (sum, monthItem) =>
+        sum +
+        monthItem.incomes.reduce(
+          (monthSum, entry) => monthSum + entry.amountCents,
+          0,
+        ),
+      0,
+    );
+  }
+
+  function getYearOpeningCarryoverCents(
+    year: YearBook,
+    incomeFlowByMonth: Map<number, IncomeFlowSummary>,
+  ): number {
+    const firstMonth = year.months
+      .slice()
+      .sort((left, right) => left.month - right.month)[0];
+    if (!firstMonth) {
+      return 0;
+    }
+    return (
+      incomeFlowByMonth.get(monthKey(year.year, firstMonth.month))
+        ?.carriedFromPreviousCents ?? 0
+    );
   }
 
   function summarizeIncomeFlowByMonth(): Map<number, IncomeFlowSummary> {
@@ -1848,6 +1944,604 @@ export function createAppController(root: HTMLElement) {
     const lastBackupFileNameLabel = state.lastBackupFileName
       ? escapeHtml(state.lastBackupFileName)
       : "-";
+    const emptyCostSummary: CostSummary = {
+      foodCents: 0,
+      goingOutCents: 0,
+      fixedCents: 0,
+      variableCents: 0,
+      miscCents: 0,
+      totalCents: 0,
+    };
+
+    const sortedYears = state.years
+      .slice()
+      .sort((left, right) => left.year - right.year);
+    const dashboardYearNumber = sortedYears.some(
+      (item) => item.year === state.dashboardYear,
+    )
+      ? state.dashboardYear
+      : (state.selectedYear ??
+        sortedYears[sortedYears.length - 1]?.year ??
+        null);
+    const dashboardYearBook =
+      typeof dashboardYearNumber === "number"
+        ? sortedYears.find((item) => item.year === dashboardYearNumber)
+        : undefined;
+    const dashboardYearMonths = dashboardYearBook
+      ? dashboardYearBook.months
+          .slice()
+          .sort((left, right) => left.month - right.month)
+      : [];
+    const dashboardYearSummary = dashboardYearBook
+      ? summarizeYear(dashboardYearBook)
+      : emptyCostSummary;
+    const dashboardYearBudgetTotals = dashboardYearBook
+      ? summarizeYearBudgetByCategory(dashboardYearBook)
+      : {
+          foodCents: 0,
+          goingOutCents: 0,
+          fixedCents: 0,
+          variableCents: 0,
+          miscCents: 0,
+          totalCents: 0,
+        };
+    const dashboardYearRecordedIncomeCents = dashboardYearBook
+      ? summarizeRecordedIncomeCents(dashboardYearBook)
+      : 0;
+    const dashboardYearOpeningCarryoverCents = dashboardYearBook
+      ? getYearOpeningCarryoverCents(dashboardYearBook, incomeFlowByMonth)
+      : 0;
+    const dashboardYearEffectiveIncomeCents =
+      dashboardYearRecordedIncomeCents + dashboardYearOpeningCarryoverCents;
+    const dashboardYearPlannedBudgetTotalCents = dashboardYearBook
+      ? dashboardYearBook.months.reduce(
+          (sum, monthItem) => sum + summarizePlannedBudgetsCents(monthItem),
+          0,
+        )
+      : 0;
+    const dashboardYearPlannedNetCents =
+      dashboardYearEffectiveIncomeCents - dashboardYearPlannedBudgetTotalCents;
+    const dashboardYearActualNetCents =
+      dashboardYearEffectiveIncomeCents - dashboardYearSummary.totalCents;
+    const dashboardYearCategoryRows = [
+      {
+        label: "Essen",
+        budgetCents: dashboardYearBudgetTotals.foodCents,
+        actualCents: dashboardYearSummary.foodCents,
+      },
+      {
+        label: "Ausgehen",
+        budgetCents: dashboardYearBudgetTotals.goingOutCents,
+        actualCents: dashboardYearSummary.goingOutCents,
+      },
+      {
+        label: "Fixkosten",
+        budgetCents: dashboardYearBudgetTotals.fixedCents,
+        actualCents: dashboardYearSummary.fixedCents,
+      },
+      {
+        label: "Variable",
+        budgetCents: dashboardYearBudgetTotals.variableCents,
+        actualCents: dashboardYearSummary.variableCents,
+      },
+      {
+        label: "Sonstige",
+        budgetCents: dashboardYearBudgetTotals.miscCents,
+        actualCents: dashboardYearSummary.miscCents,
+      },
+    ];
+    const dashboardYearMonthlyRows = dashboardYearMonths.map((monthItem) => {
+      const monthFlow = dashboardYearBook
+        ? incomeFlowByMonth.get(
+            monthKey(dashboardYearBook.year, monthItem.month),
+          )
+        : undefined;
+      const monthRecordedIncomeCents = monthItem.incomes.reduce(
+        (sum, entry) => sum + entry.amountCents,
+        0,
+      );
+      const monthEffectiveIncomeCents =
+        monthFlow?.effectiveIncomeCents ?? monthRecordedIncomeCents;
+      const monthPlannedBudgetCents =
+        monthFlow?.plannedBudgetCents ??
+        summarizePlannedBudgetsCents(monthItem);
+      const monthActualCostCents = summarizeMonth(monthItem).totalCents;
+      const monthPlannedNetCents =
+        monthEffectiveIncomeCents - monthPlannedBudgetCents;
+      const monthActualNetCents =
+        monthEffectiveIncomeCents - monthActualCostCents;
+
+      return {
+        month: monthItem.month,
+        effectiveIncomeCents: monthEffectiveIncomeCents,
+        plannedBudgetCents: monthPlannedBudgetCents,
+        actualCostCents: monthActualCostCents,
+        plannedNetCents: monthPlannedNetCents,
+        actualNetCents: monthActualNetCents,
+      };
+    });
+    const dashboardYearExpenseMaxCents = Math.max(
+      1,
+      ...dashboardYearMonthlyRows.map((row) => row.actualCostCents),
+    );
+    const dashboardYearMonthlyNetMaxCents = Math.max(
+      1,
+      ...dashboardYearMonthlyRows.flatMap((row) => [
+        Math.abs(row.plannedNetCents),
+        Math.abs(row.actualNetCents),
+      ]),
+    );
+
+    const allYearsBudgetTotals = sortedYears.reduce(
+      (acc, yearItem) => {
+        const budget = summarizeYearBudgetByCategory(yearItem);
+        return {
+          foodCents: acc.foodCents + budget.foodCents,
+          goingOutCents: acc.goingOutCents + budget.goingOutCents,
+          fixedCents: acc.fixedCents + budget.fixedCents,
+          variableCents: acc.variableCents + budget.variableCents,
+          miscCents: acc.miscCents + budget.miscCents,
+          totalCents: acc.totalCents + budget.totalCents,
+        };
+      },
+      {
+        foodCents: 0,
+        goingOutCents: 0,
+        fixedCents: 0,
+        variableCents: 0,
+        miscCents: 0,
+        totalCents: 0,
+      },
+    );
+    const allYearsActualTotals = sortedYears.reduce(
+      (acc, yearItem) => {
+        const summary = summarizeYear(yearItem);
+        return {
+          foodCents: acc.foodCents + summary.foodCents,
+          goingOutCents: acc.goingOutCents + summary.goingOutCents,
+          fixedCents: acc.fixedCents + summary.fixedCents,
+          variableCents: acc.variableCents + summary.variableCents,
+          miscCents: acc.miscCents + summary.miscCents,
+          totalCents: acc.totalCents + summary.totalCents,
+        };
+      },
+      {
+        foodCents: 0,
+        goingOutCents: 0,
+        fixedCents: 0,
+        variableCents: 0,
+        miscCents: 0,
+        totalCents: 0,
+      },
+    );
+    const allYearsRecordedIncomeCents = sortedYears.reduce(
+      (sum, yearItem) => sum + summarizeRecordedIncomeCents(yearItem),
+      0,
+    );
+    const allYearsOpeningCarryoverCents = sortedYears[0]
+      ? getYearOpeningCarryoverCents(sortedYears[0], incomeFlowByMonth)
+      : 0;
+    const allYearsEffectiveIncomeCents =
+      allYearsRecordedIncomeCents + allYearsOpeningCarryoverCents;
+    const allYearsPlannedNetCents =
+      allYearsEffectiveIncomeCents - allYearsBudgetTotals.totalCents;
+    const allYearsActualNetCents =
+      allYearsEffectiveIncomeCents - allYearsActualTotals.totalCents;
+    const allYearsCategoryRows = [
+      {
+        label: "Essen",
+        budgetCents: allYearsBudgetTotals.foodCents,
+        actualCents: allYearsActualTotals.foodCents,
+      },
+      {
+        label: "Ausgehen",
+        budgetCents: allYearsBudgetTotals.goingOutCents,
+        actualCents: allYearsActualTotals.goingOutCents,
+      },
+      {
+        label: "Fixkosten",
+        budgetCents: allYearsBudgetTotals.fixedCents,
+        actualCents: allYearsActualTotals.fixedCents,
+      },
+      {
+        label: "Variable",
+        budgetCents: allYearsBudgetTotals.variableCents,
+        actualCents: allYearsActualTotals.variableCents,
+      },
+      {
+        label: "Sonstige",
+        budgetCents: allYearsBudgetTotals.miscCents,
+        actualCents: allYearsActualTotals.miscCents,
+      },
+    ];
+    const allYearsCategoryMaxCents = Math.max(
+      1,
+      ...allYearsCategoryRows.flatMap((row) => [
+        row.budgetCents,
+        row.actualCents,
+      ]),
+    );
+    const allYearsRows = sortedYears.map((yearItem) => {
+      const summary = summarizeYear(yearItem);
+      const budget = summarizeYearBudgetByCategory(yearItem);
+      const recordedIncomeCents = summarizeRecordedIncomeCents(yearItem);
+      const openingCarryoverCents = getYearOpeningCarryoverCents(
+        yearItem,
+        incomeFlowByMonth,
+      );
+      const effectiveIncomeCents = recordedIncomeCents + openingCarryoverCents;
+
+      return {
+        year: yearItem.year,
+        budgetTotalCents: budget.totalCents,
+        actualTotalCents: summary.totalCents,
+        effectiveIncomeCents,
+        plannedNetCents: effectiveIncomeCents - budget.totalCents,
+        actualNetCents: effectiveIncomeCents - summary.totalCents,
+      };
+    });
+    const allYearsNetMaxCents = Math.max(
+      1,
+      ...allYearsRows.flatMap((row) => [
+        Math.abs(row.plannedNetCents),
+        Math.abs(row.actualNetCents),
+      ]),
+    );
+    const allYearsExpenseMaxCents = Math.max(
+      1,
+      ...allYearsRows.map((row) => row.actualTotalCents),
+    );
+
+    const dashboardPanelHtml = `
+      <div class="grid">
+        <div class="inline" role="tablist" aria-label="Dashboard Ansichten">
+          <button class="btn ${state.dashboardTab === "year" ? "btn-primary" : "btn-quiet"}" id="dashboard-tab-year" data-dashboard-tab="year" type="button">Jahr im Detail</button>
+          <button class="btn ${state.dashboardTab === "all" ? "btn-primary" : "btn-quiet"}" id="dashboard-tab-all" data-dashboard-tab="all" type="button">Alle Jahre</button>
+        </div>
+
+        ${
+          sortedYears.length === 0
+            ? '<p class="muted">Noch keine Jahre vorhanden. Lege zuerst ein Jahr an.</p>'
+            : state.dashboardTab === "year"
+              ? `
+              <div class="inline">
+                <label>
+                  Jahr
+                  <select id="dashboard-year-select">
+                    ${sortedYears
+                      .map(
+                        (item) =>
+                          `<option value="${item.year}" ${item.year === dashboardYearNumber ? "selected" : ""}>${item.year}</option>`,
+                      )
+                      .join("")}
+                  </select>
+                </label>
+              </div>
+
+              <div class="eval-grid">
+                <section class="eval-tile">
+                  <header class="eval-tile-header">
+                    <h4>Kennzahlen ${dashboardYearBook?.year ?? ""}</h4>
+                    <div class="eval-tile-columns"><span>Wert</span><span></span></div>
+                  </header>
+                  <div class="eval-rows">
+                    <div class="eval-row"><div class="eval-label">Einkommen effektiv</div><div class="eval-value">${centsToEuro(dashboardYearEffectiveIncomeCents)}</div><div class="eval-value"></div></div>
+                    <div class="eval-row"><div class="eval-label">Budget gesamt</div><div class="eval-value">${centsToEuro(dashboardYearPlannedBudgetTotalCents)}</div><div class="eval-value"></div></div>
+                    <div class="eval-row"><div class="eval-label">Ausgaben gesamt</div><div class="eval-value">${centsToEuro(dashboardYearSummary.totalCents)}</div><div class="eval-value"></div></div>
+                    <div class="eval-row eval-strong"><div class="eval-label">Saldo (gegen Budget)</div><div class="eval-value ${incomeBudgetBalanceClass(dashboardYearPlannedNetCents)}">${centsToEuro(dashboardYearPlannedNetCents)}</div><div class="eval-value"></div></div>
+                    <div class="eval-row eval-strong"><div class="eval-label">Saldo (gegen Ist)</div><div class="eval-value ${incomeBudgetBalanceClass(dashboardYearActualNetCents)}">${centsToEuro(dashboardYearActualNetCents)}</div><div class="eval-value"></div></div>
+                  </div>
+                </section>
+              </div>
+
+              <div class="chart-grid">
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Budget vs. Ist nach Kategorie (Jahr)</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-budget"></span>Budget</span>
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-actual"></span>Ist</span>
+                    </div>
+                  </header>
+                  <div class="circle-chart-container" aria-label="Budgetnutzung je Kategorie (Jahr)">
+                    ${dashboardYearCategoryRows
+                      .map((row) => {
+                        const usagePercentRaw = budgetUsagePercent(
+                          row.actualCents,
+                          row.budgetCents,
+                        );
+                        const ringPercent = Math.min(100, usagePercentRaw);
+                        const usageText = `${usagePercentRaw.toFixed(0)}%`;
+                        const diffCents = row.budgetCents - row.actualCents;
+                        const diffClass =
+                          diffCents < 0
+                            ? "danger"
+                            : diffCents > 0
+                              ? "budget-under"
+                              : "";
+                        const ringClass =
+                          budgetBarClass(row.budgetCents, row.actualCents) ===
+                          "bar-negative"
+                            ? "circle-negative"
+                            : "circle-positive";
+
+                        return `
+                          <div class="circle-chart-item">
+                            <div class="circle-chart-ring ${ringClass}" style="--circle-pct:${ringPercent.toFixed(1)}%" title="${row.label}: ${centsToEuro(row.actualCents)} von ${centsToEuro(row.budgetCents)}">
+                              <span class="circle-chart-value">${usageText}</span>
+                            </div>
+                            <div class="circle-chart-label">${row.label}</div>
+                            <div class="circle-chart-meta muted">B ${centsToEuro(row.budgetCents)} / I ${centsToEuro(row.actualCents)}</div>
+                            <div class="circle-chart-meta ${diffClass}">${diffCents >= 0 ? "+" : ""}${centsToEuro(diffCents)}</div>
+                          </div>
+                        `;
+                      })
+                      .join("")}
+                  </div>
+                </section>
+
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Monatliche Ausgaben (Jahr)</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist-Kosten</span>
+                    </div>
+                  </header>
+                  <div class="spark-bars">
+                    ${dashboardYearMonthlyRows
+                      .map((row) => {
+                        const height = percent(
+                          row.actualCostCents,
+                          dashboardYearExpenseMaxCents,
+                        );
+                        return `
+                          <div class="spark-bar" title="${monthLabel(row.month)}: ${centsToEuro(row.actualCostCents)}">
+                            <div class="spark-bar-fill" style="height:${height}"></div>
+                            <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
+                          </div>
+                        `;
+                      })
+                      .join("")}
+                  </div>
+                </section>
+
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Saldo pro Monat (Budget vs. Ist)</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-budget"></span>Budget-Saldo</span>
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-net"></span>Ist-Saldo</span>
+                    </div>
+                  </header>
+                  <div class="bar-chart">
+                    ${dashboardYearMonthlyRows
+                      .map((row) => {
+                        const plannedWidth = percent(
+                          Math.abs(row.plannedNetCents),
+                          dashboardYearMonthlyNetMaxCents,
+                        );
+                        const actualWidth = percent(
+                          Math.abs(row.actualNetCents),
+                          dashboardYearMonthlyNetMaxCents,
+                        );
+                        const plannedClass =
+                          row.plannedNetCents < 0
+                            ? "bar-negative"
+                            : "bar-positive";
+                        const actualClass =
+                          row.actualNetCents < 0
+                            ? "bar-negative"
+                            : "bar-positive";
+
+                        return `
+                          <div class="bar-row">
+                            <div class="bar-label">${monthLabel(row.month)}</div>
+                            <div class="bar-track" title="Budget-Saldo: ${centsToEuro(row.plannedNetCents)} | Ist-Saldo: ${centsToEuro(row.actualNetCents)}">
+                              <div class="bar ${plannedClass}" style="width:${plannedWidth}; opacity: 0.35;"></div>
+                              <div class="bar ${actualClass}" style="width:${actualWidth}"></div>
+                            </div>
+                            <div class="bar-meta">
+                              <span class="${incomeBudgetBalanceClass(row.plannedNetCents)}">B ${centsToEuro(row.plannedNetCents)}</span>
+                              <span class="${incomeBudgetBalanceClass(row.actualNetCents)}">I ${centsToEuro(row.actualNetCents)}</span>
+                            </div>
+                          </div>
+                        `;
+                      })
+                      .join("")}
+                  </div>
+                </section>
+              </div>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>Monat</th>
+                    <th>Einkommen effektiv (€)</th>
+                    <th>Budget gesamt (€)</th>
+                    <th>Ist-Kosten (€)</th>
+                    <th>Saldo Budget (€)</th>
+                    <th>Saldo Ist (€)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${dashboardYearMonthlyRows
+                    .map(
+                      (row) => `<tr>
+                        <td>${monthLabel(row.month)}</td>
+                        <td>${centsToEuro(row.effectiveIncomeCents)}</td>
+                        <td>${centsToEuro(row.plannedBudgetCents)}</td>
+                        <td>${centsToEuro(row.actualCostCents)}</td>
+                        <td class="${incomeBudgetBalanceClass(row.plannedNetCents)}">${centsToEuro(row.plannedNetCents)}</td>
+                        <td class="${incomeBudgetBalanceClass(row.actualNetCents)}">${centsToEuro(row.actualNetCents)}</td>
+                      </tr>`,
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            `
+              : `
+              <div class="eval-grid">
+                <section class="eval-tile">
+                  <header class="eval-tile-header">
+                    <h4>Kennzahlen über alle Jahre</h4>
+                    <div class="eval-tile-columns"><span>Wert</span><span></span></div>
+                  </header>
+                  <div class="eval-rows">
+                    <div class="eval-row"><div class="eval-label">Einkommen effektiv</div><div class="eval-value">${centsToEuro(allYearsEffectiveIncomeCents)}</div><div class="eval-value"></div></div>
+                    <div class="eval-row"><div class="eval-label">Budget gesamt</div><div class="eval-value">${centsToEuro(allYearsBudgetTotals.totalCents)}</div><div class="eval-value"></div></div>
+                    <div class="eval-row"><div class="eval-label">Ausgaben gesamt</div><div class="eval-value">${centsToEuro(allYearsActualTotals.totalCents)}</div><div class="eval-value"></div></div>
+                    <div class="eval-row eval-strong"><div class="eval-label">Saldo (gegen Budget)</div><div class="eval-value ${incomeBudgetBalanceClass(allYearsPlannedNetCents)}">${centsToEuro(allYearsPlannedNetCents)}</div><div class="eval-value"></div></div>
+                    <div class="eval-row eval-strong"><div class="eval-label">Saldo (gegen Ist)</div><div class="eval-value ${incomeBudgetBalanceClass(allYearsActualNetCents)}">${centsToEuro(allYearsActualNetCents)}</div><div class="eval-value"></div></div>
+                  </div>
+                </section>
+              </div>
+
+              <div class="chart-grid">
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Kategorien über alle Jahre</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-budget"></span>Budget</span>
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-actual"></span>Ist</span>
+                    </div>
+                  </header>
+                  <div class="bar-chart">
+                    ${allYearsCategoryRows
+                      .map((row) => {
+                        const budgetWidth = percent(
+                          row.budgetCents,
+                          allYearsCategoryMaxCents,
+                        );
+                        const actualWidth = percent(
+                          row.actualCents,
+                          allYearsCategoryMaxCents,
+                        );
+                        const actualClass = budgetBarClass(
+                          row.budgetCents,
+                          row.actualCents,
+                        );
+
+                        return `
+                          <div class="bar-row">
+                            <div class="bar-label">${row.label}</div>
+                            <div class="bar-track" title="Budget: ${centsToEuro(row.budgetCents)} | Ist: ${centsToEuro(row.actualCents)}">
+                              <div class="bar bar-budget" style="width:${budgetWidth}"></div>
+                              <div class="bar-marker" style="left:${budgetWidth}" aria-hidden="true"></div>
+                              <div class="bar bar-actual ${actualClass}" style="width:${actualWidth}"></div>
+                            </div>
+                            <div class="bar-meta">
+                              <span class="muted">B ${centsToEuro(row.budgetCents)}</span>
+                              <span class="muted">I ${centsToEuro(row.actualCents)}</span>
+                            </div>
+                          </div>
+                        `;
+                      })
+                      .join("")}
+                  </div>
+                </section>
+
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Ist-Kosten pro Jahr</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist-Kosten</span>
+                    </div>
+                  </header>
+                  <div class="spark-bars" style="grid-template-columns: repeat(${Math.max(allYearsRows.length, 1)}, minmax(0, 1fr));">
+                    ${allYearsRows
+                      .map((row) => {
+                        const height = percent(
+                          row.actualTotalCents,
+                          allYearsExpenseMaxCents,
+                        );
+                        return `
+                          <div class="spark-bar" title="${row.year}: ${centsToEuro(row.actualTotalCents)}">
+                            <div class="spark-bar-fill" style="height:${height}"></div>
+                            <div class="spark-bar-label">${row.year}</div>
+                          </div>
+                        `;
+                      })
+                      .join("")}
+                  </div>
+                </section>
+
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Saldo pro Jahr (Budget vs. Ist)</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-budget"></span>Budget-Saldo</span>
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-net"></span>Ist-Saldo</span>
+                    </div>
+                  </header>
+                  <div class="bar-chart">
+                    ${allYearsRows
+                      .map((row) => {
+                        const plannedWidth = percent(
+                          Math.abs(row.plannedNetCents),
+                          allYearsNetMaxCents,
+                        );
+                        const actualWidth = percent(
+                          Math.abs(row.actualNetCents),
+                          allYearsNetMaxCents,
+                        );
+                        const plannedClass =
+                          row.plannedNetCents < 0
+                            ? "bar-negative"
+                            : "bar-positive";
+                        const actualClass =
+                          row.actualNetCents < 0
+                            ? "bar-negative"
+                            : "bar-positive";
+
+                        return `
+                          <div class="bar-row">
+                            <div class="bar-label">${row.year}</div>
+                            <div class="bar-track" title="Budget-Saldo: ${centsToEuro(row.plannedNetCents)} | Ist-Saldo: ${centsToEuro(row.actualNetCents)}">
+                              <div class="bar ${plannedClass}" style="width:${plannedWidth}; opacity: 0.35;"></div>
+                              <div class="bar ${actualClass}" style="width:${actualWidth}"></div>
+                            </div>
+                            <div class="bar-meta">
+                              <span class="${incomeBudgetBalanceClass(row.plannedNetCents)}">B ${centsToEuro(row.plannedNetCents)}</span>
+                              <span class="${incomeBudgetBalanceClass(row.actualNetCents)}">I ${centsToEuro(row.actualNetCents)}</span>
+                            </div>
+                          </div>
+                        `;
+                      })
+                      .join("")}
+                  </div>
+                </section>
+              </div>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>Jahr</th>
+                    <th>Einkommen effektiv (€)</th>
+                    <th>Budget gesamt (€)</th>
+                    <th>Ist-Kosten (€)</th>
+                    <th>Saldo Budget (€)</th>
+                    <th>Saldo Ist (€)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${allYearsRows
+                    .map(
+                      (row) => `<tr>
+                        <td>${row.year}</td>
+                        <td>${centsToEuro(row.effectiveIncomeCents)}</td>
+                        <td>${centsToEuro(row.budgetTotalCents)}</td>
+                        <td>${centsToEuro(row.actualTotalCents)}</td>
+                        <td class="${incomeBudgetBalanceClass(row.plannedNetCents)}">${centsToEuro(row.plannedNetCents)}</td>
+                        <td class="${incomeBudgetBalanceClass(row.actualNetCents)}">${centsToEuro(row.actualNetCents)}</td>
+                      </tr>`,
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            `
+        }
+      </div>
+    `;
 
     const yearsPanelHtml = `
       <div class="grid">
@@ -1901,14 +2595,18 @@ export function createAppController(root: HTMLElement) {
         ? "Jahr hinzufügen"
         : state.topModal === "fixed"
           ? "Fixe Kosten (zentral)"
-          : "";
+          : state.topModal === "dashboard"
+            ? "Dashboard"
+            : "";
 
     const modalBody =
       state.topModal === "years"
         ? yearsPanelHtml
         : state.topModal === "fixed"
           ? fixedTemplatesPanelHtml
-          : "";
+          : state.topModal === "dashboard"
+            ? dashboardPanelHtml
+            : "";
 
     root.innerHTML = `
       <div class="app grid">
@@ -1931,6 +2629,7 @@ export function createAppController(root: HTMLElement) {
         <div class="top-shortcuts" role="navigation" aria-label="Schnellzugriff">
           <button class="btn" id="open-years-modal" type="button">Jahr hinzufügen</button>
           <button class="btn" id="open-fixed-modal" type="button">Fixe Kosten (zentral)</button>
+          <button class="btn" id="open-dashboard-modal" type="button">Dashboard</button>
         </div>
 
         ${
@@ -2596,6 +3295,9 @@ export function createAppController(root: HTMLElement) {
       root.querySelector<HTMLButtonElement>("#open-years-modal");
     const openFixedModalButton =
       root.querySelector<HTMLButtonElement>("#open-fixed-modal");
+    const openDashboardModalButton = root.querySelector<HTMLButtonElement>(
+      "#open-dashboard-modal",
+    );
     const panelModalCloseButton =
       root.querySelector<HTMLButtonElement>("#panel-modal-close");
     const panelModalBackdrop = root.querySelector<HTMLDivElement>(
@@ -2620,6 +3322,35 @@ export function createAppController(root: HTMLElement) {
 
     openFixedModalButton?.addEventListener("click", () => {
       openTopModal("fixed");
+    });
+
+    openDashboardModalButton?.addEventListener("click", () => {
+      openTopModal("dashboard");
+    });
+
+    root
+      .querySelectorAll<HTMLButtonElement>("[data-dashboard-tab]")
+      .forEach((button) => {
+        button.addEventListener("click", () => {
+          const tab = button.dataset.dashboardTab;
+          if (tab !== "year" && tab !== "all") {
+            return;
+          }
+          state.dashboardTab = tab;
+          render();
+        });
+      });
+
+    const dashboardYearSelect = root.querySelector<HTMLSelectElement>(
+      "#dashboard-year-select",
+    );
+    dashboardYearSelect?.addEventListener("change", () => {
+      const selectedYearValue = Number.parseInt(dashboardYearSelect.value, 10);
+      if (!Number.isInteger(selectedYearValue)) {
+        return;
+      }
+      state.dashboardYear = selectedYearValue;
+      render();
     });
 
     panelModalCloseButton?.addEventListener("click", () => {
