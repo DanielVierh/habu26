@@ -2630,6 +2630,10 @@ export function createAppController(root: HTMLElement) {
           <button class="btn" id="open-years-modal" type="button">Jahr hinzufügen</button>
           <button class="btn" id="open-fixed-modal" type="button">Fixe Kosten (zentral)</button>
           <button class="btn" id="open-dashboard-modal" type="button">Dashboard</button>
+          <a class="btn" href="#section-food-costs">Essen</a>
+          <a class="btn" href="#section-fixed-costs">Fixe</a>
+          <a class="btn" href="#section-variable-costs">Variable</a>
+          <a class="btn" href="#section-misc-costs">Sonstige</a>
         </div>
 
         ${
@@ -3087,7 +3091,7 @@ export function createAppController(root: HTMLElement) {
           </article>
 
           <div class="grid grid-4">
-            <article class="card">
+            <article class="card" id="section-food-costs">
               <h3>1) Essen, Trinken und Ausgehen (Tage)</h3>
               <div class="column-overview-grid">
                 ${renderColumnOverview(foodBudgetCents, monthSummary.foodCents)}
@@ -3148,7 +3152,7 @@ export function createAppController(root: HTMLElement) {
               </table>
             </article>
 
-            <article class="card">
+            <article class="card" id="section-fixed-costs">
               <h3>2) Fixe Kosten (Monatssnapshot)</h3>
               ${renderColumnOverview(fixedBudgetCents, monthSummary.fixedCents)}
               <div class="inline">
@@ -3180,7 +3184,7 @@ export function createAppController(root: HTMLElement) {
               </table>
             </article>
 
-            <article class="card">
+            <article class="card" id="section-variable-costs">
               <h3>3) Variable Kosten (>= 30€)</h3>
               ${renderColumnOverview(variableBudgetCents, monthSummary.variableCents)}
               <div class="inline">
@@ -3224,7 +3228,7 @@ export function createAppController(root: HTMLElement) {
               </table>
             </article>
 
-            <article class="card">
+            <article class="card" id="section-misc-costs">
               <h3>4) Sonstige (unter 30€)</h3>
               ${renderColumnOverview(miscBudgetCents, monthSummary.miscCents)}
               <div class="inline">

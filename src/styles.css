@@ -531,6 +531,10 @@
   --shadow-2: rgba(2, 4, 11, 0.57);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   color: var(--text-main);
@@ -737,9 +741,20 @@ textarea:focus {
 button {
   cursor: pointer;
   border: 1px solid var(--button-border);
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
   background: var(--button-bg);
   color: var(--text-main);
   font-weight: 600;
+}
+
+a.btn,
+a.btn:visited {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: var(--text-main);
 }
 
 .btn:hover,
