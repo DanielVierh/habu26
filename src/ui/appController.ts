@@ -50,12 +50,14 @@ type BudgetFieldName =
   | "foodBudgetCents"
   | "goingOutBudgetCents"
   | "fixedBudgetCents"
+  | "variableBudgetCents"
   | "miscBudgetCents";
 
 interface RecurringBudgetDefaults {
   foodBudgetCents: number | null;
   goingOutBudgetCents: number | null;
   fixedBudgetCents: number | null;
+  variableBudgetCents: number | null;
   miscBudgetCents: number | null;
 }
 
@@ -155,6 +157,7 @@ export function createAppController(root: HTMLElement) {
       foodBudgetCents: null,
       goingOutBudgetCents: null,
       fixedBudgetCents: null,
+      variableBudgetCents: null,
       miscBudgetCents: null,
     },
   };
@@ -485,6 +488,7 @@ export function createAppController(root: HTMLElement) {
       foodBudgetCents: null,
       goingOutBudgetCents: null,
       fixedBudgetCents: null,
+      variableBudgetCents: null,
       miscBudgetCents: null,
     };
 
@@ -502,6 +506,7 @@ export function createAppController(root: HTMLElement) {
         foodBudgetCents: toCentsOrNull(parsed.foodBudgetCents),
         goingOutBudgetCents: toCentsOrNull(parsed.goingOutBudgetCents),
         fixedBudgetCents: toCentsOrNull(parsed.fixedBudgetCents),
+        variableBudgetCents: toCentsOrNull(parsed.variableBudgetCents),
         miscBudgetCents: toCentsOrNull(parsed.miscBudgetCents),
       };
     } catch {
@@ -529,6 +534,9 @@ export function createAppController(root: HTMLElement) {
       }
       if (typeof recurringBudgetDefaults.fixedBudgetCents === "number") {
         month.fixedBudgetCents = recurringBudgetDefaults.fixedBudgetCents;
+      }
+      if (typeof recurringBudgetDefaults.variableBudgetCents === "number") {
+        month.variableBudgetCents = recurringBudgetDefaults.variableBudgetCents;
       }
       if (typeof recurringBudgetDefaults.miscBudgetCents === "number") {
         month.miscBudgetCents = recurringBudgetDefaults.miscBudgetCents;
@@ -586,7 +594,10 @@ export function createAppController(root: HTMLElement) {
           );
         }
         if (typeof month.variableBudgetCents !== "number") {
-          month.variableBudgetCents = 0;
+          month.variableBudgetCents = month.variablePositions.reduce(
+            (sum, position) => sum + position.budgetCents,
+            0,
+          );
         }
         if (!Array.isArray(month.variablePositions)) {
           month.variablePositions = [];
@@ -594,10 +605,6 @@ export function createAppController(root: HTMLElement) {
         if (typeof month.miscBudgetCents !== "number") {
           month.miscBudgetCents = 0;
         }
-        month.variableBudgetCents = month.variablePositions.reduce(
-          (sum, position) => sum + position.budgetCents,
-          0,
-        );
       });
     });
   }
@@ -672,7 +679,7 @@ export function createAppController(root: HTMLElement) {
       foodBudgetCents +
       goingOutBudgetCents +
       fixedBudgetCents +
-      variableBudgetCents +
+      (month.variableBudgetCents ?? variableBudgetCents) +
       miscBudgetCents
     );
   }
@@ -1133,6 +1140,16 @@ export function createAppController(root: HTMLElement) {
     );
   }
 
+  async function updateMonthlyVariableBudget(
+    amountCents: number,
+  ): Promise<void> {
+    await updateMonthlyBudgetWithPrompt(
+      "variableBudgetCents",
+      amountCents,
+      "Variable Kosten",
+    );
+  }
+
   async function updateMonthlyBudgetWithPrompt(
     budgetField: BudgetFieldName,
     amountCents: number,
@@ -1217,10 +1234,6 @@ export function createAppController(root: HTMLElement) {
       },
       ...month.variablePositions,
     ];
-    month.variableBudgetCents = month.variablePositions.reduce(
-      (sum, position) => sum + position.budgetCents,
-      0,
-    );
 
     const shouldApplyFuture = confirm(
       "Soll diese variable Position auch für zukünftige Monate hinzugefügt werden?",
@@ -1242,10 +1255,6 @@ export function createAppController(root: HTMLElement) {
             },
             ...monthItem.variablePositions,
           ];
-          monthItem.variableBudgetCents = monthItem.variablePositions.reduce(
-            (sum, position) => sum + position.budgetCents,
-            0,
-          );
         });
       });
 
@@ -1271,6 +1280,23 @@ export function createAppController(root: HTMLElement) {
 
     month.variablePositions = month.variablePositions.map((position) =>
       position.id === positionId ? { ...position, actualCents } : position,
+    );
+
+    await persistSelectedYear();
+    render();
+  }
+
+  async function updateVariablePositionBudget(
+    positionId: string,
+    budgetCents: number,
+  ): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+
+    month.variablePositions = month.variablePositions.map((position) =>
+      position.id === positionId ? { ...position, budgetCents } : position,
     );
 
     await persistSelectedYear();
@@ -1303,10 +1329,6 @@ export function createAppController(root: HTMLElement) {
     month.variablePositions = month.variablePositions.filter(
       (position) => position.id !== positionId,
     );
-    month.variableBudgetCents = month.variablePositions.reduce(
-      (sum, position) => sum + position.budgetCents,
-      0,
-    );
 
     if (shouldApplyFuture) {
       const currentKey = monthKey(selectedYear, state.selectedMonth);
@@ -1321,10 +1343,6 @@ export function createAppController(root: HTMLElement) {
                 position.name === targetPosition.name &&
                 position.budgetCents === targetPosition.budgetCents
               ),
-          );
-          monthItem.variableBudgetCents = monthItem.variablePositions.reduce(
-            (sum, position) => sum + position.budgetCents,
-            0,
           );
         });
       });
@@ -1573,16 +1591,11 @@ export function createAppController(root: HTMLElement) {
         month.fixedCosts.reduce((sum, entry) => sum + entry.plannedCents, 0))
       : 0;
     const variableBudgetCents = month
-      ? month.variablePositions.reduce(
+      ? (month.variableBudgetCents ??
+        month.variablePositions.reduce(
           (sum, position) => sum + position.budgetCents,
           0,
-        )
-      : 0;
-    const variablePositionBudgetCents = month
-      ? month.variablePositions.reduce(
-          (sum, position) => sum + position.budgetCents,
-          0,
-        )
+        ))
       : 0;
     const miscBudgetCents = month ? (month.miscBudgetCents ?? 0) : 0;
 
@@ -1614,10 +1627,11 @@ export function createAppController(root: HTMLElement) {
       ? year.months.reduce(
           (sum, monthItem) =>
             sum +
-            monthItem.variablePositions.reduce(
-              (positionSum, position) => positionSum + position.budgetCents,
-              0,
-            ),
+            (monthItem.variableBudgetCents ??
+              monthItem.variablePositions.reduce(
+                (positionSum, position) => positionSum + position.budgetCents,
+                0,
+              )),
           0,
         )
       : 0;
@@ -2449,6 +2463,12 @@ export function createAppController(root: HTMLElement) {
               ${renderColumnOverview(variableBudgetCents, monthSummary.variableCents)}
               <div class="inline">
                 <label>
+                  Planbudget Variable (€)
+                  <input class="amount-input" id="variable-budget" type="number" min="0" step="0.01" value="${centsToEuroInput(variableBudgetCents)}" ${month ? "" : "disabled"} />
+                </label>
+              </div>
+              <div class="inline">
+                <label>
                   Neue Position
                   <input id="variable-position-name" type="text" placeholder="z.B. Urlaub" ${month ? "" : "disabled"} />
                 </label>
@@ -2469,7 +2489,7 @@ export function createAppController(root: HTMLElement) {
                         .map(
                           (position) => `<tr>
                     <td>${position.name}</td>
-                    <td>${centsToEuro(position.budgetCents)}</td>
+                    <td><input class="amount-input" data-variable-position-budget="${position.id}" type="number" min="0" step="0.01" value="${centsToEuroInput(position.budgetCents)}" /></td>
                     <td class="${budgetStatusClass(position.actualCents, position.budgetCents)}"><input class="amount-input" data-variable-position-actual="${position.id}" type="number" min="0" step="0.01" value="${centsToEuroInput(position.actualCents)}" /></td>
                     <td class="${budgetStatusClass(position.actualCents, position.budgetCents)}">${centsToEuro(position.actualCents - position.budgetCents)}</td>
                     <td><button class="btn btn-quiet" data-remove-variable-position="${position.id}">Löschen</button></td>
@@ -2753,6 +2773,17 @@ export function createAppController(root: HTMLElement) {
       await updateMonthlyMiscBudget(euroToCents(miscBudgetInput.value));
     });
 
+    const variableBudgetInput =
+      root.querySelector<HTMLInputElement>("#variable-budget");
+    variableBudgetInput?.addEventListener("click", (event) => {
+      event.preventDefault();
+      variableBudgetInput.blur();
+      openAmountDeltaModal(variableBudgetInput);
+    });
+    variableBudgetInput?.addEventListener("change", async () => {
+      await updateMonthlyVariableBudget(euroToCents(variableBudgetInput.value));
+    });
+
     const variablePositionNameInput = root.querySelector<HTMLInputElement>(
       "#variable-position-name",
     );
@@ -2817,6 +2848,24 @@ export function createAppController(root: HTMLElement) {
       if (incomeDescriptionInput) incomeDescriptionInput.value = "";
       if (incomeAmountInput) incomeAmountInput.value = "";
     });
+
+    root
+      .querySelectorAll<HTMLInputElement>("[data-variable-position-budget]")
+      .forEach((input) => {
+        input.addEventListener("click", (event) => {
+          event.preventDefault();
+          input.blur();
+          openAmountDeltaModal(input);
+        });
+        input.addEventListener("change", async () => {
+          const positionId = input.dataset.variablePositionBudget;
+          if (!positionId) return;
+          await updateVariablePositionBudget(
+            positionId,
+            euroToCents(input.value),
+          );
+        });
+      });
 
     root
       .querySelectorAll<HTMLInputElement>("[data-variable-position-actual]")
