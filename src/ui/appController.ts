@@ -1708,6 +1708,15 @@ export function createAppController(root: HTMLElement) {
       fixedBudgetCents +
       variableBudgetCents +
       miscBudgetCents;
+    const foodAndGoingOutBudgetCents = foodBudgetCents + goingOutBudgetCents;
+    const foodAndGoingOutActualCents =
+      monthSummary.foodCents + monthSummary.goingOutCents;
+    const foodAndGoingOutDiffCents =
+      foodAndGoingOutBudgetCents - foodAndGoingOutActualCents;
+    const foodAndGoingOutStatusClass = budgetStatusClass(
+      foodAndGoingOutActualCents,
+      foodAndGoingOutBudgetCents,
+    );
     const yearPlannedBudgetTotalCents =
       yearFoodBudgetCents +
       yearGoingOutBudgetCents +
@@ -2384,6 +2393,20 @@ export function createAppController(root: HTMLElement) {
               <div class="column-overview-grid">
                 ${renderColumnOverview(foodBudgetCents, monthSummary.foodCents)}
                 ${renderColumnOverview(goingOutBudgetCents, monthSummary.goingOutCents)}
+                <div class="column-overview">
+                  <div class="column-overview-row">
+                    <span>Gesamt (Essen + Ausgehen)</span>
+                    <strong>${centsToEuro(foodAndGoingOutBudgetCents)} €</strong>
+                  </div>
+                  <div class="column-overview-row">
+                    <span>Gesamtausgaben</span>
+                    <strong>${centsToEuro(foodAndGoingOutActualCents)} €</strong>
+                  </div>
+                  <div class="column-overview-row ${foodAndGoingOutStatusClass}">
+                    <span>Diff</span>
+                    <strong>${centsToEuro(foodAndGoingOutDiffCents)} €</strong>
+                  </div>
+                </div>
               </div>
               <div class="inline">
                 <label>
