@@ -1393,6 +1393,12 @@ tbody tr:nth-child(even) {
     padding: 0.55rem 0.7rem;
   }
 
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1rem);
+  }
+
   .grid-4 > .card input.amount-input,
   .amount-input {
     min-width: 55px;
