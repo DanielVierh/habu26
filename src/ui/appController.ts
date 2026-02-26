@@ -2243,6 +2243,23 @@ export function createAppController(root: HTMLElement) {
 
     const incomeBudgetBalanceClass = (value: number): string =>
       value < 0 ? "danger" : value > 0 ? "budget-under" : "";
+    const salaryCoverageClass = (
+      salaryIncomeCents: number,
+      expensesCents: number,
+    ): string => {
+      if (expensesCents <= 0) {
+        return "muted";
+      }
+      return salaryIncomeCents >= expensesCents ? "budget-under" : "danger";
+    };
+    const monthSalaryCoverageClass = salaryCoverageClass(
+      monthSalaryIncomeCents,
+      monthSummary.totalCents,
+    );
+    const yearSalaryCoverageClass = salaryCoverageClass(
+      yearSalaryIncomeCents,
+      yearSummary.totalCents,
+    );
 
     const percent = (value: number, max: number): string => {
       if (max <= 0) return "0%";
@@ -3527,8 +3544,8 @@ export function createAppController(root: HTMLElement) {
                   </div>
                   <div class="eval-row eval-strong">
                     <div class="eval-label">Gehalt vs. Ausgaben (%)</div>
-                    <div class="eval-value ${incomeBudgetBalanceClass(monthSalaryMinusExpensesCents)}">${monthSalaryVsExpensesPercent}</div>
-                    <div class="eval-value ${incomeBudgetBalanceClass(yearSalaryMinusExpensesCents)}">${yearSalaryVsExpensesPercent}</div>
+                    <div class="eval-value ${monthSalaryCoverageClass}">${monthSalaryVsExpensesPercent}</div>
+                    <div class="eval-value ${yearSalaryCoverageClass}">${yearSalaryVsExpensesPercent}</div>
                   </div>
                 </div>
               </section>
