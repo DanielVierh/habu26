@@ -967,6 +967,13 @@ export function createAppController(root: HTMLElement) {
     );
   }
 
+  function recalculateVariableBudget(month: MonthBook): void {
+    month.variableBudgetCents = month.variablePositions.reduce(
+      (sum, position) => sum + position.budgetCents,
+      0,
+    );
+  }
+
   function defaultEffectiveMonthText(): string {
     if (state.selectedYear) {
       return `${state.selectedYear}-${String(state.selectedMonth).padStart(2, "0")}`;
@@ -1330,6 +1337,7 @@ export function createAppController(root: HTMLElement) {
       },
       ...month.variablePositions,
     ];
+    recalculateVariableBudget(month);
 
     const shouldApplyFuture = confirm(
       "Soll diese variable Position auch für zukünftige Monate hinzugefügt werden?",
@@ -1351,6 +1359,7 @@ export function createAppController(root: HTMLElement) {
             },
             ...monthItem.variablePositions,
           ];
+          recalculateVariableBudget(monthItem);
         });
       });
 
@@ -1394,6 +1403,7 @@ export function createAppController(root: HTMLElement) {
     month.variablePositions = month.variablePositions.map((position) =>
       position.id === positionId ? { ...position, budgetCents } : position,
     );
+    recalculateVariableBudget(month);
 
     await persistSelectedYear();
     render();
@@ -1425,6 +1435,7 @@ export function createAppController(root: HTMLElement) {
     month.variablePositions = month.variablePositions.filter(
       (position) => position.id !== positionId,
     );
+    recalculateVariableBudget(month);
 
     if (shouldApplyFuture) {
       const currentKey = monthKey(selectedYear, state.selectedMonth);
@@ -1440,6 +1451,7 @@ export function createAppController(root: HTMLElement) {
                 position.budgetCents === targetPosition.budgetCents
               ),
           );
+          recalculateVariableBudget(monthItem);
         });
       });
 
