@@ -193,6 +193,289 @@ export function createAppController(root: HTMLElement) {
   let amountModalTarget: HTMLInputElement | null = null;
   let hasBoundGlobalModalKeys = false;
   let hasBoundScrollUpVisibilityEvents = false;
+  const budgetCanvasAnimationFrames = new WeakMap<HTMLCanvasElement, number>();
+
+  function renderBudgetVsActualCanvases(): void {
+    const canvases = root.querySelectorAll<HTMLCanvasElement>(
+      "[data-budget-vs-canvas]",
+    );
+    if (canvases.length === 0) {
+      return;
+    }
+
+    const themeStyles = getComputedStyle(document.documentElement);
+    const colorText = themeStyles.getPropertyValue("--text-main").trim();
+    const colorMuted = themeStyles.getPropertyValue("--text-muted").trim();
+    const colorTrack = themeStyles.getPropertyValue("--table-stripe").trim();
+    const colorBorder = themeStyles.getPropertyValue("--table-border").trim();
+    const colorPositive = themeStyles.getPropertyValue("--budget-under").trim();
+    const colorNegative = themeStyles.getPropertyValue("--danger-2").trim();
+
+    const canvasHeightPx = 96;
+    const animationDurationMs = 250;
+    const easeOutCubic = (value: number): number =>
+      1 - Math.pow(1 - Math.max(0, Math.min(1, value)), 3);
+
+    canvases.forEach((canvas) => {
+      if (canvas.dataset.hoverBound !== "1") {
+        canvas.dataset.hoverBound = "1";
+        canvas.addEventListener("mouseenter", () => {
+          canvas.dataset.hovering = "1";
+          renderBudgetVsActualCanvases();
+        });
+        canvas.addEventListener("mouseleave", () => {
+          delete canvas.dataset.hovering;
+          delete canvas.dataset.hoverX;
+          renderBudgetVsActualCanvases();
+        });
+        canvas.addEventListener("mousemove", (event) => {
+          const rect = canvas.getBoundingClientRect();
+          const hoverX = Math.round(event.clientX - rect.left);
+          canvas.dataset.hoverX = String(hoverX);
+          renderBudgetVsActualCanvases();
+        });
+      }
+
+      const budgetCents = Number.parseInt(
+        canvas.dataset.budgetCents ?? "0",
+        10,
+      );
+      const actualCents = Number.parseInt(
+        canvas.dataset.actualCents ?? "0",
+        10,
+      );
+      const label = canvas.dataset.label ?? "Kategorie";
+      const isHovered = canvas.dataset.hovering === "1";
+      const signature = `${label}|${budgetCents}|${actualCents}`;
+      const shouldAnimate = canvas.dataset.lastRenderSignature !== signature;
+      canvas.dataset.lastRenderSignature = signature;
+
+      const cssWidth = Math.max(120, Math.floor(canvas.clientWidth || 120));
+      const dpr = window.devicePixelRatio || 1;
+      const pixelWidth = Math.floor(cssWidth * dpr);
+      const pixelHeight = Math.floor(canvasHeightPx * dpr);
+
+      if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+        canvas.width = pixelWidth;
+        canvas.height = pixelHeight;
+      }
+
+      const context = canvas.getContext("2d");
+      if (!context) {
+        return;
+      }
+
+      const maxCents = Math.max(1, budgetCents, actualCents);
+      const budgetRatio = Math.min(1, Math.max(0, budgetCents / maxCents));
+      const actualRatio = Math.min(1, Math.max(0, actualCents / maxCents));
+      const diffCents = budgetCents - actualCents;
+      const usagePercent =
+        budgetCents > 0
+          ? (actualCents / budgetCents) * 100
+          : actualCents > 0
+            ? 100
+            : 0;
+
+      const paddingX = 8;
+      const trackX = paddingX;
+      const trackY = 34;
+      const trackWidth = cssWidth - paddingX * 2;
+      const trackHeight = 22;
+      const hoverX = Number.parseInt(canvas.dataset.hoverX ?? "-1", 10);
+
+      const drawRoundedRect = (
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+        radius: number,
+      ) => {
+        context.beginPath();
+        context.moveTo(x + radius, y);
+        context.lineTo(x + width - radius, y);
+        context.quadraticCurveTo(x + width, y, x + width, y + radius);
+        context.lineTo(x + width, y + height - radius);
+        context.quadraticCurveTo(
+          x + width,
+          y + height,
+          x + width - radius,
+          y + height,
+        );
+        context.lineTo(x + radius, y + height);
+        context.quadraticCurveTo(x, y + height, x, y + height - radius);
+        context.lineTo(x, y + radius);
+        context.quadraticCurveTo(x, y, x + radius, y);
+        context.closePath();
+      };
+
+      const renderFrame = (progress: number): void => {
+        context.setTransform(1, 0, 0, 1, 0, 0);
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.scale(dpr, dpr);
+
+        drawRoundedRect(trackX, trackY, trackWidth, trackHeight, 8);
+        context.fillStyle = colorTrack;
+        context.fill();
+        context.strokeStyle = colorBorder;
+        context.lineWidth = 1;
+        context.stroke();
+
+        const bandWidths = [0.6, 0.25, 0.15];
+        const bandAlphas = [0.1, 0.16, 0.24];
+        let bandOffset = 0;
+        bandWidths.forEach((bandWidth, index) => {
+          const width = trackWidth * bandWidth;
+          context.save();
+          context.globalAlpha = bandAlphas[index] ?? 0.1;
+          context.fillStyle = colorMuted;
+          context.fillRect(trackX + bandOffset, trackY, width, trackHeight);
+          context.restore();
+          bandOffset += width;
+        });
+
+        const actualColor =
+          budgetCents > 0 && actualCents > budgetCents
+            ? colorNegative
+            : colorPositive;
+        const animatedActualWidth = trackWidth * actualRatio * progress;
+        drawRoundedRect(
+          trackX,
+          trackY + 3,
+          animatedActualWidth,
+          trackHeight - 6,
+          6,
+        );
+        context.fillStyle = actualColor;
+        context.fill();
+
+        if (isHovered) {
+          context.save();
+          context.strokeStyle = actualColor;
+          context.lineWidth = 1.5;
+          context.globalAlpha = 0.8;
+          drawRoundedRect(
+            trackX - 1,
+            trackY + 2,
+            Math.max(2, animatedActualWidth + 2),
+            trackHeight - 4,
+            7,
+          );
+          context.stroke();
+          context.restore();
+        }
+
+        const markerX = trackX + trackWidth * budgetRatio;
+        context.strokeStyle = colorText;
+        context.lineWidth = isHovered ? 3 : 2;
+        context.beginPath();
+        context.moveTo(markerX, trackY - 3);
+        context.lineTo(markerX, trackY + trackHeight + 3);
+        context.stroke();
+
+        if (isHovered && hoverX >= trackX && hoverX <= trackX + trackWidth) {
+          context.save();
+          context.strokeStyle = colorText;
+          context.globalAlpha = 0.35;
+          context.lineWidth = 1;
+          context.beginPath();
+          context.moveTo(hoverX, trackY - 8);
+          context.lineTo(hoverX, trackY + trackHeight + 8);
+          context.stroke();
+          context.restore();
+        }
+
+        context.fillStyle = colorText;
+        context.font = "600 12px system-ui, -apple-system, sans-serif";
+        context.textAlign = "left";
+        context.textBaseline = "top";
+        context.fillText(label, trackX, 10);
+
+        const animatedUsagePercent = usagePercent * progress;
+        context.fillStyle =
+          usagePercent > 100
+            ? colorNegative
+            : usagePercent < 100
+              ? colorPositive
+              : colorMuted;
+        context.textAlign = "right";
+        context.fillText(
+          `${animatedUsagePercent.toFixed(0)}%`,
+          trackX + trackWidth,
+          10,
+        );
+
+        context.fillStyle = colorMuted;
+        context.font = "500 11px system-ui, -apple-system, sans-serif";
+        context.textAlign = "left";
+        context.textBaseline = "top";
+        context.fillText(
+          `Ist ${centsToEuro(actualCents)} · Ziel ${centsToEuro(budgetCents)} · Δ ${diffCents >= 0 ? "+" : ""}${centsToEuro(diffCents)}`,
+          trackX,
+          64,
+        );
+
+        if (isHovered) {
+          const tooltipText = `Nutzung ${usagePercent.toFixed(1)}%`;
+          context.font = "600 11px system-ui, -apple-system, sans-serif";
+          const tooltipPaddingX = 8;
+          const tooltipPaddingY = 5;
+          const tooltipHeight = 22;
+          const tooltipTextWidth = context.measureText(tooltipText).width;
+          const tooltipWidth = tooltipTextWidth + tooltipPaddingX * 2;
+          const preferredX = Number.isFinite(hoverX)
+            ? hoverX - tooltipWidth / 2
+            : trackX + trackWidth - tooltipWidth;
+          const tooltipX = Math.min(
+            trackX + trackWidth - tooltipWidth,
+            Math.max(trackX, preferredX),
+          );
+          const tooltipY = trackY - tooltipHeight - 8;
+
+          context.save();
+          context.fillStyle = colorText;
+          context.globalAlpha = 0.92;
+          drawRoundedRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight, 6);
+          context.fill();
+          context.restore();
+
+          context.fillStyle = colorTrack;
+          context.textAlign = "left";
+          context.textBaseline = "top";
+          context.fillText(
+            tooltipText,
+            tooltipX + tooltipPaddingX,
+            tooltipY + tooltipPaddingY,
+          );
+        }
+      };
+
+      const runningAnimationId = budgetCanvasAnimationFrames.get(canvas);
+      if (runningAnimationId) {
+        window.cancelAnimationFrame(runningAnimationId);
+      }
+
+      if (!shouldAnimate) {
+        renderFrame(1);
+        return;
+      }
+
+      const animationStartedAt = performance.now();
+      const animate = (timestamp: number) => {
+        const elapsed = timestamp - animationStartedAt;
+        const normalized = Math.min(1, elapsed / animationDurationMs);
+        renderFrame(easeOutCubic(normalized));
+        if (normalized < 1) {
+          const frameId = window.requestAnimationFrame(animate);
+          budgetCanvasAnimationFrames.set(canvas, frameId);
+          return;
+        }
+        budgetCanvasAnimationFrames.delete(canvas);
+      };
+
+      const frameId = window.requestAnimationFrame(animate);
+      budgetCanvasAnimationFrames.set(canvas, frameId);
+    });
+  }
 
   function openTopModal(kind: "years" | "fixed" | "dashboard"): void {
     if (kind === "dashboard") {
@@ -283,6 +566,7 @@ export function createAppController(root: HTMLElement) {
 
     const onWindowChange = () => {
       updateScrollUpButtonVisibility();
+      renderBudgetVsActualCanvases();
     };
 
     window.addEventListener("scroll", onWindowChange, { passive: true });
@@ -2277,7 +2561,6 @@ export function createAppController(root: HTMLElement) {
       const pct = (Math.max(0, actualCents) / budgetCents) * 100;
       return Math.max(0, pct);
     };
-
     const budgetVsActualChartRows = [
       {
         label: "Essen",
@@ -3272,69 +3555,20 @@ export function createAppController(root: HTMLElement) {
                     <span class="chart-legend-item"><span class="chart-dot chart-dot-actual"></span>Ist</span>
                   </div>
                 </header>
-                <div class="bar-chart">
+                <div class="budget-canvas-grid">
                   ${budgetVsActualChartRows
                     .map((row) => {
-                      const budgetWidth = percent(
-                        row.budgetCents,
-                        budgetVsActualMaxCents,
-                      );
-                      const actualWidth = percent(
-                        row.actualCents,
-                        budgetVsActualMaxCents,
-                      );
-                      const actualClass = budgetBarClass(
-                        row.budgetCents,
-                        row.actualCents,
-                      );
-                      const diffCents = row.budgetCents - row.actualCents;
-                      const diffClass =
-                        diffCents < 0
-                          ? "danger"
-                          : diffCents > 0
-                            ? "budget-under"
-                            : "";
-
                       return `
-                        <div class="bar-row">
-                          <div class="bar-label">${row.label}</div>
-                          <div class="bar-track" title="Budget: ${centsToEuro(row.budgetCents)} | Ist: ${centsToEuro(row.actualCents)}">
-                            <div class="bar bar-budget" style="width:${budgetWidth}"></div>
-                            <div class="bar-marker" style="left:${budgetWidth}" aria-hidden="true"></div>
-                            <div class="bar bar-actual ${actualClass}" style="width:${actualWidth}"></div>
-                          </div>
-                          <div class="bar-meta">
-                            <span class="muted">B ${centsToEuro(row.budgetCents)}</span>
-                            <span class="muted">I ${centsToEuro(row.actualCents)}</span>
-                            <span class="${diffClass}">${diffCents >= 0 ? "+" : ""}${centsToEuro(diffCents)}</span>
-                          </div>
-                        </div>
-                      `;
-                    })
-                    .join("")}
-                </div>
-                <div class="circle-chart-container" aria-label="Budgetnutzung je Kategorie">
-                  ${budgetVsActualChartRows
-                    .map((row) => {
-                      const usagePercentRaw = budgetUsagePercent(
-                        row.actualCents,
-                        row.budgetCents,
-                      );
-                      const ringPercent = Math.min(100, usagePercentRaw);
-                      const usageText = `${usagePercentRaw.toFixed(0)}%`;
-                      const ringClass =
-                        budgetBarClass(row.budgetCents, row.actualCents) ===
-                        "bar-negative"
-                          ? "circle-negative"
-                          : "circle-positive";
-
-                      return `
-                        <div class="circle-chart-item">
-                          <div class="circle-chart-ring ${ringClass}" style="--circle-pct:${ringPercent.toFixed(1)}%" title="${row.label}: ${centsToEuro(row.actualCents)} von ${centsToEuro(row.budgetCents)}">
-                            <span class="circle-chart-value">${usageText}</span>
-                          </div>
-                          <div class="circle-chart-label">${row.label}</div>
-                          <div class="circle-chart-meta muted">${centsToEuro(row.actualCents)} / ${centsToEuro(row.budgetCents)}</div>
+                        <div class="budget-canvas-card">
+                          <canvas
+                            class="budget-vs-canvas"
+                            data-budget-vs-canvas="1"
+                            data-label="${row.label}"
+                            data-budget-cents="${row.budgetCents}"
+                            data-actual-cents="${row.actualCents}"
+                            role="img"
+                            aria-label="${row.label}: Budget ${centsToEuro(row.budgetCents)} €, Ist ${centsToEuro(row.actualCents)} €"
+                          ></canvas>
                         </div>
                       `;
                     })
@@ -3984,6 +4218,7 @@ export function createAppController(root: HTMLElement) {
     );
 
     bindEvents();
+    renderBudgetVsActualCanvases();
     updateScrollUpButtonVisibility();
   }
 

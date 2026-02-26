@@ -1058,6 +1058,25 @@ tbody tr:nth-child(even) {
   gap: 0.55rem;
 }
 
+.budget-canvas-grid {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.budget-canvas-card {
+  border: 1px solid var(--table-border);
+  border-radius: 10px;
+  background: var(--table-stripe);
+  padding: 0.35rem 0.5rem;
+  cursor: crosshair;
+}
+
+.budget-vs-canvas {
+  display: block;
+  width: 100%;
+  height: 96px;
+}
+
 .circle-chart-container {
   margin-top: 0.8rem;
   padding-top: 0.8rem;
@@ -1146,6 +1165,49 @@ tbody tr:nth-child(even) {
   border: 1px solid var(--table-border);
   background: var(--table-stripe);
   overflow: hidden;
+}
+
+.bullet-track {
+  height: 16px;
+}
+
+.bullet-track .bar-actual {
+  top: 3px;
+  bottom: 3px;
+  border-radius: 6px;
+}
+
+.bullet-track .bar-marker {
+  width: 3px;
+  transform: translateX(-1.5px);
+  background: var(--text-main);
+  opacity: 0.9;
+}
+
+.bullet-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--text-muted);
+  z-index: 0;
+}
+
+.bullet-band-low {
+  left: 0;
+  width: 60%;
+  opacity: 0.08;
+}
+
+.bullet-band-mid {
+  left: 60%;
+  width: 25%;
+  opacity: 0.12;
+}
+
+.bullet-band-high {
+  left: 85%;
+  width: 15%;
+  opacity: 0.16;
 }
 
 .bar {
