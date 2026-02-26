@@ -1316,6 +1316,7 @@ export function createAppController(root: HTMLElement) {
   async function addVariablePosition(
     name: string,
     budgetCents: number,
+    applyFuture: boolean,
   ): Promise<void> {
     const month = getSelectedMonthBook();
     const selectedYear = state.selectedYear;
@@ -1339,11 +1340,7 @@ export function createAppController(root: HTMLElement) {
     ];
     recalculateVariableBudget(month);
 
-    const shouldApplyFuture = confirm(
-      "Soll diese variable Position auch für zukünftige Monate hinzugefügt werden?",
-    );
-
-    if (shouldApplyFuture) {
+    if (applyFuture) {
       const currentKey = monthKey(selectedYear, state.selectedMonth);
       state.years.forEach((yearItem) => {
         yearItem.months.forEach((monthItem) => {
@@ -1428,9 +1425,22 @@ export function createAppController(root: HTMLElement) {
       return;
     }
 
-    const shouldApplyFuture = confirm(
-      "Soll das Löschen auch für zukünftige Monate gelten?",
+    const currentKey = monthKey(selectedYear, state.selectedMonth);
+    const hasRecurringInFuture = state.years.some((yearItem) =>
+      yearItem.months.some(
+        (monthItem) =>
+          monthKey(yearItem.year, monthItem.month) > currentKey &&
+          monthItem.variablePositions.some(
+            (position) =>
+              position.name === targetPosition.name &&
+              position.budgetCents === targetPosition.budgetCents,
+          ),
+      ),
     );
+
+    const shouldApplyFuture = hasRecurringInFuture
+      ? confirm("Soll das Löschen auch für zukünftige Monate gelten?")
+      : false;
 
     month.variablePositions = month.variablePositions.filter(
       (position) => position.id !== positionId,
@@ -1438,7 +1448,6 @@ export function createAppController(root: HTMLElement) {
     recalculateVariableBudget(month);
 
     if (shouldApplyFuture) {
-      const currentKey = monthKey(selectedYear, state.selectedMonth);
       state.years.forEach((yearItem) => {
         yearItem.months.forEach((monthItem) => {
           if (monthKey(yearItem.year, monthItem.month) <= currentKey) {
@@ -1471,9 +1480,11 @@ export function createAppController(root: HTMLElement) {
   async function addMiscExpense(
     description: string,
     amountCents: number,
+    applyFuture: boolean,
   ): Promise<void> {
     const month = getSelectedMonthBook();
-    if (!month) {
+    const selectedYear = state.selectedYear;
+    if (!month || !selectedYear) {
       return;
     }
     const cleanDescription = description.trim();
@@ -1488,6 +1499,27 @@ export function createAppController(root: HTMLElement) {
 
     const entry: ExpenseEntry = createExpense(cleanDescription, amountCents);
     month.miscCosts = [entry, ...month.miscCosts];
+
+    if (applyFuture) {
+      const currentKey = monthKey(selectedYear, state.selectedMonth);
+      state.years.forEach((yearItem) => {
+        yearItem.months.forEach((monthItem) => {
+          if (monthKey(yearItem.year, monthItem.month) <= currentKey) {
+            return;
+          }
+          monthItem.miscCosts = [
+            createExpense(cleanDescription, amountCents),
+            ...monthItem.miscCosts,
+          ];
+        });
+      });
+
+      await persistAllYears();
+      showToast("Sonstige Position wurde für zukünftige Monate hinzugefügt.");
+      render();
+      return;
+    }
+
     await persistSelectedYear();
     showToast("Sonstige Position wurde hinzugefügt.");
     render();
@@ -1500,10 +1532,61 @@ export function createAppController(root: HTMLElement) {
     }
 
     const month = getSelectedMonthBook();
-    if (!month) {
+    const selectedYear = state.selectedYear;
+    if (!month || !selectedYear) {
       return;
     }
+
+    const targetExpense = month.miscCosts.find(
+      (entry) => entry.id === expenseId,
+    );
+    if (!targetExpense) {
+      return;
+    }
+
+    const currentKey = monthKey(selectedYear, state.selectedMonth);
+    const hasRecurringInFuture = state.years.some((yearItem) =>
+      yearItem.months.some(
+        (monthItem) =>
+          monthKey(yearItem.year, monthItem.month) > currentKey &&
+          monthItem.miscCosts.some(
+            (entry) =>
+              entry.description === targetExpense.description &&
+              entry.amountCents === targetExpense.amountCents,
+          ),
+      ),
+    );
+
+    const shouldApplyFuture = hasRecurringInFuture
+      ? confirm("Soll das Löschen auch für zukünftige Monate gelten?")
+      : false;
+
     month.miscCosts = month.miscCosts.filter((entry) => entry.id !== expenseId);
+
+    if (shouldApplyFuture) {
+      state.years.forEach((yearItem) => {
+        yearItem.months.forEach((monthItem) => {
+          if (monthKey(yearItem.year, monthItem.month) <= currentKey) {
+            return;
+          }
+          monthItem.miscCosts = monthItem.miscCosts.filter(
+            (entry) =>
+              !(
+                entry.description === targetExpense.description &&
+                entry.amountCents === targetExpense.amountCents
+              ),
+          );
+        });
+      });
+
+      await persistAllYears();
+      showToast(
+        "Sonstige Position wurde auch in zukünftigen Monaten gelöscht.",
+      );
+      render();
+      return;
+    }
+
     await persistSelectedYear();
     showToast("Sonstige Position wurde gelöscht.");
     render();
@@ -1512,6 +1595,7 @@ export function createAppController(root: HTMLElement) {
   async function addIncome(
     description: string,
     amountCents: number,
+    applyFuture: boolean,
   ): Promise<void> {
     const month = getSelectedMonthBook();
     const selectedYear = state.selectedYear;
@@ -1531,11 +1615,7 @@ export function createAppController(root: HTMLElement) {
     const entry: ExpenseEntry = createExpense(cleanDescription, amountCents);
     month.incomes = [entry, ...month.incomes];
 
-    const shouldApplyFuture = confirm(
-      "Soll dieses Einkommen auch für zukünftige Monate hinzugefügt werden?",
-    );
-
-    if (shouldApplyFuture) {
+    if (applyFuture) {
       const currentKey = monthKey(selectedYear, state.selectedMonth);
       state.years.forEach((yearItem) => {
         yearItem.months.forEach((monthItem) => {
@@ -1577,14 +1657,26 @@ export function createAppController(root: HTMLElement) {
       return;
     }
 
-    const shouldApplyFuture = confirm(
-      "Soll das Löschen auch für zukünftige Monate gelten?",
+    const currentKey = monthKey(selectedYear, state.selectedMonth);
+    const hasRecurringInFuture = state.years.some((yearItem) =>
+      yearItem.months.some(
+        (monthItem) =>
+          monthKey(yearItem.year, monthItem.month) > currentKey &&
+          monthItem.incomes.some(
+            (entry) =>
+              entry.description === targetIncome.description &&
+              entry.amountCents === targetIncome.amountCents,
+          ),
+      ),
     );
+
+    const shouldApplyFuture = hasRecurringInFuture
+      ? confirm("Soll das Löschen auch für zukünftige Monate gelten?")
+      : false;
 
     month.incomes = month.incomes.filter((entry) => entry.id !== incomeId);
 
     if (shouldApplyFuture) {
-      const currentKey = monthKey(selectedYear, state.selectedMonth);
       state.years.forEach((yearItem) => {
         yearItem.months.forEach((monthItem) => {
           if (monthKey(yearItem.year, monthItem.month) <= currentKey) {
@@ -3053,6 +3145,7 @@ export function createAppController(root: HTMLElement) {
                 <input class="amount-input" id="income-amount" type="number" min="0" step="0.01" placeholder="0.00" ${month ? "" : "disabled"} />
               </label>
               <button class="btn btn-primary" id="add-income" ${month ? "" : "disabled"}>Einkommen erfassen</button>
+                <button class="btn" id="add-income-recurring" ${month ? "" : "disabled"}>Wiederkehrend erfassen</button>
             </div>
             <table>
               <thead>
@@ -3215,6 +3308,7 @@ export function createAppController(root: HTMLElement) {
                   <input class="amount-input" id="variable-position-budget" type="number" min="0" step="0.01" placeholder="500.00" ${month ? "" : "disabled"} />
                 </label>
                 <button class="btn btn-primary" id="add-variable-position" ${month ? "" : "disabled"}>Position anlegen</button>
+                <button class="btn" id="add-variable-position-recurring" ${month ? "" : "disabled"}>Wiederkehrend erfassen</button>
               </div>
               <table>
                 <thead>
@@ -3259,6 +3353,7 @@ export function createAppController(root: HTMLElement) {
                   <input class="amount-input" id="misc-amount" type="number" min="0" step="0.01" placeholder="0.00" ${month ? "" : "disabled"} />
                 </label>
                 <button class="btn btn-primary" id="add-misc" ${month ? "" : "disabled"}>Position anlegen</button>
+                <button class="btn" id="add-misc-recurring" ${month ? "" : "disabled"}>Wiederkehrend erfassen</button>
               </div>
               <table>
                 <thead>
@@ -3563,11 +3658,16 @@ export function createAppController(root: HTMLElement) {
     const addVariablePositionButton = root.querySelector<HTMLButtonElement>(
       "#add-variable-position",
     );
+    const addVariablePositionRecurringButton =
+      root.querySelector<HTMLButtonElement>("#add-variable-position-recurring");
     const miscDescriptionInput =
       root.querySelector<HTMLInputElement>("#misc-description");
     const miscAmountInput =
       root.querySelector<HTMLInputElement>("#misc-amount");
     const addMiscButton = root.querySelector<HTMLButtonElement>("#add-misc");
+    const addMiscRecurringButton = root.querySelector<HTMLButtonElement>(
+      "#add-misc-recurring",
+    );
     const incomeDescriptionInput = root.querySelector<HTMLInputElement>(
       "#income-description",
     );
@@ -3575,6 +3675,9 @@ export function createAppController(root: HTMLElement) {
       root.querySelector<HTMLInputElement>("#income-amount");
     const addIncomeButton =
       root.querySelector<HTMLButtonElement>("#add-income");
+    const addIncomeRecurringButton = root.querySelector<HTMLButtonElement>(
+      "#add-income-recurring",
+    );
 
     const carryoverOverrideInput = root.querySelector<HTMLInputElement>(
       "#carryover-override",
@@ -3600,6 +3703,20 @@ export function createAppController(root: HTMLElement) {
       await addVariablePosition(
         variablePositionNameInput?.value ?? "",
         budgetCents,
+        false,
+      );
+      if (variablePositionNameInput) variablePositionNameInput.value = "";
+      if (variablePositionBudgetInput) variablePositionBudgetInput.value = "";
+    });
+
+    addVariablePositionRecurringButton?.addEventListener("click", async () => {
+      const budgetCents = euroToCents(
+        variablePositionBudgetInput?.value ?? "0",
+      );
+      await addVariablePosition(
+        variablePositionNameInput?.value ?? "",
+        budgetCents,
+        true,
       );
       if (variablePositionNameInput) variablePositionNameInput.value = "";
       if (variablePositionBudgetInput) variablePositionBudgetInput.value = "";
@@ -3607,14 +3724,36 @@ export function createAppController(root: HTMLElement) {
 
     addMiscButton?.addEventListener("click", async () => {
       const amountCents = euroToCents(miscAmountInput?.value ?? "0");
-      await addMiscExpense(miscDescriptionInput?.value ?? "", amountCents);
+      await addMiscExpense(
+        miscDescriptionInput?.value ?? "",
+        amountCents,
+        false,
+      );
+      if (miscDescriptionInput) miscDescriptionInput.value = "";
+      if (miscAmountInput) miscAmountInput.value = "";
+    });
+
+    addMiscRecurringButton?.addEventListener("click", async () => {
+      const amountCents = euroToCents(miscAmountInput?.value ?? "0");
+      await addMiscExpense(
+        miscDescriptionInput?.value ?? "",
+        amountCents,
+        true,
+      );
       if (miscDescriptionInput) miscDescriptionInput.value = "";
       if (miscAmountInput) miscAmountInput.value = "";
     });
 
     addIncomeButton?.addEventListener("click", async () => {
       const amountCents = euroToCents(incomeAmountInput?.value ?? "0");
-      await addIncome(incomeDescriptionInput?.value ?? "", amountCents);
+      await addIncome(incomeDescriptionInput?.value ?? "", amountCents, false);
+      if (incomeDescriptionInput) incomeDescriptionInput.value = "";
+      if (incomeAmountInput) incomeAmountInput.value = "";
+    });
+
+    addIncomeRecurringButton?.addEventListener("click", async () => {
+      const amountCents = euroToCents(incomeAmountInput?.value ?? "0");
+      await addIncome(incomeDescriptionInput?.value ?? "", amountCents, true);
       if (incomeDescriptionInput) incomeDescriptionInput.value = "";
       if (incomeAmountInput) incomeAmountInput.value = "";
     });
