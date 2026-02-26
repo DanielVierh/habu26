@@ -61,6 +61,12 @@ interface RecurringBudgetDefaults {
   miscBudgetCents: number | null;
 }
 
+interface ChangeLogEntry {
+  id: string;
+  timestampIso: string;
+  message: string;
+}
+
 function isThemeName(value: string): value is ThemeName {
   return (AVAILABLE_THEMES as readonly string[]).includes(value);
 }
@@ -113,6 +119,8 @@ interface State {
   editingFixedTemplateId: string | null;
   theme: ThemeName;
   hasUnexportedChanges: boolean;
+  unexportedChangeLog: ChangeLogEntry[];
+  showUnexportedChangeLogModal: boolean;
   lastBackupFileName: string | null;
   topModal: "years" | "fixed" | "dashboard" | null;
   dashboardTab: "year" | "all";
@@ -153,6 +161,8 @@ export function createAppController(root: HTMLElement) {
     editingFixedTemplateId: null,
     theme: "light",
     hasUnexportedChanges: false,
+    unexportedChangeLog: [],
+    showUnexportedChangeLogModal: false,
     lastBackupFileName: null,
     topModal: null,
     dashboardTab: "year",
@@ -168,6 +178,7 @@ export function createAppController(root: HTMLElement) {
 
   const THEME_STORAGE_KEY = "habu-theme";
   const BACKUP_DIRTY_STORAGE_KEY = "habu-backup-dirty";
+  const UNEXPORTED_CHANGE_LOG_STORAGE_KEY = "habu-unexported-change-log";
   const LAST_BACKUP_FILENAME_STORAGE_KEY = "habu-last-backup-filename";
   const RECURRING_BUDGET_DEFAULTS_STORAGE_KEY =
     "habu-recurring-budget-defaults";
@@ -202,6 +213,19 @@ export function createAppController(root: HTMLElement) {
     render();
   }
 
+  function openUnexportedChangeLogModal(): void {
+    state.showUnexportedChangeLogModal = true;
+    render();
+  }
+
+  function closeUnexportedChangeLogModal(): void {
+    if (!state.showUnexportedChangeLogModal) {
+      return;
+    }
+    state.showUnexportedChangeLogModal = false;
+    render();
+  }
+
   function bindGlobalModalKeysOnce(): void {
     if (hasBoundGlobalModalKeys) {
       return;
@@ -209,6 +233,11 @@ export function createAppController(root: HTMLElement) {
     hasBoundGlobalModalKeys = true;
     window.addEventListener("keydown", (event) => {
       if (event.key !== "Escape") {
+        return;
+      }
+      if (state.showUnexportedChangeLogModal) {
+        event.preventDefault();
+        closeUnexportedChangeLogModal();
         return;
       }
       if (!state.topModal) {
@@ -526,6 +555,42 @@ export function createAppController(root: HTMLElement) {
     localStorage.setItem(BACKUP_DIRTY_STORAGE_KEY, value ? "1" : "0");
   }
 
+  function loadUnexportedChangeLog(): ChangeLogEntry[] {
+    const raw = localStorage.getItem(UNEXPORTED_CHANGE_LOG_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+      return parsed
+        .filter((entry): entry is ChangeLogEntry => {
+          if (!entry || typeof entry !== "object") {
+            return false;
+          }
+          const candidate = entry as Partial<ChangeLogEntry>;
+          return (
+            typeof candidate.id === "string" &&
+            typeof candidate.timestampIso === "string" &&
+            typeof candidate.message === "string"
+          );
+        })
+        .slice(-200);
+    } catch {
+      return [];
+    }
+  }
+
+  function saveUnexportedChangeLog(entries: ChangeLogEntry[]): void {
+    localStorage.setItem(
+      UNEXPORTED_CHANGE_LOG_STORAGE_KEY,
+      JSON.stringify(entries.slice(-200)),
+    );
+  }
+
   function loadLastBackupFileName(): string | null {
     const stored = localStorage.getItem(LAST_BACKUP_FILENAME_STORAGE_KEY);
     if (!stored) {
@@ -608,6 +673,7 @@ export function createAppController(root: HTMLElement) {
     ensureToastRoot();
     applyTheme(loadTheme());
     state.hasUnexportedChanges = loadHasUnexportedChanges();
+    state.unexportedChangeLog = loadUnexportedChangeLog();
     state.lastBackupFileName = loadLastBackupFileName();
     state.recurringBudgetDefaults = loadRecurringBudgetDefaults();
     bindGlobalModalKeysOnce();
@@ -948,16 +1014,28 @@ export function createAppController(root: HTMLElement) {
     applyRecurringBudgetDefaultsToYear(created);
     await saveYear(created);
     state.years = await listYears();
-    markDataChanged();
+    markDataChanged(`Jahr ${yearNumber} wurde angelegt`);
     state.selectedYear = yearNumber;
     state.selectedMonth = getCurrentMonthNumber();
     showToast(`Jahr ${yearNumber} wurde angelegt.`);
     render();
   }
 
-  function markDataChanged(): void {
+  function markDataChanged(reason = "Änderung an den Daten"): void {
     state.hasUnexportedChanges = true;
     saveHasUnexportedChanges(true);
+    const selectedScope = state.selectedYear
+      ? `${state.selectedYear}-${String(state.selectedMonth).padStart(2, "0")}`
+      : "ohne Zeitraum";
+    const nextEntry: ChangeLogEntry = {
+      id: createId("change"),
+      timestampIso: new Date().toISOString(),
+      message: `${reason} (${selectedScope})`,
+    };
+    state.unexportedChangeLog = [...state.unexportedChangeLog, nextEntry].slice(
+      -200,
+    );
+    saveUnexportedChangeLog(state.unexportedChangeLog);
   }
 
   function rememberBackupFile(fileName: string): void {
@@ -972,25 +1050,28 @@ export function createAppController(root: HTMLElement) {
   function markBackupCompleted(fileName: string): void {
     state.hasUnexportedChanges = false;
     saveHasUnexportedChanges(false);
+    state.unexportedChangeLog = [];
+    saveUnexportedChangeLog([]);
+    state.showUnexportedChangeLogModal = false;
     rememberBackupFile(fileName);
   }
 
-  async function persistSelectedYear(): Promise<void> {
+  async function persistSelectedYear(reason?: string): Promise<void> {
     const year = getSelectedYearBook();
     if (!year) {
       return;
     }
     await saveYear(year);
     state.years = await listYears();
-    markDataChanged();
+    markDataChanged(reason);
   }
 
-  async function persistAllYears(): Promise<void> {
+  async function persistAllYears(reason?: string): Promise<void> {
     for (const yearItem of state.years) {
       await saveYear(yearItem);
     }
     state.years = await listYears();
-    markDataChanged();
+    markDataChanged(reason);
   }
 
   function monthKey(year: number, month: number): number {
@@ -1172,7 +1253,11 @@ export function createAppController(root: HTMLElement) {
 
     state.fixedTemplateVersion = await saveFixedTemplates(state.fixedTemplates);
     state.editingFixedTemplateId = null;
-    await persistAllYears();
+    await persistAllYears(
+      isUpdate
+        ? `Fixkosten-Vorlage aktualisiert: ${cleanName} (${centsToEuro(plannedCents)} €)`
+        : `Fixkosten-Vorlage hinzugefügt: ${cleanName} (${centsToEuro(plannedCents)} €)`,
+    );
     showToast(
       isUpdate
         ? "Fixkosten-Vorlage wurde aktualisiert."
@@ -1202,6 +1287,9 @@ export function createAppController(root: HTMLElement) {
       return;
     }
 
+    const removedTemplate = state.fixedTemplates.find(
+      (template) => template.id === templateId,
+    );
     state.fixedTemplates = state.fixedTemplates.filter(
       (template) => template.id !== templateId,
     );
@@ -1210,7 +1298,9 @@ export function createAppController(root: HTMLElement) {
       state.editingFixedTemplateId = null;
     }
     state.fixedTemplateVersion = await saveFixedTemplates(state.fixedTemplates);
-    await persistAllYears();
+    await persistAllYears(
+      `Fixkosten-Vorlage gelöscht: ${removedTemplate?.name ?? "Unbekannt"}`,
+    );
     showToast("Fixkosten-Vorlage wurde gelöscht.");
     render();
   }
@@ -1227,7 +1317,9 @@ export function createAppController(root: HTMLElement) {
     month.days = month.days.map((day) =>
       day.isoDate === isoDate ? { ...day, [key]: amountCents } : day,
     );
-    await persistSelectedYear();
+    await persistSelectedYear(
+      `${key === "foodCents" ? "Essen" : "Ausgehen"} am ${isoDate} angepasst auf ${centsToEuro(amountCents)} €`,
+    );
     render();
   }
 
@@ -1239,10 +1331,15 @@ export function createAppController(root: HTMLElement) {
     if (!month) {
       return;
     }
+    const targetFixedCost = month.fixedCosts.find(
+      (entry) => entry.id === fixedCostId,
+    );
     month.fixedCosts = month.fixedCosts.map((entry) =>
       entry.id === fixedCostId ? { ...entry, actualCents: amountCents } : entry,
     );
-    await persistSelectedYear();
+    await persistSelectedYear(
+      `Fixkosten-Ist angepasst: ${targetFixedCost?.name ?? "Unbekannt"} auf ${centsToEuro(amountCents)} €`,
+    );
     render();
   }
 
@@ -1324,13 +1421,17 @@ export function createAppController(root: HTMLElement) {
 
       state.recurringBudgetDefaults[budgetField] = amountCents;
       saveRecurringBudgetDefaults(state.recurringBudgetDefaults);
-      await persistAllYears();
+      await persistAllYears(
+        `Budget "${label}" auf ${centsToEuro(amountCents)} € gesetzt (inkl. zukünftiger Monate)`,
+      );
       showToast(`Budget "${label}" wurde für zukünftige Monate übernommen.`);
       render();
       return;
     }
 
-    await persistSelectedYear();
+    await persistSelectedYear(
+      `Budget "${label}" auf ${centsToEuro(amountCents)} € gesetzt`,
+    );
     render();
   }
 
@@ -1346,7 +1447,11 @@ export function createAppController(root: HTMLElement) {
     } else {
       month.carryoverOverrideCents = amountCents;
     }
-    await persistSelectedYear();
+    await persistSelectedYear(
+      amountCents === null
+        ? "Übernahme aus Vormonat zurückgesetzt"
+        : `Übernahme aus Vormonat auf ${centsToEuro(amountCents)} € gesetzt`,
+    );
     render();
   }
 
@@ -1397,13 +1502,17 @@ export function createAppController(root: HTMLElement) {
         });
       });
 
-      await persistAllYears();
+      await persistAllYears(
+        `Variable Position hinzugefügt: ${cleanName} (${centsToEuro(budgetCents)} €) für zukünftige Monate`,
+      );
       showToast("Variable Position wurde für zukünftige Monate hinzugefügt.");
       render();
       return;
     }
 
-    await persistSelectedYear();
+    await persistSelectedYear(
+      `Variable Position hinzugefügt: ${cleanName} (${centsToEuro(budgetCents)} €)`,
+    );
     showToast("Variable Position wurde hinzugefügt.");
     render();
   }
@@ -1417,11 +1526,16 @@ export function createAppController(root: HTMLElement) {
       return;
     }
 
+    const targetPosition = month.variablePositions.find(
+      (position) => position.id === positionId,
+    );
     month.variablePositions = month.variablePositions.map((position) =>
       position.id === positionId ? { ...position, actualCents } : position,
     );
 
-    await persistSelectedYear();
+    await persistSelectedYear(
+      `Istwert Variable Position angepasst: ${targetPosition?.name ?? "Unbekannt"} auf ${centsToEuro(actualCents)} €`,
+    );
     render();
   }
 
@@ -1434,12 +1548,17 @@ export function createAppController(root: HTMLElement) {
       return;
     }
 
+    const targetPosition = month.variablePositions.find(
+      (position) => position.id === positionId,
+    );
     month.variablePositions = month.variablePositions.map((position) =>
       position.id === positionId ? { ...position, budgetCents } : position,
     );
     recalculateVariableBudget(month);
 
-    await persistSelectedYear();
+    await persistSelectedYear(
+      `Budget Variable Position angepasst: ${targetPosition?.name ?? "Unbekannt"} auf ${centsToEuro(budgetCents)} €`,
+    );
     render();
   }
 
@@ -1501,7 +1620,9 @@ export function createAppController(root: HTMLElement) {
         });
       });
 
-      await persistAllYears();
+      await persistAllYears(
+        `Variable Position gelöscht: ${targetPosition.name} (inkl. zukünftiger Monate)`,
+      );
       showToast(
         "Variable Position wurde auch in zukünftigen Monaten gelöscht.",
       );
@@ -1509,7 +1630,9 @@ export function createAppController(root: HTMLElement) {
       return;
     }
 
-    await persistSelectedYear();
+    await persistSelectedYear(
+      `Variable Position gelöscht: ${targetPosition.name}`,
+    );
     showToast("Variable Position wurde gelöscht.");
     render();
   }
@@ -1551,13 +1674,17 @@ export function createAppController(root: HTMLElement) {
         });
       });
 
-      await persistAllYears();
+      await persistAllYears(
+        `Sonstige Position hinzugefügt: ${cleanDescription} (${centsToEuro(amountCents)} €) für zukünftige Monate`,
+      );
       showToast("Sonstige Position wurde für zukünftige Monate hinzugefügt.");
       render();
       return;
     }
 
-    await persistSelectedYear();
+    await persistSelectedYear(
+      `Sonstige Position hinzugefügt: ${cleanDescription} (${centsToEuro(amountCents)} €)`,
+    );
     showToast("Sonstige Position wurde hinzugefügt.");
     render();
   }
@@ -1616,7 +1743,9 @@ export function createAppController(root: HTMLElement) {
         });
       });
 
-      await persistAllYears();
+      await persistAllYears(
+        `Sonstige Position gelöscht: ${targetExpense.description} (${centsToEuro(targetExpense.amountCents)} €) inkl. zukünftiger Monate`,
+      );
       showToast(
         "Sonstige Position wurde auch in zukünftigen Monaten gelöscht.",
       );
@@ -1624,7 +1753,9 @@ export function createAppController(root: HTMLElement) {
       return;
     }
 
-    await persistSelectedYear();
+    await persistSelectedYear(
+      `Sonstige Position gelöscht: ${targetExpense.description} (${centsToEuro(targetExpense.amountCents)} €)`,
+    );
     showToast("Sonstige Position wurde gelöscht.");
     render();
   }
@@ -1666,13 +1797,17 @@ export function createAppController(root: HTMLElement) {
         });
       });
 
-      await persistAllYears();
+      await persistAllYears(
+        `Einkommen hinzugefügt: ${cleanDescription} (${centsToEuro(amountCents)} €) für zukünftige Monate`,
+      );
       showToast("Einkommen wurde für zukünftige Monate hinzugefügt.");
       render();
       return;
     }
 
-    await persistSelectedYear();
+    await persistSelectedYear(
+      `Einkommen hinzugefügt: ${cleanDescription} (${centsToEuro(amountCents)} €)`,
+    );
     showToast("Einkommen wurde hinzugefügt.");
     render();
   }
@@ -1729,13 +1864,17 @@ export function createAppController(root: HTMLElement) {
         });
       });
 
-      await persistAllYears();
+      await persistAllYears(
+        `Einkommen gelöscht: ${targetIncome.description} (${centsToEuro(targetIncome.amountCents)} €) inkl. zukünftiger Monate`,
+      );
       showToast("Einkommen wurde auch in zukünftigen Monaten gelöscht.");
       render();
       return;
     }
 
-    await persistSelectedYear();
+    await persistSelectedYear(
+      `Einkommen gelöscht: ${targetIncome.description} (${centsToEuro(targetIncome.amountCents)} €)`,
+    );
     showToast("Einkommen wurde gelöscht.");
     render();
   }
@@ -1789,7 +1928,7 @@ export function createAppController(root: HTMLElement) {
     const deletedYear = state.selectedYear;
     await deleteYear(deletedYear);
     state.years = await listYears();
-    markDataChanged();
+    markDataChanged(`Jahr ${deletedYear} wurde gelöscht`);
     state.selectedYear = state.years[0]?.year ?? null;
     state.selectedMonth = getCurrentMonthNumber();
     showToast(`Jahr ${deletedYear} wurde gelöscht.`);
@@ -2087,6 +2226,9 @@ export function createAppController(root: HTMLElement) {
         )
       : null;
     const showUnexportedChangesHint = state.hasUnexportedChanges;
+    const unexportedChangeLogForDisplay = state.unexportedChangeLog
+      .slice()
+      .reverse();
     const lastBackupFileNameLabel = state.lastBackupFileName
       ? escapeHtml(state.lastBackupFileName)
       : "-";
@@ -2759,7 +2901,7 @@ export function createAppController(root: HTMLElement) {
         <div class="app-header inline">
           <h1 class="app-title">Haushaltsbuch (HaBu)</h1>
           <div class="header-actions inline">
-            ${showUnexportedChangesHint ? '<span class="export-warning">Änderungen noch nicht gesichert</span>' : ""}
+            ${showUnexportedChangesHint ? `<button class="export-warning export-warning-button" id="open-unexported-change-log" type="button">Änderungen noch nicht gesichert (${state.unexportedChangeLog.length})</button>` : ""}
             <label>
               Theme
               <select id="theme-select">
@@ -2793,6 +2935,33 @@ export function createAppController(root: HTMLElement) {
                 </div>
                 <div class="panel-modal-body">
                   ${modalBody}
+                </div>
+              </div>
+            </div>
+          `
+            : ""
+        }
+
+        ${
+          state.showUnexportedChangeLogModal
+            ? `
+            <div class="panel-modal-backdrop" id="unexported-change-log-backdrop" role="dialog" aria-modal="true" aria-label="Ungesicherte Änderungen">
+              <div class="panel-modal card">
+                <div class="panel-modal-header inline">
+                  <h2>Ungesicherte Änderungen</h2>
+                  <button class="btn btn-quiet" id="unexported-change-log-close" type="button">Schließen</button>
+                </div>
+                <div class="panel-modal-body">
+                  ${
+                    unexportedChangeLogForDisplay.length === 0
+                      ? '<p class="muted">Keine ungesicherten Änderungen vorhanden.</p>'
+                      : `<ol class="change-log-list">${unexportedChangeLogForDisplay
+                          .map(
+                            (entry) =>
+                              `<li><strong>${new Date(entry.timestampIso).toLocaleString("de-DE")}</strong><span>${escapeHtml(entry.message)}</span></li>`,
+                          )
+                          .join("")}</ol>`
+                  }
                 </div>
               </div>
             </div>
@@ -3519,7 +3688,10 @@ export function createAppController(root: HTMLElement) {
       </div>
     `;
 
-    document.body.classList.toggle("panel-modal-open", Boolean(state.topModal));
+    document.body.classList.toggle(
+      "panel-modal-open",
+      Boolean(state.topModal || state.showUnexportedChangeLogModal),
+    );
 
     bindEvents();
     updateScrollUpButtonVisibility();
@@ -3539,6 +3711,14 @@ export function createAppController(root: HTMLElement) {
       root.querySelector<HTMLButtonElement>("#panel-modal-close");
     const panelModalBackdrop = root.querySelector<HTMLDivElement>(
       "#panel-modal-backdrop",
+    );
+    const openUnexportedChangeLogButton = root.querySelector<HTMLButtonElement>(
+      "#open-unexported-change-log",
+    );
+    const unexportedChangeLogCloseButton =
+      root.querySelector<HTMLButtonElement>("#unexported-change-log-close");
+    const unexportedChangeLogBackdrop = root.querySelector<HTMLDivElement>(
+      "#unexported-change-log-backdrop",
     );
     const newYearInput = root.querySelector<HTMLInputElement>("#new-year");
     const createYearButton =
@@ -3563,6 +3743,20 @@ export function createAppController(root: HTMLElement) {
 
     openDashboardModalButton?.addEventListener("click", () => {
       openTopModal("dashboard");
+    });
+
+    openUnexportedChangeLogButton?.addEventListener("click", () => {
+      openUnexportedChangeLogModal();
+    });
+
+    unexportedChangeLogCloseButton?.addEventListener("click", () => {
+      closeUnexportedChangeLogModal();
+    });
+
+    unexportedChangeLogBackdrop?.addEventListener("click", (event) => {
+      if (event.target === unexportedChangeLogBackdrop) {
+        closeUnexportedChangeLogModal();
+      }
     });
 
     root
@@ -3603,6 +3797,12 @@ export function createAppController(root: HTMLElement) {
     if (state.topModal) {
       window.setTimeout(() => {
         panelModalCloseButton?.focus();
+      }, 0);
+    }
+
+    if (state.showUnexportedChangeLogModal) {
+      window.setTimeout(() => {
+        unexportedChangeLogCloseButton?.focus();
       }, 0);
     }
 
