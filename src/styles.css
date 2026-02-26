@@ -1449,6 +1449,10 @@ tbody tr:nth-child(even) {
     width: 100%;
   }
 
+  .btn {
+    margin-bottom: 30px;
+  }
+
   input,
   select,
   button,
