@@ -762,6 +762,7 @@ button {
   background: var(--button-bg);
   color: var(--text-main);
   font-weight: 600;
+  margin-bottom: 30px;
 }
 
 a.btn,
@@ -1463,10 +1464,6 @@ tbody tr:nth-child(even) {
   .inline > * {
     min-width: 0;
     width: 100%;
-  }
-
-  .btn {
-    margin-bottom: 30px;
   }
 
   input,
