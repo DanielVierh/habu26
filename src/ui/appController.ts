@@ -175,6 +175,7 @@ export function createAppController(root: HTMLElement) {
   let amountModalRoot: HTMLDivElement | null = null;
   let amountModalTarget: HTMLInputElement | null = null;
   let hasBoundGlobalModalKeys = false;
+  let hasBoundScrollUpVisibilityEvents = false;
 
   function openTopModal(kind: "years" | "fixed" | "dashboard"): void {
     if (kind === "dashboard") {
@@ -216,6 +217,41 @@ export function createAppController(root: HTMLElement) {
       event.preventDefault();
       closeTopModal();
     });
+  }
+
+  function shouldShowScrollUpButton(): boolean {
+    const maxScrollableHeight = Math.max(
+      0,
+      document.documentElement.scrollHeight - window.innerHeight,
+    );
+    if (maxScrollableHeight <= 0) {
+      return false;
+    }
+    const threshold = maxScrollableHeight / 6;
+    return window.scrollY > threshold;
+  }
+
+  function updateScrollUpButtonVisibility(): void {
+    const scrollUpButton =
+      root.querySelector<HTMLButtonElement>("#scroll-up-btn");
+    if (!scrollUpButton) {
+      return;
+    }
+    scrollUpButton.classList.toggle("is-visible", shouldShowScrollUpButton());
+  }
+
+  function bindScrollUpVisibilityOnce(): void {
+    if (hasBoundScrollUpVisibilityEvents) {
+      return;
+    }
+    hasBoundScrollUpVisibilityEvents = true;
+
+    const onWindowChange = () => {
+      updateScrollUpButtonVisibility();
+    };
+
+    window.addEventListener("scroll", onWindowChange, { passive: true });
+    window.addEventListener("resize", onWindowChange);
   }
 
   function ensureToastRoot(): HTMLDivElement {
@@ -575,6 +611,7 @@ export function createAppController(root: HTMLElement) {
     state.lastBackupFileName = loadLastBackupFileName();
     state.recurringBudgetDefaults = loadRecurringBudgetDefaults();
     bindGlobalModalKeysOnce();
+    bindScrollUpVisibilityOnce();
     const [years, fixed] = await Promise.all([
       listYears(),
       getFixedTemplateState(),
@@ -3391,12 +3428,23 @@ export function createAppController(root: HTMLElement) {
           <p class="muted">Letztes verwendetes Backup: ${lastBackupFileNameLabel}</p>
           <p class="muted">Die Daten bleiben lokal im Browser (IndexedDB). Zusätzlich kannst du Backups als Datei sichern und später importieren.</p>
         </section>
+
+        <button
+          id="scroll-up-btn"
+          class="scroll-up-btn"
+          type="button"
+          aria-label="Nach oben scrollen"
+          title="Nach oben"
+        >
+          ↑
+        </button>
       </div>
     `;
 
     document.body.classList.toggle("panel-modal-open", Boolean(state.topModal));
 
     bindEvents();
+    updateScrollUpButtonVisibility();
   }
 
   function bindEvents(): void {
@@ -3827,6 +3875,12 @@ export function createAppController(root: HTMLElement) {
     const backupExport =
       root.querySelector<HTMLButtonElement>("#backup-export");
     const backupImport = root.querySelector<HTMLInputElement>("#backup-import");
+    const scrollUpButton =
+      root.querySelector<HTMLButtonElement>("#scroll-up-btn");
+
+    scrollUpButton?.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
 
     backupExport?.addEventListener("click", async () => {
       await exportBackup();
