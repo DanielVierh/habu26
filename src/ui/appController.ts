@@ -123,7 +123,7 @@ interface State {
   showUnexportedChangeLogModal: boolean;
   lastBackupFileName: string | null;
   topModal: "years" | "fixed" | "dashboard" | null;
-  dashboardTab: "year" | "all";
+  dashboardTab: "year" | "food" | "all";
   dashboardYear: number | null;
   recurringBudgetDefaults: RecurringBudgetDefaults;
 }
@@ -2324,6 +2324,7 @@ export function createAppController(root: HTMLElement) {
             monthKey(dashboardYearBook.year, monthItem.month),
           )
         : undefined;
+      const monthSummary = summarizeMonth(monthItem);
       const monthRecordedIncomeCents = monthItem.incomes.reduce(
         (sum, entry) => sum + entry.amountCents,
         0,
@@ -2333,7 +2334,10 @@ export function createAppController(root: HTMLElement) {
       const monthPlannedBudgetCents =
         monthFlow?.plannedBudgetCents ??
         summarizePlannedBudgetsCents(monthItem);
-      const monthActualCostCents = summarizeMonth(monthItem).totalCents;
+      const monthFoodCents = monthSummary.foodCents;
+      const monthGoingOutCents = monthSummary.goingOutCents;
+      const monthFoodAndGoingOutCents = monthFoodCents + monthGoingOutCents;
+      const monthActualCostCents = monthSummary.totalCents;
       const monthPlannedNetCents =
         monthEffectiveIncomeCents - monthPlannedBudgetCents;
       const monthActualNetCents =
@@ -2341,6 +2345,9 @@ export function createAppController(root: HTMLElement) {
 
       return {
         month: monthItem.month,
+        foodCents: monthFoodCents,
+        goingOutCents: monthGoingOutCents,
+        foodAndGoingOutCents: monthFoodAndGoingOutCents,
         effectiveIncomeCents: monthEffectiveIncomeCents,
         plannedBudgetCents: monthPlannedBudgetCents,
         actualCostCents: monthActualCostCents,
@@ -2358,6 +2365,18 @@ export function createAppController(root: HTMLElement) {
         Math.abs(row.plannedNetCents),
         Math.abs(row.actualNetCents),
       ]),
+    );
+    const dashboardYearFoodAndGoingOutMaxCents = Math.max(
+      1,
+      ...dashboardYearMonthlyRows.map((row) => row.foodAndGoingOutCents),
+    );
+    const dashboardYearFoodMaxCents = Math.max(
+      1,
+      ...dashboardYearMonthlyRows.map((row) => row.foodCents),
+    );
+    const dashboardYearGoingOutMaxCents = Math.max(
+      1,
+      ...dashboardYearMonthlyRows.map((row) => row.goingOutCents),
     );
 
     const allYearsBudgetTotals = sortedYears.reduce(
@@ -2484,6 +2503,7 @@ export function createAppController(root: HTMLElement) {
       <div class="grid">
         <div class="inline" role="tablist" aria-label="Dashboard Ansichten">
           <button class="btn ${state.dashboardTab === "year" ? "btn-primary" : "btn-quiet"}" id="dashboard-tab-year" data-dashboard-tab="year" type="button">Jahr im Detail</button>
+          <button class="btn ${state.dashboardTab === "food" ? "btn-primary" : "btn-quiet"}" id="dashboard-tab-food" data-dashboard-tab="food" type="button">Essen & Trinken</button>
           <button class="btn ${state.dashboardTab === "all" ? "btn-primary" : "btn-quiet"}" id="dashboard-tab-all" data-dashboard-tab="all" type="button">Alle Jahre</button>
         </div>
 
@@ -2575,7 +2595,7 @@ export function createAppController(root: HTMLElement) {
                       <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist-Kosten</span>
                     </div>
                   </header>
-                  <div class="spark-bars">
+                  <div class="spark-bars" style="grid-template-columns: repeat(${Math.max(dashboardYearMonthlyRows.length, 1)}, minmax(0, 1fr));">
                     ${dashboardYearMonthlyRows
                       .map((row) => {
                         const height = percent(
@@ -2667,7 +2687,103 @@ export function createAppController(root: HTMLElement) {
                 </tbody>
               </table>
             `
-              : `
+              : state.dashboardTab === "food"
+                ? `
+              <div class="inline">
+                <label>
+                  Jahr
+                  <select id="dashboard-year-select">
+                    ${sortedYears
+                      .map(
+                        (item) =>
+                          `<option value="${item.year}" ${item.year === dashboardYearNumber ? "selected" : ""}>${item.year}</option>`,
+                      )
+                      .join("")}
+                  </select>
+                </label>
+              </div>
+
+              <div class="chart-grid">
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Essen + Ausgehen Gesamt</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist-Kosten</span>
+                    </div>
+                  </header>
+                  <div class="spark-bars">
+                    ${dashboardYearMonthlyRows
+                      .map((row) => {
+                        const height = percent(
+                          row.foodAndGoingOutCents,
+                          dashboardYearFoodAndGoingOutMaxCents,
+                        );
+
+                        return `
+                          <div class="spark-bar" title="${monthLabel(row.month)}: ${centsToEuro(row.foodAndGoingOutCents)}">
+                            <div class="spark-bar-fill" style="height:${height}"></div>
+                            <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
+                          </div>
+                        `;
+                      })
+                      .join("")}
+                  </div>
+                </section>
+
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Essen & Trinken</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist-Kosten</span>
+                    </div>
+                  </header>
+                  <div class="spark-bars" style="grid-template-columns: repeat(${Math.max(dashboardYearMonthlyRows.length, 1)}, minmax(0, 1fr));">
+                    ${dashboardYearMonthlyRows
+                      .map((row) => {
+                        const height = percent(
+                          row.foodCents,
+                          dashboardYearFoodMaxCents,
+                        );
+
+                        return `
+                          <div class="spark-bar" title="${monthLabel(row.month)}: ${centsToEuro(row.foodCents)}">
+                            <div class="spark-bar-fill" style="height:${height}"></div>
+                            <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
+                          </div>
+                        `;
+                      })
+                      .join("")}
+                  </div>
+                </section>
+
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Ausgehen</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist-Kosten</span>
+                    </div>
+                  </header>
+                  <div class="spark-bars" style="grid-template-columns: repeat(${Math.max(dashboardYearMonthlyRows.length, 1)}, minmax(0, 1fr));">
+                    ${dashboardYearMonthlyRows
+                      .map((row) => {
+                        const height = percent(
+                          row.goingOutCents,
+                          dashboardYearGoingOutMaxCents,
+                        );
+
+                        return `
+                          <div class="spark-bar" title="${monthLabel(row.month)}: ${centsToEuro(row.goingOutCents)}">
+                            <div class="spark-bar-fill" style="height:${height}"></div>
+                            <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
+                          </div>
+                        `;
+                      })
+                      .join("")}
+                  </div>
+                </section>
+              </div>
+            `
+                : `
               <div class="eval-grid">
                 <section class="eval-tile">
                   <header class="eval-tile-header">
@@ -3764,7 +3880,7 @@ export function createAppController(root: HTMLElement) {
       .forEach((button) => {
         button.addEventListener("click", () => {
           const tab = button.dataset.dashboardTab;
-          if (tab !== "year" && tab !== "all") {
+          if (tab !== "year" && tab !== "food" && tab !== "all") {
             return;
           }
           state.dashboardTab = tab;
