@@ -702,7 +702,9 @@ export function createAppController(root: HTMLElement) {
 
   function normalizeBudgetsForYears(years: YearBook[]): void {
     const normalizeIncomeSource = (value: unknown): IncomeSource | undefined =>
-      value === "balance" || value === "fresh" ? value : undefined;
+      value === "balance" || value === "fresh" || value === "salary"
+        ? value
+        : undefined;
 
     years.forEach((year) => {
       year.months.forEach((month) => {
@@ -755,10 +757,17 @@ export function createAppController(root: HTMLElement) {
     if (source === "balance") {
       return "Bestandsguthaben";
     }
+    if (source === "salary") {
+      return "Gehalt";
+    }
     if (source === "fresh") {
       return "Neues Einkommen";
     }
     return "Nicht zugeordnet";
+  }
+
+  function isRecordedIncomeSource(source: IncomeSource | undefined): boolean {
+    return source === "fresh" || source === "salary" || !source;
   }
 
   async function persistNormalizedYears(years: YearBook[]): Promise<void> {
@@ -927,7 +936,11 @@ export function createAppController(root: HTMLElement) {
       (sum, monthItem) =>
         sum +
         monthItem.incomes.reduce(
-          (monthSum, entry) => monthSum + entry.amountCents,
+          (monthSum, entry) =>
+            monthSum +
+            (isRecordedIncomeSource(entry.incomeSource)
+              ? entry.amountCents
+              : 0),
           0,
         ),
       0,
@@ -971,7 +984,9 @@ export function createAppController(root: HTMLElement) {
       const hasPreviousMonth = index > 0 || hasOverride;
 
       const recordedIncomeCents = month.incomes.reduce(
-        (sum, entry) => sum + entry.amountCents,
+        (sum, entry) =>
+          sum +
+          (isRecordedIncomeSource(entry.incomeSource) ? entry.amountCents : 0),
         0,
       );
       const plannedBudgetCents = summarizePlannedBudgetsCents(month);
@@ -2090,7 +2105,21 @@ export function createAppController(root: HTMLElement) {
         )
       : 0;
     const recordedIncomeTotalCents = month
-      ? month.incomes.reduce((sum, entry) => sum + entry.amountCents, 0)
+      ? month.incomes.reduce(
+          (sum, entry) =>
+            sum +
+            (isRecordedIncomeSource(entry.incomeSource)
+              ? entry.amountCents
+              : 0),
+          0,
+        )
+      : 0;
+    const monthSalaryIncomeCents = month
+      ? month.incomes.reduce(
+          (sum, entry) =>
+            sum + (entry.incomeSource === "salary" ? entry.amountCents : 0),
+          0,
+        )
       : 0;
     const incomeFlowByMonth = summarizeIncomeFlowByMonth();
     const selectedIncomeFlow = year
@@ -2112,6 +2141,12 @@ export function createAppController(root: HTMLElement) {
       recordedIncomeTotalCents - monthPlannedBudgetCentsForNetFallback;
     const monthActualNetCents =
       effectiveIncomeTotalCents - monthSummary.totalCents;
+    const monthSalaryMinusExpensesCents =
+      monthSalaryIncomeCents - monthSummary.totalCents;
+    const monthSalaryVsExpensesPercent =
+      monthSummary.totalCents > 0
+        ? `${((monthSalaryIncomeCents / monthSummary.totalCents) * 100).toFixed(1)} %`
+        : "-";
     const carryoverClass =
       carryoverCents < 0 ? "danger" : carryoverCents > 0 ? "budget-under" : "";
     const monthNetClass =
@@ -2127,7 +2162,24 @@ export function createAppController(root: HTMLElement) {
           (sum, monthItem) =>
             sum +
             monthItem.incomes.reduce(
-              (monthSum, entry) => monthSum + entry.amountCents,
+              (monthSum, entry) =>
+                monthSum +
+                (isRecordedIncomeSource(entry.incomeSource)
+                  ? entry.amountCents
+                  : 0),
+              0,
+            ),
+          0,
+        )
+      : 0;
+    const yearSalaryIncomeCents = year
+      ? year.months.reduce(
+          (sum, monthItem) =>
+            sum +
+            monthItem.incomes.reduce(
+              (monthSum, entry) =>
+                monthSum +
+                (entry.incomeSource === "salary" ? entry.amountCents : 0),
               0,
             ),
           0,
@@ -2141,6 +2193,12 @@ export function createAppController(root: HTMLElement) {
     const yearEffectiveIncomeTotalCents =
       yearRecordedIncomeTotalCents + yearOpeningCarryoverCents;
     const yearNetCents = yearEffectiveIncomeTotalCents - yearSummary.totalCents;
+    const yearSalaryMinusExpensesCents =
+      yearSalaryIncomeCents - yearSummary.totalCents;
+    const yearSalaryVsExpensesPercent =
+      yearSummary.totalCents > 0
+        ? `${((yearSalaryIncomeCents / yearSummary.totalCents) * 100).toFixed(1)} %`
+        : "-";
     const yearOpeningCarryoverClass =
       yearOpeningCarryoverCents < 0
         ? "danger"
@@ -3462,6 +3520,16 @@ export function createAppController(root: HTMLElement) {
                     <div class="eval-value ${monthActualNetClass}">${centsToEuro(monthActualNetCents)}</div>
                     <div class="eval-value ${yearNetClass}">${centsToEuro(yearNetCents)}</div>
                   </div>
+                  <div class="eval-row eval-strong">
+                    <div class="eval-label">Gehalt - Ausgaben</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(monthSalaryMinusExpensesCents)}">${centsToEuro(monthSalaryMinusExpensesCents)}</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(yearSalaryMinusExpensesCents)}">${centsToEuro(yearSalaryMinusExpensesCents)}</div>
+                  </div>
+                  <div class="eval-row eval-strong">
+                    <div class="eval-label">Gehalt vs. Ausgaben (%)</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(monthSalaryMinusExpensesCents)}">${monthSalaryVsExpensesPercent}</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(yearSalaryMinusExpensesCents)}">${yearSalaryVsExpensesPercent}</div>
+                  </div>
                 </div>
               </section>
             </div>
@@ -3615,6 +3683,7 @@ export function createAppController(root: HTMLElement) {
               <label>
                 Herkunft
                 <select id="income-source" ${month ? "" : "disabled"}>
+                  <option value="salary">Gehalt</option>
                   <option value="fresh">Neues Einkommen</option>
                   <option value="balance">Bestandsguthaben</option>
                 </select>
@@ -3647,6 +3716,7 @@ export function createAppController(root: HTMLElement) {
                     <td>
                       <select data-income-source="${entry.id}">
                         <option value="" ${!entry.incomeSource ? "selected" : ""}>Nicht zugeordnet</option>
+                        <option value="salary" ${entry.incomeSource === "salary" ? "selected" : ""}>Gehalt</option>
                         <option value="fresh" ${entry.incomeSource === "fresh" ? "selected" : ""}>Neues Einkommen</option>
                         <option value="balance" ${entry.incomeSource === "balance" ? "selected" : ""}>Bestandsguthaben</option>
                       </select>
@@ -4279,7 +4349,9 @@ export function createAppController(root: HTMLElement) {
       const amountCents = euroToCents(incomeAmountInput?.value ?? "0");
       const selectedSource = incomeSourceInput?.value;
       const incomeSource =
-        selectedSource === "balance" || selectedSource === "fresh"
+        selectedSource === "balance" ||
+        selectedSource === "fresh" ||
+        selectedSource === "salary"
           ? selectedSource
           : undefined;
       await addIncome(
@@ -4290,14 +4362,16 @@ export function createAppController(root: HTMLElement) {
       );
       if (incomeDescriptionInput) incomeDescriptionInput.value = "";
       if (incomeAmountInput) incomeAmountInput.value = "";
-      if (incomeSourceInput) incomeSourceInput.value = "fresh";
+      if (incomeSourceInput) incomeSourceInput.value = "salary";
     });
 
     addIncomeRecurringButton?.addEventListener("click", async () => {
       const amountCents = euroToCents(incomeAmountInput?.value ?? "0");
       const selectedSource = incomeSourceInput?.value;
       const incomeSource =
-        selectedSource === "balance" || selectedSource === "fresh"
+        selectedSource === "balance" ||
+        selectedSource === "fresh" ||
+        selectedSource === "salary"
           ? selectedSource
           : undefined;
       await addIncome(
@@ -4308,7 +4382,7 @@ export function createAppController(root: HTMLElement) {
       );
       if (incomeDescriptionInput) incomeDescriptionInput.value = "";
       if (incomeAmountInput) incomeAmountInput.value = "";
-      if (incomeSourceInput) incomeSourceInput.value = "fresh";
+      if (incomeSourceInput) incomeSourceInput.value = "salary";
     });
 
     root
@@ -4321,7 +4395,9 @@ export function createAppController(root: HTMLElement) {
           }
           const value = select.value;
           const incomeSource =
-            value === "balance" || value === "fresh" ? value : undefined;
+            value === "balance" || value === "fresh" || value === "salary"
+              ? value
+              : undefined;
           await updateIncomeSource(incomeId, incomeSource);
         });
       });
