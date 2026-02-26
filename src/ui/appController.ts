@@ -3200,11 +3200,9 @@ export function createAppController(root: HTMLElement) {
                     const genericDiffClass = (value: number | null): string =>
                       value === null
                         ? "muted"
-                        : value < 0
-                          ? "danger"
-                          : value > 0
-                            ? "budget-under"
-                            : "muted";
+                        : value !== 0
+                          ? "budget-under"
+                          : "muted";
                     const diffLabel = (value: number | null): string =>
                       value === null
                         ? "(Δ -)"
