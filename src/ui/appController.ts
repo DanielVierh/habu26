@@ -3130,6 +3130,76 @@ export function createAppController(root: HTMLElement) {
                           ? "budget-under"
                           : "";
                     const previousRow = rows[index - 1];
+
+                    const previousFoodCents =
+                      previousRow?.summary.foodCents ?? null;
+                    const previousGoingOutCents =
+                      previousRow?.summary.goingOutCents ?? null;
+                    const previousFixedCents =
+                      previousRow?.summary.fixedCents ?? null;
+                    const previousVariableCents =
+                      previousRow?.summary.variableCents ?? null;
+                    const previousMiscCents =
+                      previousRow?.summary.miscCents ?? null;
+                    const previousTotalCents =
+                      previousRow?.summary.totalCents ?? null;
+                    const previousBudgetCents =
+                      year && previousRow
+                        ? (incomeFlowByMonth.get(
+                            monthKey(year.year, previousRow.month),
+                          )?.plannedBudgetCents ?? 0)
+                        : null;
+
+                    const foodDiffCents =
+                      previousFoodCents === null
+                        ? null
+                        : row.summary.foodCents - previousFoodCents;
+                    const goingOutDiffCents =
+                      previousGoingOutCents === null
+                        ? null
+                        : row.summary.goingOutCents - previousGoingOutCents;
+                    const fixedDiffCents =
+                      previousFixedCents === null
+                        ? null
+                        : row.summary.fixedCents - previousFixedCents;
+                    const variableDiffCents =
+                      previousVariableCents === null
+                        ? null
+                        : row.summary.variableCents - previousVariableCents;
+                    const miscDiffCents =
+                      previousMiscCents === null
+                        ? null
+                        : row.summary.miscCents - previousMiscCents;
+                    const totalDiffCents =
+                      previousTotalCents === null
+                        ? null
+                        : row.summary.totalCents - previousTotalCents;
+                    const budgetDiffCents =
+                      previousBudgetCents === null
+                        ? null
+                        : rowPlannedBudgetCents - previousBudgetCents;
+
+                    const costDiffClass = (value: number | null): string =>
+                      value === null
+                        ? "muted"
+                        : value > 0
+                          ? "danger"
+                          : value < 0
+                            ? "budget-under"
+                            : "muted";
+                    const genericDiffClass = (value: number | null): string =>
+                      value === null
+                        ? "muted"
+                        : value < 0
+                          ? "danger"
+                          : value > 0
+                            ? "budget-under"
+                            : "muted";
+                    const diffLabel = (value: number | null): string =>
+                      value === null
+                        ? "(Δ -)"
+                        : `(Δ ${value > 0 ? "+" : ""}${centsToEuro(value)})`;
+
                     const previousNetCents =
                       year && previousRow
                         ? (incomeFlowByMonth.get(
@@ -3155,13 +3225,13 @@ export function createAppController(root: HTMLElement) {
 
                     return `<tr>
                   <td>${monthLabel(row.month)}</td>
-                  <td>${centsToEuro(row.summary.foodCents)}</td>
-                  <td>${centsToEuro(row.summary.goingOutCents)}</td>
-                  <td>${centsToEuro(row.summary.fixedCents)}</td>
-                  <td>${centsToEuro(row.summary.variableCents)}</td>
-                  <td>${centsToEuro(row.summary.miscCents)}</td>
-                  <td>${centsToEuro(row.summary.totalCents)}</td>
-                  <td>${centsToEuro(rowPlannedBudgetCents)}</td>
+                  <td>${centsToEuro(row.summary.foodCents)} <span class="${costDiffClass(foodDiffCents)}">${diffLabel(foodDiffCents)}</span></td>
+                  <td>${centsToEuro(row.summary.goingOutCents)} <span class="${costDiffClass(goingOutDiffCents)}">${diffLabel(goingOutDiffCents)}</span></td>
+                  <td>${centsToEuro(row.summary.fixedCents)} <span class="${costDiffClass(fixedDiffCents)}">${diffLabel(fixedDiffCents)}</span></td>
+                  <td>${centsToEuro(row.summary.variableCents)} <span class="${costDiffClass(variableDiffCents)}">${diffLabel(variableDiffCents)}</span></td>
+                  <td>${centsToEuro(row.summary.miscCents)} <span class="${costDiffClass(miscDiffCents)}">${diffLabel(miscDiffCents)}</span></td>
+                  <td>${centsToEuro(row.summary.totalCents)} <span class="${costDiffClass(totalDiffCents)}">${diffLabel(totalDiffCents)}</span></td>
+                  <td>${centsToEuro(rowPlannedBudgetCents)} <span class="${genericDiffClass(budgetDiffCents)}">${diffLabel(budgetDiffCents)}</span></td>
                   <td class="${rowNetClass}">${centsToEuro(rowNetCents)} <span class="${monthDiffClass}">${monthDiffLabel}</span></td>
                 </tr>`;
                   })
