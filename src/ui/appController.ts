@@ -2,11 +2,17 @@ import type {
   BackupPayload,
   ExpenseEntry,
   FixedCostTemplate,
+  IncomeSource,
   MonthBook,
   YearBook,
   YearNumber,
 } from "../domain/model";
-import { createExpense, createId, createYearWithMonths } from "../domain/rules";
+import {
+  createExpense,
+  createId,
+  createIncomeEntry,
+  createYearWithMonths,
+} from "../domain/rules";
 import {
   createBackupPayload,
   deleteYear,
@@ -695,6 +701,9 @@ export function createAppController(root: HTMLElement) {
   }
 
   function normalizeBudgetsForYears(years: YearBook[]): void {
+    const normalizeIncomeSource = (value: unknown): IncomeSource | undefined =>
+      value === "balance" || value === "fresh" ? value : undefined;
+
     years.forEach((year) => {
       year.months.forEach((month) => {
         if (typeof month.foodBudgetCents !== "number") {
@@ -705,6 +714,20 @@ export function createAppController(root: HTMLElement) {
         }
         if (!Array.isArray(month.incomes)) {
           month.incomes = [];
+        } else {
+          month.incomes = month.incomes.map((entry) => {
+            const normalizedIncomeSource = normalizeIncomeSource(
+              entry.incomeSource,
+            );
+            if (!normalizedIncomeSource) {
+              const { incomeSource: _unusedIncomeSource, ...rest } = entry;
+              return rest;
+            }
+            return {
+              ...entry,
+              incomeSource: normalizedIncomeSource,
+            };
+          });
         }
         if (typeof month.fixedBudgetCents !== "number") {
           month.fixedBudgetCents = month.fixedCosts.reduce(
@@ -726,6 +749,16 @@ export function createAppController(root: HTMLElement) {
         }
       });
     });
+  }
+
+  function incomeSourceLabel(source: IncomeSource | undefined): string {
+    if (source === "balance") {
+      return "Bestandsguthaben";
+    }
+    if (source === "fresh") {
+      return "Neues Einkommen";
+    }
+    return "Nicht zugeordnet";
   }
 
   async function persistNormalizedYears(years: YearBook[]): Promise<void> {
@@ -1763,6 +1796,7 @@ export function createAppController(root: HTMLElement) {
   async function addIncome(
     description: string,
     amountCents: number,
+    incomeSource: IncomeSource | undefined,
     applyFuture: boolean,
   ): Promise<void> {
     const month = getSelectedMonthBook();
@@ -1780,7 +1814,11 @@ export function createAppController(root: HTMLElement) {
       return;
     }
 
-    const entry: ExpenseEntry = createExpense(cleanDescription, amountCents);
+    const entry = createIncomeEntry(
+      cleanDescription,
+      amountCents,
+      incomeSource,
+    );
     month.incomes = [entry, ...month.incomes];
 
     if (applyFuture) {
@@ -1791,14 +1829,14 @@ export function createAppController(root: HTMLElement) {
             return;
           }
           monthItem.incomes = [
-            createExpense(cleanDescription, amountCents),
+            createIncomeEntry(cleanDescription, amountCents, incomeSource),
             ...monthItem.incomes,
           ];
         });
       });
 
       await persistAllYears(
-        `Einkommen hinzugefügt: ${cleanDescription} (${centsToEuro(amountCents)} €) für zukünftige Monate`,
+        `Einkommen hinzugefügt: ${cleanDescription} (${centsToEuro(amountCents)} €, ${incomeSourceLabel(incomeSource)}) für zukünftige Monate`,
       );
       showToast("Einkommen wurde für zukünftige Monate hinzugefügt.");
       render();
@@ -1806,9 +1844,43 @@ export function createAppController(root: HTMLElement) {
     }
 
     await persistSelectedYear(
-      `Einkommen hinzugefügt: ${cleanDescription} (${centsToEuro(amountCents)} €)`,
+      `Einkommen hinzugefügt: ${cleanDescription} (${centsToEuro(amountCents)} €, ${incomeSourceLabel(incomeSource)})`,
     );
     showToast("Einkommen wurde hinzugefügt.");
+    render();
+  }
+
+  async function updateIncomeSource(
+    incomeId: string,
+    incomeSource: IncomeSource | undefined,
+  ): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+
+    const targetIncome = month.incomes.find((entry) => entry.id === incomeId);
+    if (!targetIncome) {
+      return;
+    }
+
+    month.incomes = month.incomes.map((entry) => {
+      if (entry.id !== incomeId) {
+        return entry;
+      }
+      if (!incomeSource) {
+        const { incomeSource: _unusedIncomeSource, ...rest } = entry;
+        return rest;
+      }
+      return {
+        ...entry,
+        incomeSource,
+      };
+    });
+
+    await persistSelectedYear(
+      `Einkommensart angepasst: ${targetIncome.description} → ${incomeSourceLabel(incomeSource)}`,
+    );
     render();
   }
 
@@ -3541,6 +3613,13 @@ export function createAppController(root: HTMLElement) {
                 <input id="income-description" type="text" placeholder="z.B. Gehalt" ${month ? "" : "disabled"} />
               </label>
               <label>
+                Herkunft
+                <select id="income-source" ${month ? "" : "disabled"}>
+                  <option value="fresh">Neues Einkommen</option>
+                  <option value="balance">Bestandsguthaben</option>
+                </select>
+              </label>
+              <label>
                 Betrag (€)
                 <input class="amount-input" id="income-amount" type="number" min="0" step="0.01" placeholder="0.00" ${month ? "" : "disabled"} />
               </label>
@@ -3549,13 +3628,14 @@ export function createAppController(root: HTMLElement) {
             </div>
             <table>
               <thead>
-                <tr><th>Beschreibung</th><th>Betrag (€)</th><th></th></tr>
+                <tr><th>Beschreibung</th><th>Herkunft</th><th>Betrag (€)</th><th></th></tr>
               </thead>
               <tbody>
                 ${
                   month
                     ? `<tr>
                     <td>Übernahme aus Vormonat</td>
+                    <td>-</td>
                     <td class="${carryoverClass}">
                       <input class="amount-input" id="carryover-override" type="number" step="0.01" value="${centsToEuroInput(carryoverCents)}" />
                     </td>
@@ -3564,6 +3644,13 @@ export function createAppController(root: HTMLElement) {
                     .map(
                       (entry) => `<tr>
                     <td>${entry.description}</td>
+                    <td>
+                      <select data-income-source="${entry.id}">
+                        <option value="" ${!entry.incomeSource ? "selected" : ""}>Nicht zugeordnet</option>
+                        <option value="fresh" ${entry.incomeSource === "fresh" ? "selected" : ""}>Neues Einkommen</option>
+                        <option value="balance" ${entry.incomeSource === "balance" ? "selected" : ""}>Bestandsguthaben</option>
+                      </select>
+                    </td>
                     <td>${centsToEuro(entry.amountCents)}</td>
                     <td><button class="btn btn-quiet" data-remove-income="${entry.id}">Löschen</button></td>
                   </tr>`,
@@ -4113,6 +4200,8 @@ export function createAppController(root: HTMLElement) {
     const incomeDescriptionInput = root.querySelector<HTMLInputElement>(
       "#income-description",
     );
+    const incomeSourceInput =
+      root.querySelector<HTMLSelectElement>("#income-source");
     const incomeAmountInput =
       root.querySelector<HTMLInputElement>("#income-amount");
     const addIncomeButton =
@@ -4188,17 +4277,54 @@ export function createAppController(root: HTMLElement) {
 
     addIncomeButton?.addEventListener("click", async () => {
       const amountCents = euroToCents(incomeAmountInput?.value ?? "0");
-      await addIncome(incomeDescriptionInput?.value ?? "", amountCents, false);
+      const selectedSource = incomeSourceInput?.value;
+      const incomeSource =
+        selectedSource === "balance" || selectedSource === "fresh"
+          ? selectedSource
+          : undefined;
+      await addIncome(
+        incomeDescriptionInput?.value ?? "",
+        amountCents,
+        incomeSource,
+        false,
+      );
       if (incomeDescriptionInput) incomeDescriptionInput.value = "";
       if (incomeAmountInput) incomeAmountInput.value = "";
+      if (incomeSourceInput) incomeSourceInput.value = "fresh";
     });
 
     addIncomeRecurringButton?.addEventListener("click", async () => {
       const amountCents = euroToCents(incomeAmountInput?.value ?? "0");
-      await addIncome(incomeDescriptionInput?.value ?? "", amountCents, true);
+      const selectedSource = incomeSourceInput?.value;
+      const incomeSource =
+        selectedSource === "balance" || selectedSource === "fresh"
+          ? selectedSource
+          : undefined;
+      await addIncome(
+        incomeDescriptionInput?.value ?? "",
+        amountCents,
+        incomeSource,
+        true,
+      );
       if (incomeDescriptionInput) incomeDescriptionInput.value = "";
       if (incomeAmountInput) incomeAmountInput.value = "";
+      if (incomeSourceInput) incomeSourceInput.value = "fresh";
     });
+
+    root
+      .querySelectorAll<HTMLSelectElement>("[data-income-source]")
+      .forEach((select) => {
+        select.addEventListener("change", async () => {
+          const incomeId = select.dataset.incomeSource;
+          if (!incomeId) {
+            return;
+          }
+          const value = select.value;
+          const incomeSource =
+            value === "balance" || value === "fresh" ? value : undefined;
+          await updateIncomeSource(incomeId, incomeSource);
+        });
+      });
 
     root
       .querySelectorAll<HTMLInputElement>("[data-variable-position-budget]")

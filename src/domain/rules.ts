@@ -3,6 +3,8 @@ import type {
   ExpenseEntry,
   FixedCostEntry,
   FixedCostTemplate,
+  IncomeEntry,
+  IncomeSource,
   MonthBook,
   MonthNumber,
   YearBook,
@@ -95,5 +97,27 @@ export function createExpense(
     description,
     amountCents,
     createdAt: nowIso(),
+  };
+}
+
+export function createIncomeEntry(
+  description: string,
+  amountCents: number,
+  incomeSource?: IncomeSource,
+): IncomeEntry {
+  const entryBase = {
+    id: createId("income"),
+    description,
+    amountCents,
+    createdAt: nowIso(),
+  };
+
+  if (!incomeSource) {
+    return entryBase;
+  }
+
+  return {
+    ...entryBase,
+    incomeSource,
   };
 }
