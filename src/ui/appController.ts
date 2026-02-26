@@ -1967,6 +1967,11 @@ export function createAppController(root: HTMLElement) {
     const yearIncomeMinusPlannedBudgetsCents =
       yearEffectiveIncomeTotalCents - yearPlannedBudgetTotalCents;
 
+    const monthBudgetRemainingCents =
+      monthPlannedBudgetTotalCents - monthSummary.totalCents;
+    const yearBudgetRemainingCents =
+      yearPlannedBudgetTotalCents - yearSummary.totalCents;
+
     const incomeBudgetBalanceClass = (value: number): string =>
       value < 0 ? "danger" : value > 0 ? "budget-under" : "";
 
@@ -3085,6 +3090,11 @@ export function createAppController(root: HTMLElement) {
                   <div class="eval-tile-columns"><span>Monat</span><span>Jahr</span></div>
                 </header>
                 <div class="eval-rows">
+                  <div class="eval-row eval-strong">
+                    <div class="eval-label">Budget übrig</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(monthBudgetRemainingCents)}">${centsToEuro(monthBudgetRemainingCents)}</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(yearBudgetRemainingCents)}">${centsToEuro(yearBudgetRemainingCents)}</div>
+                  </div>
                   <div class="eval-row eval-strong">
                     <div class="eval-label">Einkommen - Budgets gesamt</div>
                     <div class="eval-value ${incomeBudgetBalanceClass(incomeMinusPlannedBudgetsCents)}">${centsToEuro(incomeMinusPlannedBudgetsCents)}</div>
