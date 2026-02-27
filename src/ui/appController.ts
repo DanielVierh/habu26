@@ -1,6 +1,7 @@
 import type {
   BackupPayload,
   ExpenseEntry,
+  FixedCostEntry,
   FixedCostTemplate,
   IncomeSource,
   MonthBook,
@@ -1685,6 +1686,101 @@ export function createAppController(root: HTMLElement) {
     await persistSelectedYear(
       `Fixkosten-Ist angepasst: ${targetFixedCost?.name ?? "Unbekannt"} auf ${centsToEuro(amountCents)} €`,
     );
+    render();
+  }
+
+  async function updateFixedCostPlanned(
+    fixedCostId: string,
+    plannedCents: number,
+  ): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+
+    const targetFixedCost = month.fixedCosts.find(
+      (entry) => entry.id === fixedCostId,
+    );
+    if (!targetFixedCost) {
+      return;
+    }
+
+    month.fixedCosts = month.fixedCosts.map((entry) =>
+      entry.id === fixedCostId ? { ...entry, plannedCents } : entry,
+    );
+    recalculateFixedBudget(month);
+
+    await persistSelectedYear(
+      `Fixkosten-Budget angepasst: ${targetFixedCost.name} auf ${centsToEuro(plannedCents)} €`,
+    );
+    render();
+  }
+
+  async function addFixedCost(
+    name: string,
+    plannedCents: number,
+  ): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+
+    const cleanName = name.trim();
+    if (!cleanName) {
+      alert("Bitte Namen für die Fixkosten-Position eingeben.");
+      return;
+    }
+
+    if (plannedCents <= 0) {
+      alert("Bitte einen positiven Betrag eingeben.");
+      return;
+    }
+
+    const newFixedCost: FixedCostEntry = {
+      id: createId("fixed"),
+      templateId: createId("fixed-local"),
+      name: cleanName,
+      plannedCents,
+      actualCents: 0,
+    };
+
+    month.fixedCosts = [newFixedCost, ...month.fixedCosts];
+    recalculateFixedBudget(month);
+
+    await persistSelectedYear(
+      `Fixkosten-Position hinzugefügt: ${cleanName} (${centsToEuro(plannedCents)} €)`,
+    );
+    showToast("Fixkosten-Position wurde hinzugefügt.");
+    render();
+  }
+
+  async function removeFixedCost(fixedCostId: string): Promise<void> {
+    const shouldDelete = confirm("Fixkosten-Position wirklich löschen?");
+    if (!shouldDelete) {
+      return;
+    }
+
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+
+    const targetFixedCost = month.fixedCosts.find(
+      (entry) => entry.id === fixedCostId,
+    );
+    if (!targetFixedCost) {
+      return;
+    }
+
+    month.fixedCosts = month.fixedCosts.filter(
+      (entry) => entry.id !== fixedCostId,
+    );
+    recalculateFixedBudget(month);
+
+    await persistSelectedYear(
+      `Fixkosten-Position gelöscht: ${targetFixedCost.name}`,
+    );
+    showToast("Fixkosten-Position wurde gelöscht.");
     render();
   }
 
@@ -4087,9 +4183,20 @@ export function createAppController(root: HTMLElement) {
                   <input class="amount-input" id="fixed-budget" type="number" min="0" step="0.01" value="${centsToEuroInput(fixedBudgetCents)}" ${month ? "" : "disabled"} />
                 </label>
               </div>
+              <div class="inline">
+                <label>
+                  Neue Position
+                  <input id="fixed-cost-name" type="text" placeholder="z.B. Miete" ${month ? "" : "disabled"} />
+                </label>
+                <label>
+                  Positionsbudget (€)
+                  <input class="amount-input" id="fixed-cost-budget" type="number" min="0" step="0.01" placeholder="0.00" ${month ? "" : "disabled"} />
+                </label>
+                <button class="btn btn-primary" id="add-fixed-cost" ${month ? "" : "disabled"}>Position anlegen</button>
+              </div>
               <table>
                 <thead>
-                  <tr><th>Name</th><th>Geplant (€)</th><th>Ist (€)</th><th>Abweichung (€)</th></tr>
+                  <tr><th>Name</th><th>Budget (€)</th><th>Ist (€)</th><th>Abweichung (€)</th><th></th></tr>
                 </thead>
                 <tbody>
                 ${
@@ -4098,9 +4205,10 @@ export function createAppController(root: HTMLElement) {
                         .map(
                           (cost) => `<tr>
                     <td>${cost.name}</td>
-                    <td>${centsToEuro(cost.plannedCents)}</td>
+                    <td><input class="amount-input" data-fixed-planned="${cost.id}" type="number" min="0" step="0.01" value="${centsToEuroInput(cost.plannedCents)}" /></td>
                     <td class="${budgetStatusClass(cost.actualCents, cost.plannedCents)}"><input class="amount-input" data-fixed-actual="${cost.id}" type="number" min="0" step="0.01" value="${centsToEuroInput(cost.actualCents)}" /></td>
                     <td class="${budgetStatusClass(cost.actualCents, cost.plannedCents)}">${centsToEuro(cost.actualCents - cost.plannedCents)}</td>
+                    <td><button class="btn btn-quiet" data-remove-fixed="${cost.id}">Löschen</button></td>
                   </tr>`,
                         )
                         .join("")
@@ -4458,6 +4566,21 @@ export function createAppController(root: HTMLElement) {
         });
       });
 
+    root
+      .querySelectorAll<HTMLInputElement>("[data-fixed-planned]")
+      .forEach((input) => {
+        input.addEventListener("click", (event) => {
+          event.preventDefault();
+          input.blur();
+          openAmountDeltaModal(input);
+        });
+        input.addEventListener("change", async () => {
+          const fixedCostId = input.dataset.fixedPlanned;
+          if (!fixedCostId) return;
+          await updateFixedCostPlanned(fixedCostId, euroToCents(input.value));
+        });
+      });
+
     const fixedBudgetInput =
       root.querySelector<HTMLInputElement>("#fixed-budget");
     fixedBudgetInput?.addEventListener("click", (event) => {
@@ -4544,6 +4667,12 @@ export function createAppController(root: HTMLElement) {
     const addIncomeRecurringButton = root.querySelector<HTMLButtonElement>(
       "#add-income-recurring",
     );
+    const fixedCostNameInput =
+      root.querySelector<HTMLInputElement>("#fixed-cost-name");
+    const fixedCostBudgetInput =
+      root.querySelector<HTMLInputElement>("#fixed-cost-budget");
+    const addFixedCostButton =
+      root.querySelector<HTMLButtonElement>("#add-fixed-cost");
 
     const carryoverOverrideInput = root.querySelector<HTMLInputElement>(
       "#carryover-override",
@@ -4560,6 +4689,13 @@ export function createAppController(root: HTMLElement) {
         return;
       }
       await updateMonthlyCarryoverOverride(euroToCents(raw));
+    });
+
+    addFixedCostButton?.addEventListener("click", async () => {
+      const plannedCents = euroToCents(fixedCostBudgetInput?.value ?? "0");
+      await addFixedCost(fixedCostNameInput?.value ?? "", plannedCents);
+      if (fixedCostNameInput) fixedCostNameInput.value = "";
+      if (fixedCostBudgetInput) fixedCostBudgetInput.value = "";
     });
 
     addVariablePositionButton?.addEventListener("click", async () => {
@@ -4710,6 +4846,16 @@ export function createAppController(root: HTMLElement) {
           const positionId = button.dataset.removeVariablePosition;
           if (!positionId) return;
           await removeVariablePosition(positionId);
+        });
+      });
+
+    root
+      .querySelectorAll<HTMLButtonElement>("[data-remove-fixed]")
+      .forEach((button) => {
+        button.addEventListener("click", async () => {
+          const fixedCostId = button.dataset.removeFixed;
+          if (!fixedCostId) return;
+          await removeFixedCost(fixedCostId);
         });
       });
 
