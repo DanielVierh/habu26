@@ -3989,7 +3989,7 @@ export function createAppController(root: HTMLElement) {
                           ? "danger"
                           : value < 0
                             ? "budget-under"
-                          : "muted";
+                            : "muted";
                     const diffLabel = (value: number | null): string =>
                       value === null
                         ? "(Δ -)"
