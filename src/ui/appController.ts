@@ -810,6 +810,19 @@ export function createAppController(root: HTMLElement) {
     return new Date().getMonth() + 1;
   }
 
+  function getCurrentYearNumber(): number {
+    return new Date().getFullYear();
+  }
+
+  function getDefaultSelectedYear(years: YearBook[]): number | null {
+    const currentYear = getCurrentYearNumber();
+    const matchingCurrentYear = years.find((year) => year.year === currentYear);
+    if (matchingCurrentYear) {
+      return matchingCurrentYear.year;
+    }
+    return years[0]?.year ?? null;
+  }
+
   function getTodayIsoDate(): string {
     return new Date().toISOString().slice(0, 10);
   }
@@ -977,8 +990,8 @@ export function createAppController(root: HTMLElement) {
     state.fixedTemplates = fixed.templates;
     state.fixedTemplateVersion = fixed.version;
     await persistNormalizedYears(state.years);
-    if (years.length > 0 && years[0]) {
-      state.selectedYear = years[0].year;
+    if (years.length > 0) {
+      state.selectedYear = getDefaultSelectedYear(years);
       state.selectedMonth = getCurrentMonthNumber();
     }
     render();
@@ -2280,7 +2293,7 @@ export function createAppController(root: HTMLElement) {
     state.fixedTemplates = fixed.templates;
     state.fixedTemplateVersion = fixed.version;
     await persistNormalizedYears(state.years);
-    state.selectedYear = years[0]?.year ?? null;
+    state.selectedYear = getDefaultSelectedYear(years);
     state.selectedMonth = getCurrentMonthNumber();
     markBackupCompleted(file.name);
     showToast("Backup wurde importiert.");
@@ -2300,7 +2313,7 @@ export function createAppController(root: HTMLElement) {
     await deleteYear(deletedYear);
     state.years = await listYears();
     markDataChanged(`Jahr ${deletedYear} wurde gelöscht`);
-    state.selectedYear = state.years[0]?.year ?? null;
+    state.selectedYear = getDefaultSelectedYear(state.years);
     state.selectedMonth = getCurrentMonthNumber();
     showToast(`Jahr ${deletedYear} wurde gelöscht.`);
     render();
