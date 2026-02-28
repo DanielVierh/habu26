@@ -982,6 +982,14 @@ tbody tr:nth-child(even) {
   font-variant-numeric: tabular-nums;
 }
 
+.eval-diff {
+  margin-left: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
 .eval-strong .eval-label,
 .eval-strong .eval-value {
   font-weight: 700;

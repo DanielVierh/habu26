@@ -1320,6 +1320,17 @@ export function createAppController(root: HTMLElement) {
     return "";
   }
 
+  function formatSignedEuroCents(cents: number): string {
+    const sign = cents > 0 ? "+" : "";
+    return `${sign}${centsToEuro(cents)}`;
+  }
+
+  function renderPlannedWithDiff(budgetCents: number, actualCents: number): string {
+    const diffCents = budgetCents - actualCents;
+    const statusClass = budgetStatusClass(actualCents, budgetCents);
+    return `${centsToEuro(budgetCents)} <span class="eval-diff ${statusClass}">(Δ ${formatSignedEuroCents(diffCents)})</span>`;
+  }
+
   function renderColumnOverview(
     budgetCents: number | null,
     actualCents: number,
@@ -3877,32 +3888,32 @@ export function createAppController(root: HTMLElement) {
                 <div class="eval-rows">
                   <div class="eval-row">
                     <div class="eval-label">Essen</div>
-                    <div class="eval-value">${centsToEuro(foodBudgetCents)}</div>
+                    <div class="eval-value">${renderPlannedWithDiff(foodBudgetCents, monthSummary.foodCents)}</div>
                     <div class="eval-value">${centsToEuro(yearFoodBudgetCents)}</div>
                   </div>
                   <div class="eval-row">
                     <div class="eval-label">Ausgehen</div>
-                    <div class="eval-value">${centsToEuro(goingOutBudgetCents)}</div>
+                    <div class="eval-value">${renderPlannedWithDiff(goingOutBudgetCents, monthSummary.goingOutCents)}</div>
                     <div class="eval-value">${centsToEuro(yearGoingOutBudgetCents)}</div>
                   </div>
                   <div class="eval-row">
                     <div class="eval-label">Fixkosten</div>
-                    <div class="eval-value">${centsToEuro(fixedBudgetCents)}</div>
+                    <div class="eval-value">${renderPlannedWithDiff(fixedBudgetCents, monthSummary.fixedCents)}</div>
                     <div class="eval-value">${centsToEuro(yearFixedBudgetCents)}</div>
                   </div>
                   <div class="eval-row">
                     <div class="eval-label">Variable</div>
-                    <div class="eval-value">${centsToEuro(variableBudgetCents)}</div>
+                    <div class="eval-value">${renderPlannedWithDiff(variableBudgetCents, monthSummary.variableCents)}</div>
                     <div class="eval-value">${centsToEuro(yearVariableBudgetCents)}</div>
                   </div>
                   <div class="eval-row">
                     <div class="eval-label">Sonstige</div>
-                    <div class="eval-value">${centsToEuro(miscBudgetCents)}</div>
+                    <div class="eval-value">${renderPlannedWithDiff(miscBudgetCents, monthSummary.miscCents)}</div>
                     <div class="eval-value">${centsToEuro(yearMiscBudgetCents)}</div>
                   </div>
                   <div class="eval-row eval-strong">
                     <div class="eval-label">Budgets gesamt</div>
-                    <div class="eval-value">${centsToEuro(monthPlannedBudgetTotalCents)}</div>
+                    <div class="eval-value">${renderPlannedWithDiff(monthPlannedBudgetTotalCents, monthSummary.totalCents)}</div>
                     <div class="eval-value">${centsToEuro(yearPlannedBudgetTotalCents)}</div>
                   </div>
                 </div>
