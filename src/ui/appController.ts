@@ -5,6 +5,7 @@ import type {
   FixedCostTemplate,
   IncomeSource,
   MonthBook,
+  MonthNumber,
   YearBook,
   YearNumber,
 } from "../domain/model";
@@ -145,7 +146,7 @@ interface CostSummary {
 }
 
 interface MonthSummaryRow {
-  month: number;
+  month: MonthNumber;
   summary: CostSummary;
 }
 
@@ -2839,9 +2840,89 @@ export function createAppController(root: HTMLElement) {
       ...incomeExpenseChartRows.map((row) => Math.abs(row.valueCents)),
     );
 
-    const yearExpenseMaxCents = Math.max(
+    const yearPlannedByMonth = year
+      ? year.months
+        .slice()
+        .sort((left, right) => left.month - right.month)
+        .map((monthItem) => {
+          const foodBudgetCents = monthItem.foodBudgetCents ?? 0;
+          const goingOutBudgetCents = monthItem.goingOutBudgetCents ?? 0;
+          const fixedBudgetCents =
+            monthItem.fixedBudgetCents ??
+            monthItem.fixedCosts.reduce(
+              (sum, entry) => sum + entry.plannedCents,
+              0,
+            );
+          const variableBudgetCents =
+            monthItem.variableBudgetCents ??
+            monthItem.variablePositions.reduce(
+              (sum, position) => sum + position.budgetCents,
+              0,
+            );
+          const miscBudgetCents = monthItem.miscBudgetCents ?? 0;
+          const totalBudgetCents =
+            foodBudgetCents +
+            goingOutBudgetCents +
+            fixedBudgetCents +
+            variableBudgetCents +
+            miscBudgetCents;
+
+          return {
+            month: monthItem.month,
+            foodBudgetCents,
+            goingOutBudgetCents,
+            fixedBudgetCents,
+            variableBudgetCents,
+            miscBudgetCents,
+            totalBudgetCents,
+          };
+        })
+      : [];
+    const yearPlannedByMonthMap = new Map(
+      yearPlannedByMonth.map((row) => [row.month, row] as const),
+    );
+
+    const yearTotalMaxCents = Math.max(
       1,
-      ...yearByMonth.map((row) => row.summary.totalCents),
+      ...yearByMonth.flatMap((row) => {
+        const planned = yearPlannedByMonthMap.get(row.month)?.totalBudgetCents;
+        return [row.summary.totalCents, planned ?? 0];
+      }),
+    );
+    const yearFoodAndGoingOutMaxCents = Math.max(
+      1,
+      ...yearByMonth.flatMap((row) => {
+        const plannedRow = yearPlannedByMonthMap.get(row.month);
+        const actual = row.summary.foodCents + row.summary.goingOutCents;
+        const planned =
+          (plannedRow?.foodBudgetCents ?? 0) +
+          (plannedRow?.goingOutBudgetCents ?? 0);
+        return [actual, planned];
+      }),
+    );
+    const yearFixedMaxCents = Math.max(
+      1,
+      ...yearByMonth.flatMap((row) => {
+        const planned =
+          yearPlannedByMonthMap.get(row.month)?.fixedBudgetCents ?? 0;
+        return [row.summary.fixedCents, planned];
+      }),
+    );
+    const yearVariableMaxCents = Math.max(
+      1,
+      ...yearByMonth.flatMap((row) => {
+        const planned =
+          yearPlannedByMonthMap.get(row.month)?.variableBudgetCents ?? 0;
+        return [row.summary.variableCents, planned];
+      }),
+    );
+    const yearMiscMaxCents = Math.max(
+      1,
+      ...yearByMonth.flatMap((row) => {
+        const planned =
+          yearPlannedByMonthMap.get(row.month)?.miscBudgetCents ?? 0;
+        return [row.summary.miscCents, planned];
+      }),
     );
     const fixedSummaryBudgetClass = budgetStatusClass(
       monthSummary.fixedCents,
@@ -3755,7 +3836,7 @@ export function createAppController(root: HTMLElement) {
 
           <article class="card">
             <h3>Auswertung (Monat & Jahr)</h3>
-            <div class="chart-grid">
+            <div class="chart-grid chart-grid-wide">
               <section class="chart-tile">
                 <header class="chart-tile-header">
                   <h4>Budget vs. Ist (Monat)</h4>
@@ -3829,21 +3910,192 @@ export function createAppController(root: HTMLElement) {
                 <header class="chart-tile-header">
                   <h4>Jahresverlauf Gesamtausgaben</h4>
                   <div class="chart-legend">
-                    <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ausgaben</span>
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-budget"></span>Budget</span>
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist</span>
                   </div>
                 </header>
                 ${year
         ? `
-                    <div class="spark-bars" aria-label="Jahresverlauf Gesamtausgaben">
+                    <div class="spark-bars" aria-label="Jahresverlauf Gesamtausgaben (Budget vs. Ist)">
                       ${yearByMonth
           .map((row) => {
-            const height = percent(
-              row.summary.totalCents,
-              yearExpenseMaxCents,
+            const plannedCents =
+              yearPlannedByMonthMap.get(row.month)?.totalBudgetCents ?? 0;
+            const plannedHeight = percent(plannedCents, yearTotalMaxCents);
+            const actualHeight = percent(row.summary.totalCents, yearTotalMaxCents);
+            return `
+                            <div class="spark-bar" title="${monthLabel(row.month)}: Ist ${centsToEuro(row.summary.totalCents)} € | Budget ${centsToEuro(plannedCents)} €">
+                              <div class="spark-bar-stack">
+                                <div class="spark-bar-value">${centsToEuro(row.summary.totalCents)} €</div>
+                                <div class="spark-bar-track" aria-hidden="true">
+                                  <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${plannedHeight}"></div>
+                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${actualHeight}"></div>
+                                </div>
+                              </div>
+                              <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
+                            </div>
+                          `;
+          })
+          .join("")}
+                    </div>
+                  `
+        : `<p class="muted">Kein Jahr gewählt.</p>`
+      }
+              </section>
+
+              <section class="chart-tile">
+                <header class="chart-tile-header">
+                  <h4>Essen + Ausgehen (Jahr)</h4>
+                  <div class="chart-legend">
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-budget"></span>Budget</span>
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist</span>
+                  </div>
+                </header>
+                ${year
+        ? `
+                    <div class="spark-bars" aria-label="Jahresverlauf Essen und Ausgehen (Budget vs. Ist)">
+                      ${yearByMonth
+          .map((row) => {
+            const plannedRow = yearPlannedByMonthMap.get(row.month);
+            const plannedCents =
+              (plannedRow?.foodBudgetCents ?? 0) +
+              (plannedRow?.goingOutBudgetCents ?? 0);
+            const actualCents =
+              row.summary.foodCents + row.summary.goingOutCents;
+            const plannedHeight = percent(
+              plannedCents,
+              yearFoodAndGoingOutMaxCents,
+            );
+            const actualHeight = percent(
+              actualCents,
+              yearFoodAndGoingOutMaxCents,
             );
             return `
-                            <div class="spark-bar" title="${monthLabel(row.month)}: ${centsToEuro(row.summary.totalCents)}">
-                              <div class="spark-bar-fill" style="height:${height}"></div>
+                            <div class="spark-bar" title="${monthLabel(row.month)}: Ist ${centsToEuro(actualCents)} € | Budget ${centsToEuro(plannedCents)} €">
+                              <div class="spark-bar-stack">
+                                <div class="spark-bar-value">${centsToEuro(actualCents)} €</div>
+                                <div class="spark-bar-track" aria-hidden="true">
+                                  <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${plannedHeight}"></div>
+                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${actualHeight}"></div>
+                                </div>
+                              </div>
+                              <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
+                            </div>
+                          `;
+          })
+          .join("")}
+                    </div>
+                  `
+        : `<p class="muted">Kein Jahr gewählt.</p>`
+      }
+              </section>
+
+              <section class="chart-tile">
+                <header class="chart-tile-header">
+                  <h4>Fixe Kosten (Jahr)</h4>
+                  <div class="chart-legend">
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-budget"></span>Budget</span>
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist</span>
+                  </div>
+                </header>
+                ${year
+        ? `
+                    <div class="spark-bars" aria-label="Jahresverlauf Fixkosten (Budget vs. Ist)">
+                      ${yearByMonth
+          .map((row) => {
+            const plannedCents =
+              yearPlannedByMonthMap.get(row.month)?.fixedBudgetCents ?? 0;
+            const plannedHeight = percent(plannedCents, yearFixedMaxCents);
+            const actualHeight = percent(row.summary.fixedCents, yearFixedMaxCents);
+            return `
+                            <div class="spark-bar" title="${monthLabel(row.month)}: Ist ${centsToEuro(row.summary.fixedCents)} € | Budget ${centsToEuro(plannedCents)} €">
+                              <div class="spark-bar-stack">
+                                <div class="spark-bar-value">${centsToEuro(row.summary.fixedCents)} €</div>
+                                <div class="spark-bar-track" aria-hidden="true">
+                                  <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${plannedHeight}"></div>
+                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${actualHeight}"></div>
+                                </div>
+                              </div>
+                              <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
+                            </div>
+                          `;
+          })
+          .join("")}
+                    </div>
+                  `
+        : `<p class="muted">Kein Jahr gewählt.</p>`
+      }
+              </section>
+
+              <section class="chart-tile">
+                <header class="chart-tile-header">
+                  <h4>Variable Kosten (Jahr)</h4>
+                  <div class="chart-legend">
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-budget"></span>Budget</span>
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist</span>
+                  </div>
+                </header>
+                ${year
+        ? `
+                    <div class="spark-bars" aria-label="Jahresverlauf Variable Kosten (Budget vs. Ist)">
+                      ${yearByMonth
+          .map((row) => {
+            const plannedCents =
+              yearPlannedByMonthMap.get(row.month)?.variableBudgetCents ?? 0;
+            const plannedHeight = percent(
+              plannedCents,
+              yearVariableMaxCents,
+            );
+            const actualHeight = percent(
+              row.summary.variableCents,
+              yearVariableMaxCents,
+            );
+            return `
+                            <div class="spark-bar" title="${monthLabel(row.month)}: Ist ${centsToEuro(row.summary.variableCents)} € | Budget ${centsToEuro(plannedCents)} €">
+                              <div class="spark-bar-stack">
+                                <div class="spark-bar-value">${centsToEuro(row.summary.variableCents)} €</div>
+                                <div class="spark-bar-track" aria-hidden="true">
+                                  <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${plannedHeight}"></div>
+                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${actualHeight}"></div>
+                                </div>
+                              </div>
+                              <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
+                            </div>
+                          `;
+          })
+          .join("")}
+                    </div>
+                  `
+        : `<p class="muted">Kein Jahr gewählt.</p>`
+      }
+              </section>
+
+              <section class="chart-tile">
+                <header class="chart-tile-header">
+                  <h4>Sonstige (Jahr)</h4>
+                  <div class="chart-legend">
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-budget"></span>Budget</span>
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist</span>
+                  </div>
+                </header>
+                ${year
+        ? `
+                    <div class="spark-bars" aria-label="Jahresverlauf Sonstige (Budget vs. Ist)">
+                      ${yearByMonth
+          .map((row) => {
+            const plannedCents =
+              yearPlannedByMonthMap.get(row.month)?.miscBudgetCents ?? 0;
+            const plannedHeight = percent(plannedCents, yearMiscMaxCents);
+            const actualHeight = percent(row.summary.miscCents, yearMiscMaxCents);
+            return `
+                            <div class="spark-bar" title="${monthLabel(row.month)}: Ist ${centsToEuro(row.summary.miscCents)} € | Budget ${centsToEuro(plannedCents)} €">
+                              <div class="spark-bar-stack">
+                                <div class="spark-bar-value">${centsToEuro(row.summary.miscCents)} €</div>
+                                <div class="spark-bar-track" aria-hidden="true">
+                                  <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${plannedHeight}"></div>
+                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${actualHeight}"></div>
+                                </div>
+                              </div>
                               <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
                             </div>
                           `;

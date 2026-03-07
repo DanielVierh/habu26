@@ -1002,6 +1002,10 @@ tbody tr:nth-child(even) {
   margin: 0.6rem 0 1rem;
 }
 
+.chart-grid-wide {
+  grid-template-columns: repeat(auto-fit, minmax(364px, 1fr));
+}
+
 .chart-tile {
   border: 1px solid var(--table-border);
   border-radius: 12px;
@@ -1294,6 +1298,55 @@ tbody tr:nth-child(even) {
   align-items: end;
   justify-items: center;
   min-width: 0;
+}
+
+.spark-bar-stack {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.spark-bar-track {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.spark-bar-fill-layered {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.spark-bar-fill-budget {
+  background: var(--text-muted);
+  opacity: 0.55;
+  z-index: 1;
+  max-width: 24px;
+}
+
+.spark-bar-fill-actual {
+  z-index: 2;
+}
+
+.spark-bar-value {
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-main);
+  white-space: nowrap;
+  line-height: 1.1;
+  padding: 0.05rem 0.3rem;
+  border-radius: 10px;
+  border: 1px solid var(--table-border);
+  background: var(--card-bg);
 }
 
 .spark-bar-fill {
