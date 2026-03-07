@@ -3926,10 +3926,9 @@ export function createAppController(root: HTMLElement) {
             return `
                             <div class="spark-bar" title="${monthLabel(row.month)}: Ist ${centsToEuro(row.summary.totalCents)} € | Budget ${centsToEuro(plannedCents)} €">
                               <div class="spark-bar-stack">
-                                <div class="spark-bar-value">${centsToEuro(row.summary.totalCents)} €</div>
                                 <div class="spark-bar-track" aria-hidden="true">
                                   <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${plannedHeight}"></div>
-                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${actualHeight}"></div>
+                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${actualHeight}"><span class="spark-bar-fill-value">${centsToEuro(row.summary.totalCents)} €</span></div>
                                 </div>
                               </div>
                               <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
@@ -3973,10 +3972,9 @@ export function createAppController(root: HTMLElement) {
             return `
                             <div class="spark-bar" title="${monthLabel(row.month)}: Ist ${centsToEuro(actualCents)} € | Budget ${centsToEuro(plannedCents)} €">
                               <div class="spark-bar-stack">
-                                <div class="spark-bar-value">${centsToEuro(actualCents)} €</div>
                                 <div class="spark-bar-track" aria-hidden="true">
                                   <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${plannedHeight}"></div>
-                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${actualHeight}"></div>
+                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${actualHeight}"><span class="spark-bar-fill-value">${centsToEuro(actualCents)} €</span></div>
                                 </div>
                               </div>
                               <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
@@ -4010,10 +4008,9 @@ export function createAppController(root: HTMLElement) {
             return `
                             <div class="spark-bar" title="${monthLabel(row.month)}: Ist ${centsToEuro(row.summary.fixedCents)} € | Budget ${centsToEuro(plannedCents)} €">
                               <div class="spark-bar-stack">
-                                <div class="spark-bar-value">${centsToEuro(row.summary.fixedCents)} €</div>
                                 <div class="spark-bar-track" aria-hidden="true">
                                   <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${plannedHeight}"></div>
-                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${actualHeight}"></div>
+                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${actualHeight}"><span class="spark-bar-fill-value">${centsToEuro(row.summary.fixedCents)} €</span></div>
                                 </div>
                               </div>
                               <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
@@ -4053,10 +4050,9 @@ export function createAppController(root: HTMLElement) {
             return `
                             <div class="spark-bar" title="${monthLabel(row.month)}: Ist ${centsToEuro(row.summary.variableCents)} € | Budget ${centsToEuro(plannedCents)} €">
                               <div class="spark-bar-stack">
-                                <div class="spark-bar-value">${centsToEuro(row.summary.variableCents)} €</div>
                                 <div class="spark-bar-track" aria-hidden="true">
                                   <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${plannedHeight}"></div>
-                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${actualHeight}"></div>
+                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${actualHeight}"><span class="spark-bar-fill-value">${centsToEuro(row.summary.variableCents)} €</span></div>
                                 </div>
                               </div>
                               <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
@@ -4090,10 +4086,9 @@ export function createAppController(root: HTMLElement) {
             return `
                             <div class="spark-bar" title="${monthLabel(row.month)}: Ist ${centsToEuro(row.summary.miscCents)} € | Budget ${centsToEuro(plannedCents)} €">
                               <div class="spark-bar-stack">
-                                <div class="spark-bar-value">${centsToEuro(row.summary.miscCents)} €</div>
                                 <div class="spark-bar-track" aria-hidden="true">
                                   <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${plannedHeight}"></div>
-                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${actualHeight}"></div>
+                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${actualHeight}"><span class="spark-bar-fill-value">${centsToEuro(row.summary.miscCents)} €</span></div>
                                 </div>
                               </div>
                               <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>

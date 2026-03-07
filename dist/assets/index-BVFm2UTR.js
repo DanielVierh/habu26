@@ -503,10 +503,9 @@
                       ${A.map(i=>{const P=Pt.get(i.month)?.totalBudgetCents??0,U=we(P,Xn),ne=we(i.summary.totalCents,Xn);return`
                             <div class="spark-bar" title="${Oe(i.month)}: Ist ${_(i.summary.totalCents)} € | Budget ${_(P)} €">
                               <div class="spark-bar-stack">
-                                <div class="spark-bar-value">${_(i.summary.totalCents)} €</div>
                                 <div class="spark-bar-track" aria-hidden="true">
                                   <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${U}"></div>
-                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${ne}"></div>
+                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${ne}"><span class="spark-bar-fill-value">${_(i.summary.totalCents)} €</span></div>
                                 </div>
                               </div>
                               <div class="spark-bar-label">${Oe(i.month).slice(0,3)}</div>
@@ -529,10 +528,9 @@
                       ${A.map(i=>{const P=Pt.get(i.month),U=(P?.foodBudgetCents??0)+(P?.goingOutBudgetCents??0),ne=i.summary.foodCents+i.summary.goingOutCents,pe=we(U,Qn),Me=we(ne,Qn);return`
                             <div class="spark-bar" title="${Oe(i.month)}: Ist ${_(ne)} € | Budget ${_(U)} €">
                               <div class="spark-bar-stack">
-                                <div class="spark-bar-value">${_(ne)} €</div>
                                 <div class="spark-bar-track" aria-hidden="true">
                                   <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${pe}"></div>
-                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${Me}"></div>
+                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${Me}"><span class="spark-bar-fill-value">${_(ne)} €</span></div>
                                 </div>
                               </div>
                               <div class="spark-bar-label">${Oe(i.month).slice(0,3)}</div>
@@ -555,10 +553,9 @@
                       ${A.map(i=>{const P=Pt.get(i.month)?.fixedBudgetCents??0,U=we(P,ga),ne=we(i.summary.fixedCents,ga);return`
                             <div class="spark-bar" title="${Oe(i.month)}: Ist ${_(i.summary.fixedCents)} € | Budget ${_(P)} €">
                               <div class="spark-bar-stack">
-                                <div class="spark-bar-value">${_(i.summary.fixedCents)} €</div>
                                 <div class="spark-bar-track" aria-hidden="true">
                                   <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${U}"></div>
-                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${ne}"></div>
+                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${ne}"><span class="spark-bar-fill-value">${_(i.summary.fixedCents)} €</span></div>
                                 </div>
                               </div>
                               <div class="spark-bar-label">${Oe(i.month).slice(0,3)}</div>
@@ -581,10 +578,9 @@
                       ${A.map(i=>{const P=Pt.get(i.month)?.variableBudgetCents??0,U=we(P,Mn),ne=we(i.summary.variableCents,Mn);return`
                             <div class="spark-bar" title="${Oe(i.month)}: Ist ${_(i.summary.variableCents)} € | Budget ${_(P)} €">
                               <div class="spark-bar-stack">
-                                <div class="spark-bar-value">${_(i.summary.variableCents)} €</div>
                                 <div class="spark-bar-track" aria-hidden="true">
                                   <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${U}"></div>
-                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${ne}"></div>
+                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${ne}"><span class="spark-bar-fill-value">${_(i.summary.variableCents)} €</span></div>
                                 </div>
                               </div>
                               <div class="spark-bar-label">${Oe(i.month).slice(0,3)}</div>
@@ -607,10 +603,9 @@
                       ${A.map(i=>{const P=Pt.get(i.month)?.miscBudgetCents??0,U=we(P,On),ne=we(i.summary.miscCents,On);return`
                             <div class="spark-bar" title="${Oe(i.month)}: Ist ${_(i.summary.miscCents)} € | Budget ${_(P)} €">
                               <div class="spark-bar-stack">
-                                <div class="spark-bar-value">${_(i.summary.miscCents)} €</div>
                                 <div class="spark-bar-track" aria-hidden="true">
                                   <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${U}"></div>
-                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${ne}"></div>
+                                  <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${ne}"><span class="spark-bar-fill-value">${_(i.summary.miscCents)} €</span></div>
                                 </div>
                               </div>
                               <div class="spark-bar-label">${Oe(i.month).slice(0,3)}</div>

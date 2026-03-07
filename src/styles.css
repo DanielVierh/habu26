@@ -1334,7 +1334,7 @@ tbody tr:nth-child(even) {
   background: var(--primary-1);
   opacity: 0.6;
   z-index: 1;
-  max-width: 24px;
+  max-width: 19px;
 }
 
 .spark-bar-fill-actual {
@@ -1355,11 +1355,28 @@ tbody tr:nth-child(even) {
 
 .spark-bar-fill {
   width: 100%;
-  max-width: 18px;
+  max-width: 14px;
   border-radius: 8px;
   background: var(--danger-2);
   min-height: 6px;
   align-self: end;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.spark-bar-fill-value {
+  margin-top: 6px;
+  padding: 0.05rem 0.28rem;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  white-space: nowrap;
+  color: var(--text-main);
+  background: var(--card-bg);
+  border: 1px solid var(--table-border);
+  border-radius: 2px;
+  pointer-events: none;
 }
 
 .spark-bar-label {
