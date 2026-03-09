@@ -2978,6 +2978,16 @@ export function createAppController(root: HTMLElement) {
       yearSalaryIncomeCents,
       yearSummary.totalCents,
     );
+    const monthSaldenSumCents =
+      monthBudgetRemainingCents +
+      incomeMinusPlannedBudgetsCents +
+      monthActualNetCents +
+      monthSalaryMinusExpensesCents;
+    const yearSaldenSumCents =
+      yearBudgetRemainingCents +
+      yearIncomeMinusPlannedBudgetsCents +
+      yearNetCents +
+      yearSalaryMinusExpensesCents;
 
     const percent = (value: number, max: number): string => {
       if (max <= 0) return "0%";
@@ -3145,6 +3155,19 @@ export function createAppController(root: HTMLElement) {
         ? (incomeFlowByMonth.get(monthKey(year.year, row.month))?.netCents ?? 0)
         : 0,
     );
+    const yearSalaryByMonthMap = new Map(
+      (year?.months ?? []).map((monthItem) => [
+        monthItem.month,
+        monthItem.incomes.reduce(
+          (sum, entry) =>
+            sum + (entry.incomeSource === "salary" ? entry.amountCents : 0),
+          0,
+        ),
+      ]),
+    );
+    const yearComparisonSalaryValues = yearByMonth.map(
+      (row) => yearSalaryByMonthMap.get(row.month) ?? 0,
+    );
 
     const yearComparisonStats = {
       food: summarizeSeries(yearComparisonFoodValues),
@@ -3153,6 +3176,7 @@ export function createAppController(root: HTMLElement) {
       variable: summarizeSeries(yearComparisonVariableValues),
       misc: summarizeSeries(yearComparisonMiscValues),
       total: summarizeSeries(yearComparisonTotalValues),
+      salary: summarizeSeries(yearComparisonSalaryValues),
       budget: summarizeSeries(yearComparisonBudgetValues),
       net: summarizeSeries(yearComparisonNetValues),
     };
@@ -3166,6 +3190,24 @@ export function createAppController(root: HTMLElement) {
       { key: "max", label: "Max" },
     ];
 
+    const yearComparisonSums = {
+      food: yearComparisonFoodValues.reduce((sum, value) => sum + value, 0),
+      goingOut: yearComparisonGoingOutValues.reduce(
+        (sum, value) => sum + value,
+        0,
+      ),
+      fixed: yearComparisonFixedValues.reduce((sum, value) => sum + value, 0),
+      variable: yearComparisonVariableValues.reduce(
+        (sum, value) => sum + value,
+        0,
+      ),
+      misc: yearComparisonMiscValues.reduce((sum, value) => sum + value, 0),
+      total: yearComparisonTotalValues.reduce((sum, value) => sum + value, 0),
+      salary: yearComparisonSalaryValues.reduce((sum, value) => sum + value, 0),
+      budget: yearComparisonBudgetValues.reduce((sum, value) => sum + value, 0),
+      net: yearComparisonNetValues.reduce((sum, value) => sum + value, 0),
+    };
+
     const yearComparisonStatsRowsHtml = yearComparisonStatsRows
       .map(({ key, label }) => {
         const food = yearComparisonStats.food?.[key] ?? null;
@@ -3174,6 +3216,7 @@ export function createAppController(root: HTMLElement) {
         const variable = yearComparisonStats.variable?.[key] ?? null;
         const misc = yearComparisonStats.misc?.[key] ?? null;
         const total = yearComparisonStats.total?.[key] ?? null;
+        const salary = yearComparisonStats.salary?.[key] ?? null;
         const budget = yearComparisonStats.budget?.[key] ?? null;
         const net = yearComparisonStats.net?.[key] ?? null;
 
@@ -3188,11 +3231,25 @@ export function createAppController(root: HTMLElement) {
                   <td>${formatStat(variable)}</td>
                   <td>${formatStat(misc)}</td>
                   <td>${formatStat(total)}</td>
+                  <td>${formatStat(salary)}</td>
                   <td>${formatStat(budget)}</td>
                   <td>${formatStat(net)}</td>
                 </tr>`;
       })
       .join("");
+
+    const yearComparisonSumsRowHtml = `<tr>
+                  <td><strong>Summe</strong></td>
+                  <td>${centsToEuro(yearComparisonSums.food)}</td>
+                  <td>${centsToEuro(yearComparisonSums.goingOut)}</td>
+                  <td>${centsToEuro(yearComparisonSums.fixed)}</td>
+                  <td>${centsToEuro(yearComparisonSums.variable)}</td>
+                  <td>${centsToEuro(yearComparisonSums.misc)}</td>
+                  <td>${centsToEuro(yearComparisonSums.total)}</td>
+                  <td>${centsToEuro(yearComparisonSums.salary)}</td>
+                  <td>${centsToEuro(yearComparisonSums.budget)}</td>
+                  <td>${centsToEuro(yearComparisonSums.net)}</td>
+                </tr>`;
 
     const yearTotalMaxCents = Math.max(
       1,
@@ -3508,6 +3565,17 @@ export function createAppController(root: HTMLElement) {
       const summary = summarizeYear(yearItem);
       const budget = summarizeYearBudgetByCategory(yearItem);
       const recordedIncomeCents = summarizeRecordedIncomeCents(yearItem);
+      const salaryIncomeCents = yearItem.months.reduce(
+        (sum, monthItem) =>
+          sum +
+          monthItem.incomes.reduce(
+            (monthSum, entry) =>
+              monthSum +
+              (entry.incomeSource === "salary" ? entry.amountCents : 0),
+            0,
+          ),
+        0,
+      );
       const openingCarryoverCents = getYearOpeningCarryoverCents(
         yearItem,
         incomeFlowByMonth,
@@ -3516,6 +3584,7 @@ export function createAppController(root: HTMLElement) {
 
       return {
         year: yearItem.year,
+        salaryIncomeCents,
         budgetTotalCents: budget.totalCents,
         actualTotalCents: summary.totalCents,
         effectiveIncomeCents,
@@ -3956,6 +4025,7 @@ export function createAppController(root: HTMLElement) {
                 <thead>
                   <tr>
                     <th>Jahr</th>
+                    <th>Gehalt (€)</th>
                     <th>Einkommen effektiv (€)</th>
                     <th>Budget gesamt (€)</th>
                     <th>Ist-Kosten (€)</th>
@@ -3968,6 +4038,7 @@ export function createAppController(root: HTMLElement) {
                     .map(
                       (row) => `<tr>
                         <td>${row.year}</td>
+                        <td>${centsToEuro(row.salaryIncomeCents)}</td>
                         <td>${centsToEuro(row.effectiveIncomeCents)}</td>
                         <td>${centsToEuro(row.budgetTotalCents)}</td>
                         <td>${centsToEuro(row.actualTotalCents)}</td>
@@ -4507,6 +4578,11 @@ export function createAppController(root: HTMLElement) {
                     <div class="eval-value">${centsToEuro(yearRecordedIncomeTotalCents)}</div>
                   </div>
                   <div class="eval-row">
+                    <div class="eval-label">Davon Gehalt</div>
+                    <div class="eval-value">${centsToEuro(monthSalaryIncomeCents)}</div>
+                    <div class="eval-value">${centsToEuro(yearSalaryIncomeCents)}</div>
+                  </div>
+                  <div class="eval-row">
                     <div class="eval-label">Übernahme aus Vormonat</div>
                     <div class="eval-value ${carryoverClass}">${hasCarryoverFromPreviousMonth ? centsToEuro(carryoverCents) : "-"}</div>
                     <div class="eval-value ${yearOpeningCarryoverClass}">${year ? centsToEuro(yearOpeningCarryoverCents) : "-"}</div>
@@ -4628,6 +4704,11 @@ export function createAppController(root: HTMLElement) {
                     <div class="eval-value ${monthSalaryCoverageClass}">${monthSalaryVsExpensesPercent}</div>
                     <div class="eval-value ${yearSalaryCoverageClass}">${yearSalaryVsExpensesPercent}</div>
                   </div>
+                  <div class="eval-row eval-strong">
+                    <div class="eval-label">Summe (ohne %)</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(monthSaldenSumCents)}">${centsToEuro(monthSaldenSumCents)}</div>
+                    <div class="eval-value ${incomeBudgetBalanceClass(yearSaldenSumCents)}">${centsToEuro(yearSaldenSumCents)}</div>
+                  </div>
                 </div>
               </section>
             </div>
@@ -4643,6 +4724,7 @@ export function createAppController(root: HTMLElement) {
                   <th>Variable (€)</th>
                   <th>Sonstige (€)</th>
                   <th>Gesamt (€)</th>
+                  <th>Gehalt (€)</th>
                   <th>Budget gesamt (€)</th>
                   <th>Kalkulierter Saldo (€)</th>
                 </tr>
@@ -4656,6 +4738,8 @@ export function createAppController(root: HTMLElement) {
                     const rowPlannedBudgetCents =
                       rowIncomeFlow?.plannedBudgetCents ?? 0;
                     const rowNetCents = rowIncomeFlow?.netCents ?? 0;
+                    const rowSalaryCents =
+                      yearSalaryByMonthMap.get(row.month) ?? 0;
                     const rowNetClass =
                       rowNetCents < 0
                         ? "danger"
@@ -4676,6 +4760,10 @@ export function createAppController(root: HTMLElement) {
                       previousRow?.summary.miscCents ?? null;
                     const previousTotalCents =
                       previousRow?.summary.totalCents ?? null;
+                    const previousSalaryCents =
+                      previousRow !== undefined
+                        ? (yearSalaryByMonthMap.get(previousRow.month) ?? 0)
+                        : null;
                     const previousBudgetCents =
                       year && previousRow
                         ? (incomeFlowByMonth.get(
@@ -4707,6 +4795,10 @@ export function createAppController(root: HTMLElement) {
                       previousTotalCents === null
                         ? null
                         : row.summary.totalCents - previousTotalCents;
+                    const salaryDiffCents =
+                      previousSalaryCents === null
+                        ? null
+                        : rowSalaryCents - previousSalaryCents;
                     const budgetDiffCents =
                       previousBudgetCents === null
                         ? null
@@ -4764,12 +4856,14 @@ export function createAppController(root: HTMLElement) {
                   <td>${centsToEuro(row.summary.variableCents)} <span class="${costDiffClass(variableDiffCents)}">${diffLabel(variableDiffCents)}</span></td>
                   <td>${centsToEuro(row.summary.miscCents)} <span class="${costDiffClass(miscDiffCents)}">${diffLabel(miscDiffCents)}</span></td>
                   <td>${centsToEuro(row.summary.totalCents)} <span class="${costDiffClass(totalDiffCents)}">${diffLabel(totalDiffCents)}</span></td>
+                  <td>${centsToEuro(rowSalaryCents)} <span class="${costDiffClass(salaryDiffCents)}">${diffLabel(salaryDiffCents)}</span></td>
                   <td>${centsToEuro(rowPlannedBudgetCents)} <span class="${budgetDiffClass(budgetDiffCents)}">${diffLabel(budgetDiffCents)}</span></td>
                   <td class="${rowNetClass}">${centsToEuro(rowNetCents)} <span class="${monthDiffClass}">${monthDiffLabel}</span></td>
                 </tr>`;
                   })
                   .join("")}
                 ${yearComparisonStatsRowsHtml}
+                ${yearComparisonSumsRowHtml}
               </tbody>
             </table>
           </article>
@@ -4836,6 +4930,10 @@ export function createAppController(root: HTMLElement) {
                 <div class="column-overview-row">
                   <span>Erfasstes Einkommen</span>
                   <strong>${centsToEuro(recordedIncomeTotalCents)} €</strong>
+                </div>
+                <div class="column-overview-row">
+                  <span>Davon Gehalt</span>
+                  <strong>${centsToEuro(monthSalaryIncomeCents)} €</strong>
                 </div>
                 <div class="column-overview-row ${carryoverClass}">
                   <span>Übernahme Vormonat</span>
