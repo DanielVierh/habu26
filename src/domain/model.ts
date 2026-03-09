@@ -15,12 +15,20 @@ export interface FixedCostTemplate {
   plannedCents: EuroCents;
 }
 
+export interface AnnualVariableFixedCostTemplate {
+  id: string;
+  name: string;
+  plannedCents: EuroCents;
+  dueDateIso: string;
+}
+
 export interface FixedCostEntry {
   id: string;
   templateId: string;
   name: string;
   plannedCents: EuroCents;
   actualCents: EuroCents;
+  autoAnnualTemplateId?: string;
 }
 
 export interface ExpenseEntry {
@@ -39,6 +47,7 @@ export interface VariableBudgetPosition {
   name: string;
   budgetCents: EuroCents;
   actualCents: EuroCents;
+  autoAnnualTemplateId?: string;
 }
 
 export interface MonthBook {
@@ -68,4 +77,5 @@ export interface BackupPayload {
   exportedAt: string;
   years: YearBook[];
   fixedTemplates: FixedCostTemplate[];
+  annualVariableFixedTemplates?: AnnualVariableFixedCostTemplate[];
 }
