@@ -3102,6 +3102,98 @@ export function createAppController(root: HTMLElement) {
       yearPlannedByMonth.map((row) => [row.month, row] as const),
     );
 
+    const summarizeSeries = (
+      values: number[],
+    ): { min: number; avg: number; max: number } | null => {
+      if (values.length === 0) {
+        return null;
+      }
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const avg = Math.round(
+        values.reduce((sum, value) => sum + value, 0) / values.length,
+      );
+      return { min, avg, max };
+    };
+
+    const yearComparisonFoodValues = yearByMonth.map(
+      (row) => row.summary.foodCents,
+    );
+    const yearComparisonGoingOutValues = yearByMonth.map(
+      (row) => row.summary.goingOutCents,
+    );
+    const yearComparisonFixedValues = yearByMonth.map(
+      (row) => row.summary.fixedCents,
+    );
+    const yearComparisonVariableValues = yearByMonth.map(
+      (row) => row.summary.variableCents,
+    );
+    const yearComparisonMiscValues = yearByMonth.map(
+      (row) => row.summary.miscCents,
+    );
+    const yearComparisonTotalValues = yearByMonth.map(
+      (row) => row.summary.totalCents,
+    );
+    const yearComparisonBudgetValues = yearByMonth.map((row) =>
+      year
+        ? (incomeFlowByMonth.get(monthKey(year.year, row.month))
+            ?.plannedBudgetCents ?? 0)
+        : 0,
+    );
+    const yearComparisonNetValues = yearByMonth.map((row) =>
+      year
+        ? (incomeFlowByMonth.get(monthKey(year.year, row.month))?.netCents ?? 0)
+        : 0,
+    );
+
+    const yearComparisonStats = {
+      food: summarizeSeries(yearComparisonFoodValues),
+      goingOut: summarizeSeries(yearComparisonGoingOutValues),
+      fixed: summarizeSeries(yearComparisonFixedValues),
+      variable: summarizeSeries(yearComparisonVariableValues),
+      misc: summarizeSeries(yearComparisonMiscValues),
+      total: summarizeSeries(yearComparisonTotalValues),
+      budget: summarizeSeries(yearComparisonBudgetValues),
+      net: summarizeSeries(yearComparisonNetValues),
+    };
+
+    const yearComparisonStatsRows: Array<{
+      key: "min" | "avg" | "max";
+      label: string;
+    }> = [
+      { key: "min", label: "Min" },
+      { key: "avg", label: "Mittelwert" },
+      { key: "max", label: "Max" },
+    ];
+
+    const yearComparisonStatsRowsHtml = yearComparisonStatsRows
+      .map(({ key, label }) => {
+        const food = yearComparisonStats.food?.[key] ?? null;
+        const goingOut = yearComparisonStats.goingOut?.[key] ?? null;
+        const fixed = yearComparisonStats.fixed?.[key] ?? null;
+        const variable = yearComparisonStats.variable?.[key] ?? null;
+        const misc = yearComparisonStats.misc?.[key] ?? null;
+        const total = yearComparisonStats.total?.[key] ?? null;
+        const budget = yearComparisonStats.budget?.[key] ?? null;
+        const net = yearComparisonStats.net?.[key] ?? null;
+
+        const formatStat = (value: number | null): string =>
+          value === null ? "-" : centsToEuro(value);
+
+        return `<tr>
+                  <td><strong>${label}</strong></td>
+                  <td>${formatStat(food)}</td>
+                  <td>${formatStat(goingOut)}</td>
+                  <td>${formatStat(fixed)}</td>
+                  <td>${formatStat(variable)}</td>
+                  <td>${formatStat(misc)}</td>
+                  <td>${formatStat(total)}</td>
+                  <td>${formatStat(budget)}</td>
+                  <td>${formatStat(net)}</td>
+                </tr>`;
+      })
+      .join("");
+
     const yearTotalMaxCents = Math.max(
       1,
       ...yearByMonth.flatMap((row) => {
@@ -4677,6 +4769,7 @@ export function createAppController(root: HTMLElement) {
                 </tr>`;
                   })
                   .join("")}
+                ${yearComparisonStatsRowsHtml}
               </tbody>
             </table>
           </article>
