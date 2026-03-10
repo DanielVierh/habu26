@@ -64,6 +64,8 @@ export function createYearWithMonths(
   const months: MonthBook[] = monthNumbers.map((month) => ({
     month,
     days: createMonthDays(year, month),
+    weeklyShoppingWeekday: null,
+    weeklyShoppingEstimateCents: 0,
     foodBudgetCents: 0,
     goingOutBudgetCents: 0,
     incomes: [],

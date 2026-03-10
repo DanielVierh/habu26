@@ -54,6 +54,8 @@ export interface MonthBook {
   month: MonthNumber;
   days: DayEntry[];
   carryoverOverrideCents?: EuroCents | null;
+  weeklyShoppingWeekday?: number | null;
+  weeklyShoppingEstimateCents?: EuroCents;
   foodBudgetCents: EuroCents;
   goingOutBudgetCents: EuroCents;
   incomes: IncomeEntry[];

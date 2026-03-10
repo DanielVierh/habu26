@@ -34,6 +34,8 @@ describe("rules", () => {
     expect(year.months[0]?.fixedCosts[0]?.actualCents).toBe(0);
     expect(year.months[0]?.foodBudgetCents).toBe(0);
     expect(year.months[0]?.goingOutBudgetCents).toBe(0);
+    expect(year.months[0]?.weeklyShoppingWeekday).toBeNull();
+    expect(year.months[0]?.weeklyShoppingEstimateCents).toBe(0);
     expect(year.months[0]?.fixedBudgetCents).toBe(90000);
     expect(year.months[0]?.variablePositions).toEqual([]);
     expect(year.months[0]?.variableBudgetCents).toBe(0);

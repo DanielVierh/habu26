@@ -164,6 +164,18 @@ interface IncomeFlowSummary {
   netCents: number;
 }
 
+type WeekdayNumber = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+const WEEKDAY_OPTIONS: Array<{ value: WeekdayNumber; label: string }> = [
+  { value: 1, label: "Montag" },
+  { value: 2, label: "Dienstag" },
+  { value: 3, label: "Mittwoch" },
+  { value: 4, label: "Donnerstag" },
+  { value: 5, label: "Freitag" },
+  { value: 6, label: "Samstag" },
+  { value: 0, label: "Sonntag" },
+];
+
 export function createAppController(root: HTMLElement) {
   const state: State = {
     years: [],
@@ -200,6 +212,7 @@ export function createAppController(root: HTMLElement) {
   let toastRoot: HTMLDivElement | null = null;
   let amountModalRoot: HTMLDivElement | null = null;
   let amountModalTarget: HTMLInputElement | null = null;
+  let weeklyShoppingModalRoot: HTMLDivElement | null = null;
   let hasBoundGlobalModalKeys = false;
   let hasBoundScrollUpVisibilityEvents = false;
   const budgetCanvasAnimationFrames = new WeakMap<HTMLCanvasElement, number>();
@@ -619,6 +632,25 @@ export function createAppController(root: HTMLElement) {
     return created;
   }
 
+  function ensureWeeklyShoppingModalRoot(): HTMLDivElement {
+    if (
+      weeklyShoppingModalRoot &&
+      document.body.contains(weeklyShoppingModalRoot)
+    ) {
+      return weeklyShoppingModalRoot;
+    }
+    const existing = document.getElementById("weekly-shopping-modal-root");
+    if (existing instanceof HTMLDivElement) {
+      weeklyShoppingModalRoot = existing;
+      return existing;
+    }
+    const created = document.createElement("div");
+    created.id = "weekly-shopping-modal-root";
+    document.body.appendChild(created);
+    weeklyShoppingModalRoot = created;
+    return created;
+  }
+
   function closeAmountModal(): void {
     if (!amountModalRoot) {
       amountModalTarget = null;
@@ -626,6 +658,276 @@ export function createAppController(root: HTMLElement) {
     }
     amountModalRoot.innerHTML = "";
     amountModalTarget = null;
+  }
+
+  function closeWeeklyShoppingModal(): void {
+    if (!weeklyShoppingModalRoot) {
+      return;
+    }
+    weeklyShoppingModalRoot.innerHTML = "";
+  }
+
+  function countRemainingWeekdaysInMonth(
+    year: number,
+    month: MonthNumber,
+    weekday: WeekdayNumber,
+  ): { occurrences: number; remainingDays: number } {
+    const now = new Date();
+    const nowYear = now.getFullYear();
+    const nowMonth = now.getMonth() + 1;
+    const nowDay = now.getDate();
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    if (year < nowYear || (year === nowYear && month < nowMonth)) {
+      return { occurrences: 0, remainingDays: 0 };
+    }
+
+    const startDay =
+      year === nowYear && month === nowMonth
+        ? Math.min(nowDay, daysInMonth)
+        : 1;
+    const remainingDays = Math.max(0, daysInMonth - startDay + 1);
+
+    let occurrences = 0;
+    for (let day = startDay; day <= daysInMonth; day += 1) {
+      const candidate = new Date(year, month - 1, day);
+      if (candidate.getDay() === weekday) {
+        occurrences += 1;
+      }
+    }
+
+    return { occurrences, remainingDays };
+  }
+
+  async function updateWeeklyShoppingPlan(
+    weekday: WeekdayNumber,
+    estimateCents: number,
+  ): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+
+    month.weeklyShoppingWeekday = weekday;
+    month.weeklyShoppingEstimateCents = Math.max(0, estimateCents);
+
+    await persistSelectedYear(
+      `Wocheneinkauf geplant: ${WEEKDAY_OPTIONS.find((option) => option.value === weekday)?.label ?? "Wochentag"} mit ${centsToEuro(month.weeklyShoppingEstimateCents)} €`,
+    );
+    render();
+  }
+
+  function openWeeklyShoppingPlanModal(): void {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+
+    const container = ensureWeeklyShoppingModalRoot();
+    closeWeeklyShoppingModal();
+
+    const currentWeekday: WeekdayNumber =
+      month.weeklyShoppingWeekday === null ||
+      month.weeklyShoppingWeekday === undefined
+        ? 1
+        : (month.weeklyShoppingWeekday as WeekdayNumber);
+    const currentEstimateCents = month.weeklyShoppingEstimateCents ?? 0;
+    const currentYearNumber = getCurrentYearNumber();
+    const currentMonthNumber = getCurrentMonthNumber();
+    const currentMonthBook = getMonthBook(
+      currentYearNumber,
+      currentMonthNumber,
+    );
+    const currentMonthSummary = currentMonthBook
+      ? summarizeMonth(currentMonthBook)
+      : {
+          foodCents: 0,
+          goingOutCents: 0,
+          fixedCents: 0,
+          variableCents: 0,
+          miscCents: 0,
+          totalCents: 0,
+        };
+    const currentMonthFoodAndGoingOutBudgetCents = currentMonthBook
+      ? (currentMonthBook.foodBudgetCents ?? 0) +
+        (currentMonthBook.goingOutBudgetCents ?? 0)
+      : 0;
+    const currentMonthFoodAndGoingOutActualCents =
+      currentMonthSummary.foodCents + currentMonthSummary.goingOutCents;
+    const currentMonthBudgetRemainingCents =
+      currentMonthFoodAndGoingOutBudgetCents -
+      currentMonthFoodAndGoingOutActualCents;
+
+    container.innerHTML = `
+      <div class="weekly-shopping-modal-backdrop" role="dialog" aria-modal="true" aria-label="Wocheneinkauf planen">
+        <div class="weekly-shopping-modal card">
+          <h3>Wocheneinkauf planen</h3>
+          <div class="weekly-shopping-modal-body">
+            <div class="inline">
+              <label>
+                Wochentag
+                <select id="weekly-shopping-weekday">
+                  ${WEEKDAY_OPTIONS.map(
+                    (option) =>
+                      `<option value="${option.value}" ${option.value === currentWeekday ? "selected" : ""}>${option.label}</option>`,
+                  ).join("")}
+                </select>
+              </label>
+              <label>
+                Geschätzter Betrag pro Einkauf (€)
+                <input class="amount-input" id="weekly-shopping-estimate" type="number" min="0" step="0.01" value="${centsToEuroInput(currentEstimateCents)}" />
+              </label>
+            </div>
+
+            <div class="weekly-shopping-eval" id="weekly-shopping-eval">
+              <div class="column-overview-row"><span>Verbleibende Wocheneinkäufe</span><strong id="weekly-shopping-occurrences">0</strong></div>
+              <div class="column-overview-row"><span>Summe Wocheneinkäufe</span><strong id="weekly-shopping-total">0,00 €</strong></div>
+              <div class="column-overview-row"><span>Restbudget aktuell (aktueller Monat, Essen + Ausgehen)</span><strong id="weekly-shopping-rest-before">0,00 €</strong></div>
+              <div class="column-overview-row"><span>Restbudget nach Abzug</span><strong id="weekly-shopping-rest-after">0,00 €</strong></div>
+              <div class="column-overview-row"><span>Verbleibende Tage im Monat</span><strong id="weekly-shopping-days-left">0</strong></div>
+              <div class="column-overview-row"><span>Verfügbar pro Tag (Restmonat)</span><strong id="weekly-shopping-per-day">0,00 €</strong></div>
+            </div>
+
+            <div class="amount-modal-actions">
+              <button class="btn btn-quiet" id="weekly-shopping-cancel" type="button">Schließen</button>
+              <button class="btn btn-primary" id="weekly-shopping-save" type="button">Übernehmen</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const backdrop = container.querySelector<HTMLDivElement>(
+      ".weekly-shopping-modal-backdrop",
+    );
+    const weekdayInput = container.querySelector<HTMLSelectElement>(
+      "#weekly-shopping-weekday",
+    );
+    const estimateInput = container.querySelector<HTMLInputElement>(
+      "#weekly-shopping-estimate",
+    );
+    const occurrencesEl = container.querySelector<HTMLElement>(
+      "#weekly-shopping-occurrences",
+    );
+    const totalEl = container.querySelector<HTMLElement>(
+      "#weekly-shopping-total",
+    );
+    const restBeforeEl = container.querySelector<HTMLElement>(
+      "#weekly-shopping-rest-before",
+    );
+    const restAfterEl = container.querySelector<HTMLElement>(
+      "#weekly-shopping-rest-after",
+    );
+    const daysLeftEl = container.querySelector<HTMLElement>(
+      "#weekly-shopping-days-left",
+    );
+    const perDayEl = container.querySelector<HTMLElement>(
+      "#weekly-shopping-per-day",
+    );
+    const cancelButton = container.querySelector<HTMLButtonElement>(
+      "#weekly-shopping-cancel",
+    );
+    const saveButton = container.querySelector<HTMLButtonElement>(
+      "#weekly-shopping-save",
+    );
+
+    function readWeekday(): WeekdayNumber {
+      const parsed = Number.parseInt(weekdayInput?.value ?? "1", 10);
+      if (Number.isInteger(parsed) && parsed >= 0 && parsed <= 6) {
+        return parsed as WeekdayNumber;
+      }
+      return 1;
+    }
+
+    function readEstimateCents(): number {
+      return Math.max(0, euroToCents(estimateInput?.value ?? "0"));
+    }
+
+    function refreshPreview(): void {
+      const weekday = readWeekday();
+      const estimateCents = readEstimateCents();
+      const { occurrences, remainingDays } = countRemainingWeekdaysInMonth(
+        currentYearNumber,
+        currentMonthNumber as MonthNumber,
+        weekday,
+      );
+      const totalWeeklyShoppingCents = occurrences * estimateCents;
+      const restAfterWeeklyShoppingCents =
+        currentMonthBudgetRemainingCents - totalWeeklyShoppingCents;
+      const perDayCents =
+        remainingDays > 0
+          ? Math.trunc(restAfterWeeklyShoppingCents / remainingDays)
+          : 0;
+
+      if (occurrencesEl) {
+        occurrencesEl.textContent = `${occurrences}`;
+      }
+      if (totalEl) {
+        totalEl.textContent = `${centsToEuro(totalWeeklyShoppingCents)} €`;
+      }
+      if (restBeforeEl) {
+        restBeforeEl.textContent = `${centsToEuro(currentMonthBudgetRemainingCents)} €`;
+      }
+      if (restAfterEl) {
+        restAfterEl.textContent = `${centsToEuro(restAfterWeeklyShoppingCents)} €`;
+        restAfterEl.className =
+          restAfterWeeklyShoppingCents < 0
+            ? "danger"
+            : restAfterWeeklyShoppingCents > 0
+              ? "budget-under"
+              : "";
+      }
+      if (daysLeftEl) {
+        daysLeftEl.textContent = `${remainingDays}`;
+      }
+      if (perDayEl) {
+        perDayEl.textContent = `${centsToEuro(perDayCents)} €`;
+        perDayEl.className =
+          perDayCents < 0 ? "danger" : perDayCents > 0 ? "budget-under" : "";
+      }
+    }
+
+    async function saveAndClose(): Promise<void> {
+      await updateWeeklyShoppingPlan(readWeekday(), readEstimateCents());
+      closeWeeklyShoppingModal();
+    }
+
+    cancelButton?.addEventListener("click", () => {
+      closeWeeklyShoppingModal();
+    });
+    saveButton?.addEventListener("click", async () => {
+      await saveAndClose();
+    });
+
+    weekdayInput?.addEventListener("change", () => {
+      refreshPreview();
+    });
+    estimateInput?.addEventListener("input", () => {
+      refreshPreview();
+    });
+    estimateInput?.addEventListener("keydown", async (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeWeeklyShoppingModal();
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        await saveAndClose();
+      }
+    });
+
+    backdrop?.addEventListener("click", (event) => {
+      if (event.target === backdrop) {
+        closeWeeklyShoppingModal();
+      }
+    });
+
+    window.setTimeout(() => {
+      estimateInput?.focus();
+      estimateInput?.select();
+      refreshPreview();
+    }, 0);
   }
 
   function clampCentsToInputBounds(
@@ -1020,6 +1322,22 @@ export function createAppController(root: HTMLElement) {
 
     years.forEach((year) => {
       year.months.forEach((month) => {
+        if (
+          month.weeklyShoppingWeekday !== null &&
+          month.weeklyShoppingWeekday !== undefined
+        ) {
+          const weekday = Number(month.weeklyShoppingWeekday);
+          if (Number.isInteger(weekday) && weekday >= 0 && weekday <= 6) {
+            month.weeklyShoppingWeekday = weekday;
+          } else {
+            month.weeklyShoppingWeekday = null;
+          }
+        } else {
+          month.weeklyShoppingWeekday = null;
+        }
+        if (typeof month.weeklyShoppingEstimateCents !== "number") {
+          month.weeklyShoppingEstimateCents = 0;
+        }
         if (typeof month.foodBudgetCents !== "number") {
           month.foodBudgetCents = 0;
         }
@@ -1101,6 +1419,17 @@ export function createAppController(root: HTMLElement) {
       return undefined;
     }
     return year.months.find((month) => month.month === state.selectedMonth);
+  }
+
+  function getMonthBook(
+    yearNumber: number,
+    monthNumber: number,
+  ): MonthBook | undefined {
+    const year = state.years.find((item) => item.year === yearNumber);
+    if (!year) {
+      return undefined;
+    }
+    return year.months.find((item) => item.month === monthNumber);
   }
 
   function summarizeMonth(month: MonthBook): CostSummary {
@@ -4979,6 +5308,7 @@ export function createAppController(root: HTMLElement) {
                   Budget Ausgehen (€)
                   <input class="amount-input" id="going-out-budget" type="number" min="0" step="0.01" value="${centsToEuroInput(goingOutBudgetCents)}" ${month ? "" : "disabled"} />
                 </label>
+                <button class="btn" id="open-weekly-shopping-planner" type="button" ${month ? "" : "disabled"}>Wocheneinkauf Rechner</button>
               </div>
               <table class="daily-table">
                 <thead>
@@ -5505,6 +5835,13 @@ export function createAppController(root: HTMLElement) {
     });
     goingOutBudgetInput?.addEventListener("change", async () => {
       await updateMonthlyGoingOutBudget(euroToCents(goingOutBudgetInput.value));
+    });
+
+    const weeklyShoppingPlannerButton = root.querySelector<HTMLButtonElement>(
+      "#open-weekly-shopping-planner",
+    );
+    weeklyShoppingPlannerButton?.addEventListener("click", () => {
+      openWeeklyShoppingPlanModal();
     });
 
     const miscBudgetInput =

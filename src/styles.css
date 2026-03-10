@@ -1467,6 +1467,34 @@ tbody tr:nth-child(even) {
   flex-wrap: wrap;
 }
 
+.weekly-shopping-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: var(--focus-ring);
+}
+
+.weekly-shopping-modal {
+  width: min(92vw, 560px);
+}
+
+.weekly-shopping-modal h3 {
+  margin: 0 0 0.6rem;
+}
+
+.weekly-shopping-modal .weekly-shopping-modal-body {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.weekly-shopping-modal .weekly-shopping-eval {
+  display: grid;
+  gap: 0.32rem;
+}
+
 .toast-root {
   position: fixed;
   right: 1rem;
@@ -1693,7 +1721,8 @@ tbody tr:nth-child(even) {
   }
 
   .panel-modal-backdrop,
-  .amount-modal-backdrop {
+  .amount-modal-backdrop,
+  .weekly-shopping-modal-backdrop {
     padding: 0.6rem;
   }
 
