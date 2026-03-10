@@ -3205,7 +3205,6 @@ export function createAppController(root: HTMLElement) {
       total: yearComparisonTotalValues.reduce((sum, value) => sum + value, 0),
       salary: yearComparisonSalaryValues.reduce((sum, value) => sum + value, 0),
       budget: yearComparisonBudgetValues.reduce((sum, value) => sum + value, 0),
-      net: yearComparisonNetValues.reduce((sum, value) => sum + value, 0),
     };
 
     const yearComparisonStatsRowsHtml = yearComparisonStatsRows
@@ -3248,7 +3247,6 @@ export function createAppController(root: HTMLElement) {
                   <td>${centsToEuro(yearComparisonSums.total)}</td>
                   <td>${centsToEuro(yearComparisonSums.salary)}</td>
                   <td>${centsToEuro(yearComparisonSums.budget)}</td>
-                  <td>${centsToEuro(yearComparisonSums.net)}</td>
                 </tr>`;
 
     const yearTotalMaxCents = Math.max(
