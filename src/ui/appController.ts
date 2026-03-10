@@ -719,7 +719,8 @@ export function createAppController(root: HTMLElement) {
 
   function openWeeklyShoppingPlanModal(): void {
     const month = getSelectedMonthBook();
-    if (!month) {
+    const selectedYear = getSelectedYearBook();
+    if (!month || !selectedYear) {
       return;
     }
 
@@ -732,14 +733,14 @@ export function createAppController(root: HTMLElement) {
         ? 1
         : (month.weeklyShoppingWeekday as WeekdayNumber);
     const currentEstimateCents = month.weeklyShoppingEstimateCents ?? 0;
-    const currentYearNumber = getCurrentYearNumber();
-    const currentMonthNumber = getCurrentMonthNumber();
-    const currentMonthBook = getMonthBook(
-      currentYearNumber,
-      currentMonthNumber,
+    const selectedYearNumber = selectedYear.year;
+    const selectedMonthNumber = month.month;
+    const selectedMonthBook = getMonthBook(
+      selectedYearNumber,
+      selectedMonthNumber,
     );
-    const currentMonthSummary = currentMonthBook
-      ? summarizeMonth(currentMonthBook)
+    const selectedMonthSummary = selectedMonthBook
+      ? summarizeMonth(selectedMonthBook)
       : {
           foodCents: 0,
           goingOutCents: 0,
@@ -748,15 +749,12 @@ export function createAppController(root: HTMLElement) {
           miscCents: 0,
           totalCents: 0,
         };
-    const currentMonthFoodAndGoingOutBudgetCents = currentMonthBook
-      ? (currentMonthBook.foodBudgetCents ?? 0) +
-        (currentMonthBook.goingOutBudgetCents ?? 0)
+    const selectedMonthFoodBudgetCents = selectedMonthBook
+      ? (selectedMonthBook.foodBudgetCents ?? 0)
       : 0;
-    const currentMonthFoodAndGoingOutActualCents =
-      currentMonthSummary.foodCents + currentMonthSummary.goingOutCents;
-    const currentMonthBudgetRemainingCents =
-      currentMonthFoodAndGoingOutBudgetCents -
-      currentMonthFoodAndGoingOutActualCents;
+    const selectedMonthFoodActualCents = selectedMonthSummary.foodCents;
+    const selectedMonthBudgetRemainingCents =
+      selectedMonthFoodBudgetCents - selectedMonthFoodActualCents;
 
     container.innerHTML = `
       <div class="weekly-shopping-modal-backdrop" role="dialog" aria-modal="true" aria-label="Wocheneinkauf planen">
@@ -782,7 +780,7 @@ export function createAppController(root: HTMLElement) {
             <div class="weekly-shopping-eval" id="weekly-shopping-eval">
               <div class="column-overview-row"><span>Verbleibende Wocheneinkäufe</span><strong id="weekly-shopping-occurrences">0</strong></div>
               <div class="column-overview-row"><span>Summe Wocheneinkäufe</span><strong id="weekly-shopping-total">0,00 €</strong></div>
-              <div class="column-overview-row"><span>Restbudget aktuell (aktueller Monat, Essen + Ausgehen)</span><strong id="weekly-shopping-rest-before">0,00 €</strong></div>
+              <div class="column-overview-row"><span>Restbudget aktuell (ausgewählter Monat, Essen/Trinken)</span><strong id="weekly-shopping-rest-before">0,00 €</strong></div>
               <div class="column-overview-row"><span>Restbudget nach Abzug</span><strong id="weekly-shopping-rest-after">0,00 €</strong></div>
               <div class="column-overview-row"><span>Verbleibende Tage im Monat</span><strong id="weekly-shopping-days-left">0</strong></div>
               <div class="column-overview-row"><span>Verfügbar pro Tag (Restmonat)</span><strong id="weekly-shopping-per-day">0,00 €</strong></div>
@@ -847,13 +845,13 @@ export function createAppController(root: HTMLElement) {
       const weekday = readWeekday();
       const estimateCents = readEstimateCents();
       const { occurrences, remainingDays } = countRemainingWeekdaysInMonth(
-        currentYearNumber,
-        currentMonthNumber as MonthNumber,
+        selectedYearNumber,
+        selectedMonthNumber,
         weekday,
       );
       const totalWeeklyShoppingCents = occurrences * estimateCents;
       const restAfterWeeklyShoppingCents =
-        currentMonthBudgetRemainingCents - totalWeeklyShoppingCents;
+        selectedMonthBudgetRemainingCents - totalWeeklyShoppingCents;
       const perDayCents =
         remainingDays > 0
           ? Math.trunc(restAfterWeeklyShoppingCents / remainingDays)
@@ -866,7 +864,7 @@ export function createAppController(root: HTMLElement) {
         totalEl.textContent = `${centsToEuro(totalWeeklyShoppingCents)} €`;
       }
       if (restBeforeEl) {
-        restBeforeEl.textContent = `${centsToEuro(currentMonthBudgetRemainingCents)} €`;
+        restBeforeEl.textContent = `${centsToEuro(selectedMonthBudgetRemainingCents)} €`;
       }
       if (restAfterEl) {
         restAfterEl.textContent = `${centsToEuro(restAfterWeeklyShoppingCents)} €`;
