@@ -4428,6 +4428,15 @@ export function createAppController(root: HTMLElement) {
       </div>
     `;
 
+    const annualVariableFixedTotalCents =
+      state.annualVariableFixedTemplates.reduce(
+        (sum, template) => sum + template.plannedCents,
+        0,
+      );
+    const annualVariableFixedMonthlyAverageCents = Math.round(
+      annualVariableFixedTotalCents / 12,
+    );
+
     const annualVariableFixedTemplatesPanelHtml = `
       <div class="grid">
         <div class="inline">
@@ -4445,6 +4454,28 @@ export function createAppController(root: HTMLElement) {
           </label>
           <button class="btn btn-primary" id="add-annual-variable-fixed-template">Vorlage speichern</button>
         </div>
+
+        <div class="eval-grid">
+          <section class="eval-tile">
+            <header class="eval-tile-header">
+              <h4>Summenübersicht</h4>
+              <div class="eval-tile-columns"><span>Wert</span><span></span></div>
+            </header>
+            <div class="eval-rows">
+              <div class="eval-row eval-strong">
+                <div class="eval-label">Gesamtsumme Variable Fixkosten (jährlich)</div>
+                <div class="eval-value budget-under">${centsToEuro(annualVariableFixedTotalCents)}</div>
+                <div class="eval-value"></div>
+              </div>
+              <div class="eval-row eval-strong">
+                <div class="eval-label">Durchschnitt pro Monat (12 Monate)</div>
+                <div class="eval-value">${centsToEuro(annualVariableFixedMonthlyAverageCents)}</div>
+                <div class="eval-value"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
         <table>
           <thead>
             <tr><th>Name</th><th>Datum</th><th>Monat (jährlich)</th><th>Betrag (€)</th><th></th></tr>
