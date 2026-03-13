@@ -762,7 +762,6 @@ button {
   background: var(--button-bg);
   color: var(--text-main);
   font-weight: 600;
-  margin-bottom: 30px;
 }
 
 a.btn,
@@ -913,6 +912,9 @@ tbody tr:nth-child(even) {
   gap: 0.65rem;
   align-items: end;
   flex-wrap: wrap;
+  margin: 30px 0;
+  background: var(--bg-accent-2);
+  padding: 20px 10px;
 }
 
 .column-overview {
