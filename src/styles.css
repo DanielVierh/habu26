@@ -1019,6 +1019,10 @@ tbody tr:nth-child(even) {
   background: var(--card-bg);
 }
 
+.chart-tile-trend {
+  grid-column: 1 / -1;
+}
+
 .chart-tile-header {
   display: flex;
   justify-content: space-between;
@@ -1093,6 +1097,221 @@ tbody tr:nth-child(even) {
   display: block;
   width: 100%;
   height: 96px;
+}
+
+.trend-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.6rem;
+  border: 1px solid var(--table-border);
+  border-radius: 999px;
+  background: var(--table-stripe);
+  color: var(--text-main);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.trend-badge-positive {
+  color: var(--budget-under);
+}
+
+.trend-badge-negative {
+  color: var(--danger-2);
+}
+
+.trend-badge-neutral {
+  color: var(--text-muted);
+}
+
+.year-trend-chart {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.year-trend-summary {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid var(--table-border);
+  border-radius: 12px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary-1) 8%, var(--card-bg)) 0%,
+    var(--card-bg) 100%
+  );
+}
+
+.year-trend-summary-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.45rem;
+}
+
+.year-trend-kicker {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.year-trend-summary-head strong {
+  font-size: 1.02rem;
+}
+
+.year-trend-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.55rem;
+}
+
+.year-trend-metric {
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid var(--table-border);
+  border-radius: 10px;
+  background: var(--table-stripe);
+}
+
+.year-trend-metric span {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.year-trend-metric strong {
+  font-size: 0.96rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.year-trend-visual {
+  position: relative;
+  min-height: 320px;
+  border: 1px solid var(--table-border);
+  border-radius: 14px;
+  padding: 0.25rem;
+  background:
+    radial-gradient(
+      circle at top,
+      color-mix(in srgb, var(--primary-1) 10%, transparent) 0%,
+      transparent 55%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--table-stripe) 80%, var(--card-bg)) 0%,
+      var(--card-bg) 100%
+    );
+  overflow: hidden;
+}
+
+.year-trend-svg {
+  display: block;
+  width: 100%;
+  height: 320px;
+}
+
+.year-trend-grid-line {
+  stroke: var(--table-border);
+  stroke-width: 1;
+  stroke-dasharray: 4 6;
+  opacity: 0.8;
+}
+
+.year-trend-zero-line {
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+  opacity: 0.75;
+}
+
+.year-trend-axis-label,
+.year-trend-month-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+
+.year-trend-line {
+  fill: none;
+  stroke: var(--primary-1);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 10px 16px var(--shadow-2));
+}
+
+.year-trend-area {
+  fill: url(#year-trend-fill-gradient);
+}
+
+.year-trend-node {
+  fill: var(--card-bg);
+  stroke: var(--primary-1);
+  stroke-width: 3;
+}
+
+.year-trend-node.is-negative {
+  stroke: var(--danger-2);
+}
+
+.year-trend-point-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.year-trend-point-hit {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  box-shadow: 0 0 0 0 transparent;
+}
+
+.year-trend-point-hit::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 999px;
+  border: 2px solid var(--primary-1);
+  background: color-mix(in srgb, var(--card-bg) 70%, transparent);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.year-trend-point-hit:hover::before,
+.year-trend-point-hit:focus-visible::before,
+.year-trend-point-hit.is-active::before {
+  transform: scale(1.18);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--primary-1) 16%, transparent);
+}
+
+.year-trend-point-hit:focus-visible {
+  outline: none;
+}
+
+.year-trend-footer {
+  margin-top: -0.15rem;
+}
+
+.year-trend-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .circle-chart-container {
@@ -1681,10 +1900,28 @@ tbody tr:nth-child(even) {
     padding: 0.7rem;
   }
 
+  .chart-tile-trend {
+    grid-column: auto;
+  }
+
   .chart-tile-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.35rem;
+  }
+
+  .year-trend-summary-head {
+    align-items: flex-start;
+  }
+
+  .year-trend-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .year-trend-visual,
+  .year-trend-svg {
+    min-height: 260px;
+    height: 260px;
   }
 
   .bar-row {
@@ -1711,6 +1948,10 @@ tbody tr:nth-child(even) {
     min-width: 0;
     width: 100%;
     height: 300px;
+  }
+
+  .trend-badge {
+    white-space: normal;
   }
 
   .daily-table th,

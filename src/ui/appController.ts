@@ -499,6 +499,111 @@ export function createAppController(root: HTMLElement) {
     });
   }
 
+  function bindDashboardTrendInteractions(): void {
+    const charts = root.querySelectorAll<HTMLElement>(
+      "[data-year-trend-chart]",
+    );
+    charts.forEach((chart) => {
+      const points = Array.from(
+        chart.querySelectorAll<HTMLButtonElement>("[data-year-trend-point]"),
+      );
+      if (points.length === 0) {
+        return;
+      }
+
+      const monthElement = chart.querySelector<HTMLElement>(
+        "[data-year-trend-active-month]",
+      );
+      const netElement = chart.querySelector<HTMLElement>(
+        "[data-year-trend-active-net]",
+      );
+      const incomeElement = chart.querySelector<HTMLElement>(
+        "[data-year-trend-active-income]",
+      );
+      const expenseElement = chart.querySelector<HTMLElement>(
+        "[data-year-trend-active-expense]",
+      );
+      const deltaElement = chart.querySelector<HTMLElement>(
+        "[data-year-trend-active-delta]",
+      );
+      const liveRegion = chart.querySelector<HTMLElement>(
+        "[data-year-trend-live]",
+      );
+
+      if (
+        !monthElement ||
+        !netElement ||
+        !incomeElement ||
+        !expenseElement ||
+        !deltaElement
+      ) {
+        return;
+      }
+
+      const applyBalanceClass = (element: HTMLElement, value: number): void => {
+        element.classList.remove("danger", "budget-under");
+        const className =
+          value < 0 ? "danger" : value > 0 ? "budget-under" : "";
+        if (className) {
+          element.classList.add(className);
+        }
+      };
+
+      const setActivePoint = (point: HTMLButtonElement): void => {
+        const month = point.dataset.monthLabel ?? "-";
+        const netCents = Number.parseInt(point.dataset.netCents ?? "0", 10);
+        const actualNetCents = Number.parseInt(
+          point.dataset.actualNetCents ?? "0",
+          10,
+        );
+        const incomeCents = Number.parseInt(
+          point.dataset.incomeCents ?? "0",
+          10,
+        );
+        const expenseCents = Number.parseInt(
+          point.dataset.expenseCents ?? "0",
+          10,
+        );
+        const deltaCents = Number.parseInt(point.dataset.deltaCents ?? "0", 10);
+
+        monthElement.textContent = month;
+        netElement.textContent = centsToEuro(netCents);
+        incomeElement.textContent = centsToEuro(incomeCents);
+        expenseElement.textContent = centsToEuro(expenseCents);
+        deltaElement.textContent = `${deltaCents >= 0 ? "+" : ""}${centsToEuro(deltaCents)}`;
+
+        applyBalanceClass(netElement, netCents);
+        applyBalanceClass(deltaElement, deltaCents);
+
+        points.forEach((candidate) => {
+          const isActive = candidate === point;
+          candidate.classList.toggle("is-active", isActive);
+          candidate.setAttribute("aria-pressed", String(isActive));
+        });
+
+        if (liveRegion) {
+          liveRegion.textContent = `${month}: Kalkulierter Saldo ${centsToEuro(netCents)}, Ist-Saldo ${centsToEuro(actualNetCents)}, Einkommen ${centsToEuro(incomeCents)}, Ausgaben ${centsToEuro(expenseCents)}`;
+        }
+      };
+
+      points.forEach((point) => {
+        const activate = () => {
+          setActivePoint(point);
+        };
+        point.addEventListener("mouseenter", activate);
+        point.addEventListener("focus", activate);
+        point.addEventListener("click", activate);
+      });
+
+      const defaultPoint =
+        points.find((point) => point.dataset.pointDefault === "1") ??
+        points[points.length - 1];
+      if (defaultPoint) {
+        setActivePoint(defaultPoint);
+      }
+    });
+  }
+
   function openTopModal(
     kind: "years" | "fixed" | "variable-fixed" | "dashboard",
   ): void {
@@ -3796,6 +3901,130 @@ export function createAppController(root: HTMLElement) {
       1,
       ...dashboardYearMonthlyRows.map((row) => row.goingOutCents),
     );
+    const dashboardYearTrendRows = dashboardYearMonthlyRows.map(
+      (row, index, rows) => {
+        const previousPlannedNetCents =
+          index > 0
+            ? (rows[index - 1]?.plannedNetCents ?? row.plannedNetCents)
+            : row.plannedNetCents;
+
+        return {
+          ...row,
+          monthLabel: monthLabel(row.month),
+          monthShortLabel: monthLabel(row.month).slice(0, 3),
+          deltaCents: row.plannedNetCents - previousPlannedNetCents,
+        };
+      },
+    );
+    const dashboardYearTrendDefaultRow =
+      dashboardYearTrendRows[dashboardYearTrendRows.length - 1] ?? null;
+    const dashboardYearTrendMinCents = Math.min(
+      0,
+      ...dashboardYearTrendRows.map((row) => row.plannedNetCents),
+    );
+    const dashboardYearTrendMaxCents = Math.max(
+      0,
+      ...dashboardYearTrendRows.map((row) => row.plannedNetCents),
+    );
+    const dashboardYearTrendRangeCents = Math.max(
+      1,
+      dashboardYearTrendMaxCents - dashboardYearTrendMinCents,
+    );
+    const dashboardYearTrendChartWidth = 720;
+    const dashboardYearTrendChartHeight = 320;
+    const dashboardYearTrendPaddingTop = 18;
+    const dashboardYearTrendPaddingRight = 18;
+    const dashboardYearTrendPaddingBottom = 38;
+    const dashboardYearTrendPaddingLeft = 56;
+    const dashboardYearTrendInnerWidth =
+      dashboardYearTrendChartWidth -
+      dashboardYearTrendPaddingLeft -
+      dashboardYearTrendPaddingRight;
+    const dashboardYearTrendInnerHeight =
+      dashboardYearTrendChartHeight -
+      dashboardYearTrendPaddingTop -
+      dashboardYearTrendPaddingBottom;
+    const getDashboardYearTrendX = (index: number): number => {
+      if (dashboardYearTrendRows.length <= 1) {
+        return dashboardYearTrendPaddingLeft + dashboardYearTrendInnerWidth / 2;
+      }
+      const ratio = index / (dashboardYearTrendRows.length - 1);
+      return (
+        dashboardYearTrendPaddingLeft + ratio * dashboardYearTrendInnerWidth
+      );
+    };
+    const getDashboardYearTrendY = (valueCents: number): number =>
+      dashboardYearTrendPaddingTop +
+      ((dashboardYearTrendMaxCents - valueCents) /
+        dashboardYearTrendRangeCents) *
+        dashboardYearTrendInnerHeight;
+    const dashboardYearTrendPoints = dashboardYearTrendRows.map(
+      (row, index) => {
+        const x = getDashboardYearTrendX(index);
+        const y = getDashboardYearTrendY(row.plannedNetCents);
+
+        return {
+          ...row,
+          x,
+          y,
+          leftPercent: (x / dashboardYearTrendChartWidth) * 100,
+          topPercent: (y / dashboardYearTrendChartHeight) * 100,
+        };
+      },
+    );
+    const dashboardYearTrendLinePath = dashboardYearTrendPoints
+      .map(
+        (point, index) =>
+          `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`,
+      )
+      .join(" ");
+    const dashboardYearTrendAreaPath =
+      dashboardYearTrendPoints.length > 0
+        ? `${dashboardYearTrendLinePath} L ${dashboardYearTrendPoints[dashboardYearTrendPoints.length - 1]?.x.toFixed(1)} ${(dashboardYearTrendPaddingTop + dashboardYearTrendInnerHeight).toFixed(1)} L ${dashboardYearTrendPoints[0]?.x.toFixed(1)} ${(dashboardYearTrendPaddingTop + dashboardYearTrendInnerHeight).toFixed(1)} Z`
+        : "";
+    const dashboardYearTrendTickCount = 5;
+    const dashboardYearTrendTicks = Array.from(
+      { length: dashboardYearTrendTickCount },
+      (_, index) => {
+        const ratio =
+          dashboardYearTrendTickCount <= 1
+            ? 0
+            : index / (dashboardYearTrendTickCount - 1);
+        const rawValue =
+          dashboardYearTrendMaxCents - ratio * dashboardYearTrendRangeCents;
+        const valueCents = Math.round(rawValue / 100) * 100;
+        return {
+          valueCents,
+          y: getDashboardYearTrendY(rawValue),
+        };
+      },
+    );
+    const dashboardYearTrendZeroLineY = getDashboardYearTrendY(0);
+    const dashboardYearTrendStartCents =
+      dashboardYearTrendRows[0]?.plannedNetCents ?? 0;
+    const dashboardYearTrendEndCents =
+      dashboardYearTrendRows[dashboardYearTrendRows.length - 1]
+        ?.plannedNetCents ?? 0;
+    const dashboardYearTrendDeltaCents =
+      dashboardYearTrendEndCents - dashboardYearTrendStartCents;
+    const dashboardYearTrendDirectionClass =
+      dashboardYearTrendDeltaCents < 0
+        ? "trend-badge-negative"
+        : dashboardYearTrendDeltaCents > 0
+          ? "trend-badge-positive"
+          : "trend-badge-neutral";
+    const dashboardYearTrendDirectionSymbol =
+      dashboardYearTrendDeltaCents < 0
+        ? "↘"
+        : dashboardYearTrendDeltaCents > 0
+          ? "↗"
+          : "→";
+    const dashboardYearTrendDirectionLabel =
+      dashboardYearTrendDeltaCents < 0
+        ? "Abwärtstrend"
+        : dashboardYearTrendDeltaCents > 0
+          ? "Aufwärtstrend"
+          : "Seitwärts";
 
     const allYearsBudgetTotals = sortedYears.reduce(
       (acc, yearItem) => {
@@ -3973,6 +4202,121 @@ export function createAppController(root: HTMLElement) {
               </div>
 
               <div class="chart-grid">
+                <section class="chart-tile chart-tile-trend">
+                  <header class="chart-tile-header">
+                    <div>
+                      <h4>Kalkulierter Saldo-Trend ${dashboardYearTrendDirectionSymbol}</h4>
+                      <div class="muted">Aktienähnliche Jahresübersicht auf Basis des monatlich kalkulierten Saldos.</div>
+                    </div>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-net"></span>Kalkulierter Saldo</span>
+                      <span class="trend-badge ${dashboardYearTrendDirectionClass}">${dashboardYearTrendDirectionSymbol} ${dashboardYearTrendDirectionLabel}</span>
+                    </div>
+                  </header>
+                  ${
+                    dashboardYearTrendDefaultRow
+                      ? `
+                        <div class="year-trend-chart" data-year-trend-chart>
+                          <div class="year-trend-summary">
+                            <div class="year-trend-summary-head">
+                              <span class="year-trend-kicker">Aktiver Monat</span>
+                              <strong data-year-trend-active-month>${escapeHtml(dashboardYearTrendDefaultRow.monthLabel)}</strong>
+                            </div>
+                            <div class="year-trend-metrics">
+                              <div class="year-trend-metric">
+                                <span>Kalkulierter Saldo</span>
+                                <strong class="${incomeBudgetBalanceClass(dashboardYearTrendDefaultRow.plannedNetCents)}" data-year-trend-active-net>${centsToEuro(dashboardYearTrendDefaultRow.plannedNetCents)}</strong>
+                              </div>
+                              <div class="year-trend-metric">
+                                <span>Einkommen</span>
+                                <strong data-year-trend-active-income>${centsToEuro(dashboardYearTrendDefaultRow.effectiveIncomeCents)}</strong>
+                              </div>
+                              <div class="year-trend-metric">
+                                <span>Ausgaben</span>
+                                <strong data-year-trend-active-expense>${centsToEuro(dashboardYearTrendDefaultRow.actualCostCents)}</strong>
+                              </div>
+                              <div class="year-trend-metric">
+                                <span>Δ zum Vormonat</span>
+                                <strong class="${incomeBudgetBalanceClass(dashboardYearTrendDefaultRow.deltaCents)}" data-year-trend-active-delta>${dashboardYearTrendDefaultRow.deltaCents >= 0 ? "+" : ""}${centsToEuro(dashboardYearTrendDefaultRow.deltaCents)}</strong>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="year-trend-visual">
+                            <svg
+                              class="year-trend-svg"
+                              viewBox="0 0 ${dashboardYearTrendChartWidth} ${dashboardYearTrendChartHeight}"
+                              role="img"
+                              aria-label="Jahresübersicht des monatlich kalkulierten Saldos für ${dashboardYearBook?.year ?? ""}"
+                              preserveAspectRatio="none"
+                            >
+                              <defs>
+                                <linearGradient id="year-trend-fill-gradient" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stop-color="var(--primary-1)" stop-opacity="0.34"></stop>
+                                  <stop offset="100%" stop-color="var(--primary-1)" stop-opacity="0"></stop>
+                                </linearGradient>
+                              </defs>
+                              ${dashboardYearTrendTicks
+                                .map(
+                                  (tick) => `
+                                    <g>
+                                      <line class="year-trend-grid-line" x1="${dashboardYearTrendPaddingLeft}" y1="${tick.y.toFixed(1)}" x2="${dashboardYearTrendChartWidth - dashboardYearTrendPaddingRight}" y2="${tick.y.toFixed(1)}"></line>
+                                      <text class="year-trend-axis-label" x="${dashboardYearTrendPaddingLeft - 10}" y="${(tick.y + 4).toFixed(1)}" text-anchor="end">${centsToEuro(tick.valueCents)}</text>
+                                    </g>
+                                  `,
+                                )
+                                .join("")}
+                              <line class="year-trend-zero-line" x1="${dashboardYearTrendPaddingLeft}" y1="${dashboardYearTrendZeroLineY.toFixed(1)}" x2="${dashboardYearTrendChartWidth - dashboardYearTrendPaddingRight}" y2="${dashboardYearTrendZeroLineY.toFixed(1)}"></line>
+                              ${
+                                dashboardYearTrendAreaPath
+                                  ? `<path class="year-trend-area" d="${dashboardYearTrendAreaPath}"></path>`
+                                  : ""
+                              }
+                              ${
+                                dashboardYearTrendLinePath
+                                  ? `<path class="year-trend-line" d="${dashboardYearTrendLinePath}"></path>`
+                                  : ""
+                              }
+                              ${dashboardYearTrendPoints
+                                .map(
+                                  (point) => `
+                                    <circle class="year-trend-node ${point.plannedNetCents < 0 ? "is-negative" : ""}" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="5"></circle>
+                                    <text class="year-trend-month-label" x="${point.x.toFixed(1)}" y="${dashboardYearTrendChartHeight - 12}" text-anchor="middle">${escapeHtml(point.monthShortLabel)}</text>
+                                  `,
+                                )
+                                .join("")}
+                            </svg>
+                            <div class="year-trend-point-layer" aria-hidden="true">
+                              ${dashboardYearTrendPoints
+                                .map(
+                                  (point, index) => `
+                                    <button
+                                      class="year-trend-point-hit ${index === dashboardYearTrendPoints.length - 1 ? "is-active" : ""}"
+                                      type="button"
+                                      style="left:${point.leftPercent.toFixed(2)}%; top:${point.topPercent.toFixed(2)}%;"
+                                      data-year-trend-point
+                                      data-point-default="${index === dashboardYearTrendPoints.length - 1 ? "1" : "0"}"
+                                      data-month-label="${escapeHtml(point.monthLabel)}"
+                                      data-net-cents="${point.plannedNetCents}"
+                                      data-actual-net-cents="${point.actualNetCents}"
+                                      data-income-cents="${point.effectiveIncomeCents}"
+                                      data-expense-cents="${point.actualCostCents}"
+                                      data-delta-cents="${point.deltaCents}"
+                                      aria-label="${escapeHtml(point.monthLabel)}: Kalkulierter Saldo ${centsToEuro(point.plannedNetCents)}, Einkommen ${centsToEuro(point.effectiveIncomeCents)}, Ausgaben ${centsToEuro(point.actualCostCents)}"
+                                      aria-pressed="${index === dashboardYearTrendPoints.length - 1 ? "true" : "false"}"
+                                    ></button>
+                                  `,
+                                )
+                                .join("")}
+                            </div>
+                          </div>
+                          <div class="year-trend-footer muted">Hover oder Tippen zeigt den kalkulierten Monatswert direkt im Chart an.</div>
+                          <div class="year-trend-live" aria-live="polite" data-year-trend-live></div>
+                        </div>
+                      `
+                      : '<p class="muted">Keine Monatsdaten vorhanden.</p>'
+                  }
+                </section>
+
                 <section class="chart-tile">
                   <header class="chart-tile-header">
                     <h4>Budget vs. Ist nach Kategorie (Jahr)</h4>
@@ -5538,6 +5882,7 @@ export function createAppController(root: HTMLElement) {
     );
 
     bindEvents();
+    bindDashboardTrendInteractions();
     renderBudgetVsActualCanvases();
     updateScrollUpButtonVisibility();
   }
