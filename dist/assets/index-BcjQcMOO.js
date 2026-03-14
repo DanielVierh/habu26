@@ -129,7 +129,7 @@
                   <header class="chart-tile-header">
                     <div>
                       <h4>Kalkulierter Saldo-Trend ${Ie}</h4>
-                      <div class="muted">Aktienähnliche Jahresübersicht auf Basis des monatlich kalkulierten Saldos.</div>
+                      <div class="muted">Jahresübersicht auf Basis des monatlich kalkulierten Saldos.</div>
                     </div>
                     <div class="chart-legend">
                       <span class="chart-legend-item"><span class="chart-dot chart-dot-net"></span>Kalkulierter Saldo</span>
