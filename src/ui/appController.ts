@@ -4930,6 +4930,9 @@ export function createAppController(root: HTMLElement) {
                           )
                           .join("")}</ol>`
                   }
+                  <div class="inline">
+                    <button class="btn btn-primary" id="unexported-change-log-backup" type="button">Backup jetzt erstellen</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -5903,6 +5906,8 @@ export function createAppController(root: HTMLElement) {
     );
     const unexportedChangeLogCloseButton =
       root.querySelector<HTMLButtonElement>("#unexported-change-log-close");
+    const unexportedChangeLogBackupButton =
+      root.querySelector<HTMLButtonElement>("#unexported-change-log-backup");
     const unexportedChangeLogBackdrop = root.querySelector<HTMLDivElement>(
       "#unexported-change-log-backdrop",
     );
@@ -5941,6 +5946,15 @@ export function createAppController(root: HTMLElement) {
 
     unexportedChangeLogCloseButton?.addEventListener("click", () => {
       closeUnexportedChangeLogModal();
+    });
+
+    unexportedChangeLogBackupButton?.addEventListener("click", async () => {
+      try {
+        await exportBackup();
+      } catch (error) {
+        console.error("Backup-Export fehlgeschlagen", error);
+        showToast("Backup konnte nicht exportiert werden.", "error");
+      }
     });
 
     unexportedChangeLogBackdrop?.addEventListener("click", (event) => {
