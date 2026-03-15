@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from "dexie";
 import type {
   AnnualVariableFixedCostTemplate,
+  AuditLogEntry,
   FixedCostTemplate,
   YearBook,
 } from "../domain/model";
@@ -26,6 +27,7 @@ export interface AppDb extends Dexie {
     AnnualVariableFixedTemplateState,
     "id"
   >;
+  auditLog: EntityTable<AuditLogEntry, "id">;
 }
 
 export const db = new Dexie("haushaltsbuch-db") as AppDb;
@@ -39,6 +41,13 @@ db.version(2).stores({
   years: "year",
   fixedTemplateState: "id",
   annualVariableFixedTemplateState: "id",
+});
+
+db.version(3).stores({
+  years: "year",
+  fixedTemplateState: "id",
+  annualVariableFixedTemplateState: "id",
+  auditLog: "id,timestampIso",
 });
 
 export type { AnnualVariableFixedTemplateState, FixedTemplateState };

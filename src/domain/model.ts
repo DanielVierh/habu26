@@ -75,9 +75,16 @@ export interface YearBook {
   months: MonthBook[];
 }
 
+export interface AuditLogEntry {
+  id: string;
+  timestampIso: string;
+  message: string;
+}
+
 export interface BackupPayload {
   exportedAt: string;
   years: YearBook[];
   fixedTemplates: FixedCostTemplate[];
   annualVariableFixedTemplates?: AnnualVariableFixedCostTemplate[];
+  auditLogEntries?: AuditLogEntry[];
 }

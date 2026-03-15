@@ -1,5 +1,6 @@
 import type {
   AnnualVariableFixedCostTemplate,
+  AuditLogEntry,
   BackupPayload,
   ExpenseEntry,
   FixedCostEntry,
@@ -17,11 +18,13 @@ import {
   createYearWithMonths,
 } from "../domain/rules";
 import {
+  appendAuditLogEntry,
   createBackupPayload,
   deleteYear,
   getAnnualVariableFixedTemplateState,
   getFixedTemplateState,
   getYear,
+  listAuditLogEntries,
   listYears,
   restoreFromBackup,
   saveAnnualVariableFixedTemplates,
@@ -134,6 +137,8 @@ interface State {
   hasUnexportedChanges: boolean;
   unexportedChangeLog: ChangeLogEntry[];
   showUnexportedChangeLogModal: boolean;
+  persistentAuditLog: AuditLogEntry[];
+  showPersistentAuditLogModal: boolean;
   lastBackupFileName: string | null;
   topModal: "years" | "fixed" | "variable-fixed" | "dashboard" | null;
   dashboardTab: "year" | "food" | "all";
@@ -190,6 +195,8 @@ export function createAppController(root: HTMLElement) {
     hasUnexportedChanges: false,
     unexportedChangeLog: [],
     showUnexportedChangeLogModal: false,
+    persistentAuditLog: [],
+    showPersistentAuditLogModal: false,
     lastBackupFileName: null,
     topModal: null,
     dashboardTab: "year",
@@ -644,6 +651,19 @@ export function createAppController(root: HTMLElement) {
     render();
   }
 
+  function openPersistentAuditLogModal(): void {
+    state.showPersistentAuditLogModal = true;
+    render();
+  }
+
+  function closePersistentAuditLogModal(): void {
+    if (!state.showPersistentAuditLogModal) {
+      return;
+    }
+    state.showPersistentAuditLogModal = false;
+    render();
+  }
+
   function bindGlobalModalKeysOnce(): void {
     if (hasBoundGlobalModalKeys) {
       return;
@@ -656,6 +676,11 @@ export function createAppController(root: HTMLElement) {
       if (state.showUnexportedChangeLogModal) {
         event.preventDefault();
         closeUnexportedChangeLogModal();
+        return;
+      }
+      if (state.showPersistentAuditLogModal) {
+        event.preventDefault();
+        closePersistentAuditLogModal();
         return;
       }
       if (!state.topModal) {
@@ -1401,6 +1426,7 @@ export function createAppController(root: HTMLElement) {
     applyTheme(loadTheme());
     state.hasUnexportedChanges = loadHasUnexportedChanges();
     state.unexportedChangeLog = loadUnexportedChangeLog();
+    state.persistentAuditLog = await listAuditLogEntries();
     state.lastBackupFileName = loadLastBackupFileName();
     state.recurringBudgetDefaults = loadRecurringBudgetDefaults();
     bindGlobalModalKeysOnce();
@@ -1842,15 +1868,32 @@ export function createAppController(root: HTMLElement) {
     const selectedScope = state.selectedYear
       ? `${state.selectedYear}-${String(state.selectedMonth).padStart(2, "0")}`
       : "ohne Zeitraum";
+    const timestampIso = new Date().toISOString();
+    const message = `${reason} (${selectedScope})`;
     const nextEntry: ChangeLogEntry = {
       id: createId("change"),
-      timestampIso: new Date().toISOString(),
-      message: `${reason} (${selectedScope})`,
+      timestampIso,
+      message,
     };
     state.unexportedChangeLog = [...state.unexportedChangeLog, nextEntry].slice(
       -200,
     );
     saveUnexportedChangeLog(state.unexportedChangeLog);
+
+    const nextAuditEntry: AuditLogEntry = {
+      id: createId("audit"),
+      timestampIso,
+      message,
+    };
+    state.persistentAuditLog = [...state.persistentAuditLog, nextAuditEntry]
+      .slice()
+      .sort((left, right) =>
+        left.timestampIso.localeCompare(right.timestampIso),
+      );
+    void appendAuditLogEntry(nextAuditEntry).catch((error) => {
+      console.error("Audit-Log konnte nicht gespeichert werden", error);
+      showToast("Chronik-Eintrag konnte nicht gespeichert werden.", "error");
+    });
   }
 
   function rememberBackupFile(fileName: string): void {
@@ -3154,6 +3197,7 @@ export function createAppController(root: HTMLElement) {
     state.fixedTemplates = fixed.templates;
     state.fixedTemplateVersion = fixed.version;
     await persistNormalizedYears(state.years);
+    state.persistentAuditLog = await listAuditLogEntries();
     state.selectedYear = getDefaultSelectedYear(years);
     state.selectedMonth = getCurrentMonthNumber();
     markBackupCompleted(file.name);
@@ -3750,6 +3794,11 @@ export function createAppController(root: HTMLElement) {
     const unexportedChangeLogForDisplay = state.unexportedChangeLog
       .slice()
       .reverse();
+    const persistentAuditLogForDisplay = state.persistentAuditLog
+      .slice()
+      .sort((left, right) =>
+        left.timestampIso.localeCompare(right.timestampIso),
+      );
     const lastBackupFileNameLabel = state.lastBackupFileName
       ? escapeHtml(state.lastBackupFileName)
       : "-";
@@ -4940,6 +4989,33 @@ export function createAppController(root: HTMLElement) {
             : ""
         }
 
+        ${
+          state.showPersistentAuditLogModal
+            ? `
+            <div class="panel-modal-backdrop" id="persistent-audit-log-backdrop" role="dialog" aria-modal="true" aria-label="Chronik aller Erfassungen">
+              <div class="panel-modal card">
+                <div class="panel-modal-header inline">
+                  <h2>Chronik aller Erfassungen</h2>
+                  <button class="btn btn-quiet" id="persistent-audit-log-close" type="button">Schließen</button>
+                </div>
+                <div class="panel-modal-body">
+                  ${
+                    persistentAuditLogForDisplay.length === 0
+                      ? '<p class="muted">Noch keine Einträge in der Chronik vorhanden.</p>'
+                      : `<ol class="change-log-list">${persistentAuditLogForDisplay
+                          .map(
+                            (entry) =>
+                              `<li><strong>${new Date(entry.timestampIso).toLocaleString("de-DE")}</strong><span>${escapeHtml(entry.message)}</span></li>`,
+                          )
+                          .join("")}</ol>`
+                  }
+                </div>
+              </div>
+            </div>
+          `
+            : ""
+        }
+
         <section class="card grid">
           <div class="month-year-sticky">
             <h2>Monat: ${year ? `${monthLabel(state.selectedMonth)} ${year.year}` : "-"}</h2>
@@ -5858,6 +5934,9 @@ export function createAppController(root: HTMLElement) {
           </div>
           <p class="muted">Letztes verwendetes Backup: ${lastBackupFileNameLabel}</p>
           <p class="muted">Die Daten bleiben lokal im Browser (IndexedDB). Zusätzlich kannst du Backups als Datei sichern und später importieren.</p>
+          <div class="inline">
+            <button class="btn" id="open-persistent-audit-log" type="button">Chronik öffnen</button>
+          </div>
         </section>
 
         <button
@@ -5874,7 +5953,11 @@ export function createAppController(root: HTMLElement) {
 
     document.body.classList.toggle(
       "panel-modal-open",
-      Boolean(state.topModal || state.showUnexportedChangeLogModal),
+      Boolean(
+        state.topModal ||
+        state.showUnexportedChangeLogModal ||
+        state.showPersistentAuditLogModal,
+      ),
     );
 
     bindEvents();
@@ -5904,12 +5987,21 @@ export function createAppController(root: HTMLElement) {
     const openUnexportedChangeLogButton = root.querySelector<HTMLButtonElement>(
       "#open-unexported-change-log",
     );
+    const openPersistentAuditLogButton = root.querySelector<HTMLButtonElement>(
+      "#open-persistent-audit-log",
+    );
     const unexportedChangeLogCloseButton =
       root.querySelector<HTMLButtonElement>("#unexported-change-log-close");
     const unexportedChangeLogBackupButton =
       root.querySelector<HTMLButtonElement>("#unexported-change-log-backup");
     const unexportedChangeLogBackdrop = root.querySelector<HTMLDivElement>(
       "#unexported-change-log-backdrop",
+    );
+    const persistentAuditLogCloseButton = root.querySelector<HTMLButtonElement>(
+      "#persistent-audit-log-close",
+    );
+    const persistentAuditLogBackdrop = root.querySelector<HTMLDivElement>(
+      "#persistent-audit-log-backdrop",
     );
     const newYearInput = root.querySelector<HTMLInputElement>("#new-year");
     const createYearButton =
@@ -5944,6 +6036,10 @@ export function createAppController(root: HTMLElement) {
       openUnexportedChangeLogModal();
     });
 
+    openPersistentAuditLogButton?.addEventListener("click", () => {
+      openPersistentAuditLogModal();
+    });
+
     unexportedChangeLogCloseButton?.addEventListener("click", () => {
       closeUnexportedChangeLogModal();
     });
@@ -5960,6 +6056,16 @@ export function createAppController(root: HTMLElement) {
     unexportedChangeLogBackdrop?.addEventListener("click", (event) => {
       if (event.target === unexportedChangeLogBackdrop) {
         closeUnexportedChangeLogModal();
+      }
+    });
+
+    persistentAuditLogCloseButton?.addEventListener("click", () => {
+      closePersistentAuditLogModal();
+    });
+
+    persistentAuditLogBackdrop?.addEventListener("click", (event) => {
+      if (event.target === persistentAuditLogBackdrop) {
+        closePersistentAuditLogModal();
       }
     });
 
@@ -6007,6 +6113,12 @@ export function createAppController(root: HTMLElement) {
     if (state.showUnexportedChangeLogModal) {
       window.setTimeout(() => {
         unexportedChangeLogCloseButton?.focus();
+      }, 0);
+    }
+
+    if (state.showPersistentAuditLogModal) {
+      window.setTimeout(() => {
+        persistentAuditLogCloseButton?.focus();
       }, 0);
     }
 

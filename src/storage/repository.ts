@@ -1,5 +1,6 @@
 import type {
   AnnualVariableFixedCostTemplate,
+  AuditLogEntry,
   BackupPayload,
   FixedCostTemplate,
   YearBook,
@@ -90,11 +91,30 @@ export async function saveAnnualVariableFixedTemplates(
   return version;
 }
 
+export async function appendAuditLogEntry(entry: AuditLogEntry): Promise<void> {
+  await db.auditLog.put(entry);
+}
+
+export async function listAuditLogEntries(): Promise<AuditLogEntry[]> {
+  return db.auditLog.orderBy("timestampIso").toArray();
+}
+
+export async function replaceAuditLogEntries(
+  entries: AuditLogEntry[],
+): Promise<void> {
+  await db.auditLog.clear();
+  if (entries.length === 0) {
+    return;
+  }
+  await db.auditLog.bulkPut(entries);
+}
+
 export async function createBackupPayload(): Promise<BackupPayload> {
   const years = await listYears();
-  const [fixed, annualVariableFixed] = await Promise.all([
+  const [fixed, annualVariableFixed, auditLogEntries] = await Promise.all([
     getFixedTemplateState(),
     getAnnualVariableFixedTemplateState(),
+    listAuditLogEntries(),
   ]);
 
   return {
@@ -102,13 +122,19 @@ export async function createBackupPayload(): Promise<BackupPayload> {
     years,
     fixedTemplates: fixed.templates,
     annualVariableFixedTemplates: annualVariableFixed.templates,
+    auditLogEntries,
   };
 }
 
 export async function restoreFromBackup(payload: BackupPayload): Promise<void> {
   await db.transaction(
     "rw",
-    [db.years, db.fixedTemplateState, db.annualVariableFixedTemplateState],
+    [
+      db.years,
+      db.fixedTemplateState,
+      db.annualVariableFixedTemplateState,
+      db.auditLog,
+    ],
     async () => {
       await db.years.clear();
       await db.years.bulkPut(payload.years);
@@ -116,6 +142,7 @@ export async function restoreFromBackup(payload: BackupPayload): Promise<void> {
       await saveAnnualVariableFixedTemplates(
         payload.annualVariableFixedTemplates ?? [],
       );
+      await replaceAuditLogEntries(payload.auditLogEntries ?? []);
     },
   );
 }
