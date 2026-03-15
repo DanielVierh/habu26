@@ -3323,6 +3323,13 @@ export function createAppController(root: HTMLElement) {
           0,
         )
       : 0;
+    const monthFreshIncomeCents = month
+      ? month.incomes.reduce(
+          (sum, entry) =>
+            sum + (entry.incomeSource === "fresh" ? entry.amountCents : 0),
+          0,
+        )
+      : 0;
     const incomeFlowByMonth = summarizeIncomeFlowByMonth();
     const selectedIncomeFlow = year
       ? incomeFlowByMonth.get(monthKey(year.year, state.selectedMonth))
@@ -3382,6 +3389,19 @@ export function createAppController(root: HTMLElement) {
               (monthSum, entry) =>
                 monthSum +
                 (entry.incomeSource === "salary" ? entry.amountCents : 0),
+              0,
+            ),
+          0,
+        )
+      : 0;
+    const yearFreshIncomeCents = year
+      ? year.months.reduce(
+          (sum, monthItem) =>
+            sum +
+            monthItem.incomes.reduce(
+              (monthSum, entry) =>
+                monthSum +
+                (entry.incomeSource === "fresh" ? entry.amountCents : 0),
               0,
             ),
           0,
@@ -5364,6 +5384,11 @@ export function createAppController(root: HTMLElement) {
                     <div class="eval-label">Davon Gehalt</div>
                     <div class="eval-value">${centsToEuro(monthSalaryIncomeCents)}</div>
                     <div class="eval-value">${centsToEuro(yearSalaryIncomeCents)}</div>
+                  </div>
+                  <div class="eval-row">
+                    <div class="eval-label">Davon frisches Einkommen (ohne Gehalt)</div>
+                    <div class="eval-value">${centsToEuro(monthFreshIncomeCents)}</div>
+                    <div class="eval-value">${centsToEuro(yearFreshIncomeCents)}</div>
                   </div>
                   <div class="eval-row">
                     <div class="eval-label">Übernahme aus Vormonat</div>
