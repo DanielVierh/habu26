@@ -834,7 +834,7 @@ export function createAppController(root: HTMLElement) {
 
     const currentWeekday: WeekdayNumber =
       month.weeklyShoppingWeekday === null ||
-        month.weeklyShoppingWeekday === undefined
+      month.weeklyShoppingWeekday === undefined
         ? 1
         : (month.weeklyShoppingWeekday as WeekdayNumber);
     const currentEstimateCents = month.weeklyShoppingEstimateCents ?? 0;
@@ -847,13 +847,13 @@ export function createAppController(root: HTMLElement) {
     const selectedMonthSummary = selectedMonthBook
       ? summarizeMonth(selectedMonthBook)
       : {
-        foodCents: 0,
-        goingOutCents: 0,
-        fixedCents: 0,
-        variableCents: 0,
-        miscCents: 0,
-        totalCents: 0,
-      };
+          foodCents: 0,
+          goingOutCents: 0,
+          fixedCents: 0,
+          variableCents: 0,
+          miscCents: 0,
+          totalCents: 0,
+        };
     const selectedMonthFoodBudgetCents = selectedMonthBook
       ? (selectedMonthBook.foodBudgetCents ?? 0)
       : 0;
@@ -871,9 +871,9 @@ export function createAppController(root: HTMLElement) {
                 Wochentag
                 <select id="weekly-shopping-weekday">
                   ${WEEKDAY_OPTIONS.map(
-      (option) =>
-        `<option value="${option.value}" ${option.value === currentWeekday ? "selected" : ""}>${option.label}</option>`,
-    ).join("")}
+                    (option) =>
+                      `<option value="${option.value}" ${option.value === currentWeekday ? "selected" : ""}>${option.label}</option>`,
+                  ).join("")}
                 </select>
               </label>
               <label>
@@ -3187,23 +3187,23 @@ export function createAppController(root: HTMLElement) {
     const monthSummary = month
       ? summarizeMonth(month)
       : {
-        foodCents: 0,
-        goingOutCents: 0,
-        fixedCents: 0,
-        variableCents: 0,
-        miscCents: 0,
-        totalCents: 0,
-      };
+          foodCents: 0,
+          goingOutCents: 0,
+          fixedCents: 0,
+          variableCents: 0,
+          miscCents: 0,
+          totalCents: 0,
+        };
     const yearSummary = year
       ? summarizeYear(year)
       : {
-        foodCents: 0,
-        goingOutCents: 0,
-        fixedCents: 0,
-        variableCents: 0,
-        miscCents: 0,
-        totalCents: 0,
-      };
+          foodCents: 0,
+          goingOutCents: 0,
+          fixedCents: 0,
+          variableCents: 0,
+          miscCents: 0,
+          totalCents: 0,
+        };
     const yearByMonth = year ? summarizeYearByMonth(year) : [];
     const foodBudgetCents = month ? (month.foodBudgetCents ?? 0) : 0;
     const goingOutBudgetCents = month ? (month.goingOutBudgetCents ?? 0) : 0;
@@ -3222,62 +3222,62 @@ export function createAppController(root: HTMLElement) {
 
     const yearFoodBudgetCents = year
       ? year.months.reduce(
-        (sum, monthItem) => sum + (monthItem.foodBudgetCents ?? 0),
-        0,
-      )
+          (sum, monthItem) => sum + (monthItem.foodBudgetCents ?? 0),
+          0,
+        )
       : 0;
     const yearGoingOutBudgetCents = year
       ? year.months.reduce(
-        (sum, monthItem) => sum + (monthItem.goingOutBudgetCents ?? 0),
-        0,
-      )
+          (sum, monthItem) => sum + (monthItem.goingOutBudgetCents ?? 0),
+          0,
+        )
       : 0;
     const yearFixedBudgetCents = year
       ? year.months.reduce(
-        (sum, monthItem) =>
-          sum +
-          (monthItem.fixedBudgetCents ??
-            monthItem.fixedCosts.reduce(
-              (fixedSum, entry) => fixedSum + entry.plannedCents,
-              0,
-            )),
-        0,
-      )
+          (sum, monthItem) =>
+            sum +
+            (monthItem.fixedBudgetCents ??
+              monthItem.fixedCosts.reduce(
+                (fixedSum, entry) => fixedSum + entry.plannedCents,
+                0,
+              )),
+          0,
+        )
       : 0;
     const yearVariableBudgetCents = year
       ? year.months.reduce(
-        (sum, monthItem) =>
-          sum +
-          (monthItem.variableBudgetCents ??
-            monthItem.variablePositions.reduce(
-              (positionSum, position) => positionSum + position.budgetCents,
-              0,
-            )),
-        0,
-      )
+          (sum, monthItem) =>
+            sum +
+            (monthItem.variableBudgetCents ??
+              monthItem.variablePositions.reduce(
+                (positionSum, position) => positionSum + position.budgetCents,
+                0,
+              )),
+          0,
+        )
       : 0;
     const yearMiscBudgetCents = year
       ? year.months.reduce(
-        (sum, monthItem) => sum + (monthItem.miscBudgetCents ?? 0),
-        0,
-      )
+          (sum, monthItem) => sum + (monthItem.miscBudgetCents ?? 0),
+          0,
+        )
       : 0;
     const recordedIncomeTotalCents = month
       ? month.incomes.reduce(
-        (sum, entry) =>
-          sum +
-          (isRecordedIncomeSource(entry.incomeSource)
-            ? entry.amountCents
-            : 0),
-        0,
-      )
+          (sum, entry) =>
+            sum +
+            (isRecordedIncomeSource(entry.incomeSource)
+              ? entry.amountCents
+              : 0),
+          0,
+        )
       : 0;
     const monthSalaryIncomeCents = month
       ? month.incomes.reduce(
-        (sum, entry) =>
-          sum + (entry.incomeSource === "salary" ? entry.amountCents : 0),
-        0,
-      )
+          (sum, entry) =>
+            sum + (entry.incomeSource === "salary" ? entry.amountCents : 0),
+          0,
+        )
       : 0;
     const incomeFlowByMonth = summarizeIncomeFlowByMonth();
     const selectedIncomeFlow = year
@@ -3317,36 +3317,36 @@ export function createAppController(root: HTMLElement) {
           : "";
     const yearRecordedIncomeTotalCents = year
       ? year.months.reduce(
-        (sum, monthItem) =>
-          sum +
-          monthItem.incomes.reduce(
-            (monthSum, entry) =>
-              monthSum +
-              (isRecordedIncomeSource(entry.incomeSource)
-                ? entry.amountCents
-                : 0),
-            0,
-          ),
-        0,
-      )
+          (sum, monthItem) =>
+            sum +
+            monthItem.incomes.reduce(
+              (monthSum, entry) =>
+                monthSum +
+                (isRecordedIncomeSource(entry.incomeSource)
+                  ? entry.amountCents
+                  : 0),
+              0,
+            ),
+          0,
+        )
       : 0;
     const yearSalaryIncomeCents = year
       ? year.months.reduce(
-        (sum, monthItem) =>
-          sum +
-          monthItem.incomes.reduce(
-            (monthSum, entry) =>
-              monthSum +
-              (entry.incomeSource === "salary" ? entry.amountCents : 0),
-            0,
-          ),
-        0,
-      )
+          (sum, monthItem) =>
+            sum +
+            monthItem.incomes.reduce(
+              (monthSum, entry) =>
+                monthSum +
+                (entry.incomeSource === "salary" ? entry.amountCents : 0),
+              0,
+            ),
+          0,
+        )
       : 0;
     const yearOpeningCarryoverCents =
       year && firstMonthInYear
         ? (incomeFlowByMonth.get(monthKey(year.year, firstMonthInYear.month))
-          ?.carriedFromPreviousCents ?? 0)
+            ?.carriedFromPreviousCents ?? 0)
         : 0;
     const yearEffectiveIncomeTotalCents =
       yearRecordedIncomeTotalCents + yearOpeningCarryoverCents;
@@ -3418,16 +3418,6 @@ export function createAppController(root: HTMLElement) {
       yearSalaryIncomeCents,
       yearSummary.totalCents,
     );
-    const monthSaldenSumCents =
-      monthBudgetRemainingCents +
-      incomeMinusPlannedBudgetsCents +
-      monthActualNetCents +
-      monthSalaryMinusExpensesCents;
-    const yearSaldenSumCents =
-      yearBudgetRemainingCents +
-      yearIncomeMinusPlannedBudgetsCents +
-      yearNetCents +
-      yearSalaryMinusExpensesCents;
 
     const percent = (value: number, max: number): string => {
       if (max <= 0) return "0%";
@@ -3512,41 +3502,41 @@ export function createAppController(root: HTMLElement) {
 
     const yearPlannedByMonth = year
       ? year.months
-        .slice()
-        .sort((left, right) => left.month - right.month)
-        .map((monthItem) => {
-          const foodBudgetCents = monthItem.foodBudgetCents ?? 0;
-          const goingOutBudgetCents = monthItem.goingOutBudgetCents ?? 0;
-          const fixedBudgetCents =
-            monthItem.fixedBudgetCents ??
-            monthItem.fixedCosts.reduce(
-              (sum, entry) => sum + entry.plannedCents,
-              0,
-            );
-          const variableBudgetCents =
-            monthItem.variableBudgetCents ??
-            monthItem.variablePositions.reduce(
-              (sum, position) => sum + position.budgetCents,
-              0,
-            );
-          const miscBudgetCents = monthItem.miscBudgetCents ?? 0;
-          const totalBudgetCents =
-            foodBudgetCents +
-            goingOutBudgetCents +
-            fixedBudgetCents +
-            variableBudgetCents +
-            miscBudgetCents;
+          .slice()
+          .sort((left, right) => left.month - right.month)
+          .map((monthItem) => {
+            const foodBudgetCents = monthItem.foodBudgetCents ?? 0;
+            const goingOutBudgetCents = monthItem.goingOutBudgetCents ?? 0;
+            const fixedBudgetCents =
+              monthItem.fixedBudgetCents ??
+              monthItem.fixedCosts.reduce(
+                (sum, entry) => sum + entry.plannedCents,
+                0,
+              );
+            const variableBudgetCents =
+              monthItem.variableBudgetCents ??
+              monthItem.variablePositions.reduce(
+                (sum, position) => sum + position.budgetCents,
+                0,
+              );
+            const miscBudgetCents = monthItem.miscBudgetCents ?? 0;
+            const totalBudgetCents =
+              foodBudgetCents +
+              goingOutBudgetCents +
+              fixedBudgetCents +
+              variableBudgetCents +
+              miscBudgetCents;
 
-          return {
-            month: monthItem.month,
-            foodBudgetCents,
-            goingOutBudgetCents,
-            fixedBudgetCents,
-            variableBudgetCents,
-            miscBudgetCents,
-            totalBudgetCents,
-          };
-        })
+            return {
+              month: monthItem.month,
+              foodBudgetCents,
+              goingOutBudgetCents,
+              fixedBudgetCents,
+              variableBudgetCents,
+              miscBudgetCents,
+              totalBudgetCents,
+            };
+          })
       : [];
     const yearPlannedByMonthMap = new Map(
       yearPlannedByMonth.map((row) => [row.month, row] as const),
@@ -3587,7 +3577,7 @@ export function createAppController(root: HTMLElement) {
     const yearComparisonBudgetValues = yearByMonth.map((row) =>
       year
         ? (incomeFlowByMonth.get(monthKey(year.year, row.month))
-          ?.plannedBudgetCents ?? 0)
+            ?.plannedBudgetCents ?? 0)
         : 0,
     );
     const yearComparisonNetValues = yearByMonth.map((row) =>
@@ -3625,10 +3615,10 @@ export function createAppController(root: HTMLElement) {
       key: "min" | "avg" | "max";
       label: string;
     }> = [
-        { key: "min", label: "Min" },
-        { key: "avg", label: "Mittelwert" },
-        { key: "max", label: "Max" },
-      ];
+      { key: "min", label: "Min" },
+      { key: "avg", label: "Mittelwert" },
+      { key: "max", label: "Max" },
+    ];
 
     const yearComparisonSums = {
       food: yearComparisonFoodValues.reduce((sum, value) => sum + value, 0),
@@ -3753,8 +3743,8 @@ export function createAppController(root: HTMLElement) {
     );
     const editingFixedTemplate = state.editingFixedTemplateId
       ? state.fixedTemplates.find(
-        (template) => template.id === state.editingFixedTemplateId,
-      )
+          (template) => template.id === state.editingFixedTemplateId,
+        )
       : null;
     const showUnexportedChangesHint = state.hasUnexportedChanges;
     const unexportedChangeLogForDisplay = state.unexportedChangeLog
@@ -3788,8 +3778,8 @@ export function createAppController(root: HTMLElement) {
         : undefined;
     const dashboardYearMonths = dashboardYearBook
       ? dashboardYearBook.months
-        .slice()
-        .sort((left, right) => left.month - right.month)
+          .slice()
+          .sort((left, right) => left.month - right.month)
       : [];
     const dashboardYearSummary = dashboardYearBook
       ? summarizeYear(dashboardYearBook)
@@ -3797,13 +3787,13 @@ export function createAppController(root: HTMLElement) {
     const dashboardYearBudgetTotals = dashboardYearBook
       ? summarizeYearBudgetByCategory(dashboardYearBook)
       : {
-        foodCents: 0,
-        goingOutCents: 0,
-        fixedCents: 0,
-        variableCents: 0,
-        miscCents: 0,
-        totalCents: 0,
-      };
+          foodCents: 0,
+          goingOutCents: 0,
+          fixedCents: 0,
+          variableCents: 0,
+          miscCents: 0,
+          totalCents: 0,
+        };
     const dashboardYearRecordedIncomeCents = dashboardYearBook
       ? summarizeRecordedIncomeCents(dashboardYearBook)
       : 0;
@@ -3814,9 +3804,9 @@ export function createAppController(root: HTMLElement) {
       dashboardYearRecordedIncomeCents + dashboardYearOpeningCarryoverCents;
     const dashboardYearPlannedBudgetTotalCents = dashboardYearBook
       ? dashboardYearBook.months.reduce(
-        (sum, monthItem) => sum + summarizePlannedBudgetsCents(monthItem),
-        0,
-      )
+          (sum, monthItem) => sum + summarizePlannedBudgetsCents(monthItem),
+          0,
+        )
       : 0;
     const dashboardYearPlannedNetCents =
       dashboardYearEffectiveIncomeCents - dashboardYearPlannedBudgetTotalCents;
@@ -3852,8 +3842,8 @@ export function createAppController(root: HTMLElement) {
     const dashboardYearMonthlyRows = dashboardYearMonths.map((monthItem) => {
       const monthFlow = dashboardYearBook
         ? incomeFlowByMonth.get(
-          monthKey(dashboardYearBook.year, monthItem.month),
-        )
+            monthKey(dashboardYearBook.year, monthItem.month),
+          )
         : undefined;
       const monthSummary = summarizeMonth(monthItem);
       const monthRecordedIncomeCents = monthItem.incomes.reduce(
@@ -3965,7 +3955,7 @@ export function createAppController(root: HTMLElement) {
       dashboardYearTrendPaddingTop +
       ((dashboardYearTrendMaxCents - valueCents) /
         dashboardYearTrendRangeCents) *
-      dashboardYearTrendInnerHeight;
+        dashboardYearTrendInnerHeight;
     const dashboardYearTrendPoints = dashboardYearTrendRows.map(
       (row, index) => {
         const x = getDashboardYearTrendX(index);
@@ -4174,20 +4164,21 @@ export function createAppController(root: HTMLElement) {
           <button class="btn ${state.dashboardTab === "all" ? "btn-primary" : "btn-quiet"}" id="dashboard-tab-all" data-dashboard-tab="all" type="button">Alle Jahre</button>
         </div>
 
-        ${sortedYears.length === 0
-        ? '<p class="muted">Noch keine Jahre vorhanden. Lege zuerst ein Jahr an.</p>'
-        : state.dashboardTab === "year"
-          ? `
+        ${
+          sortedYears.length === 0
+            ? '<p class="muted">Noch keine Jahre vorhanden. Lege zuerst ein Jahr an.</p>'
+            : state.dashboardTab === "year"
+              ? `
               <div class="inline">
                 <label>
                   Jahr
                   <select id="dashboard-year-select">
                     ${sortedYears
-            .map(
-              (item) =>
-                `<option value="${item.year}" ${item.year === dashboardYearNumber ? "selected" : ""}>${item.year}</option>`,
-            )
-            .join("")}
+                      .map(
+                        (item) =>
+                          `<option value="${item.year}" ${item.year === dashboardYearNumber ? "selected" : ""}>${item.year}</option>`,
+                      )
+                      .join("")}
                   </select>
                 </label>
               </div>
@@ -4220,8 +4211,9 @@ export function createAppController(root: HTMLElement) {
                       <span class="trend-badge ${dashboardYearTrendDirectionClass}">${dashboardYearTrendDirectionSymbol} ${dashboardYearTrendDirectionLabel}</span>
                     </div>
                   </header>
-                  ${dashboardYearTrendDefaultRow
-            ? `
+                  ${
+                    dashboardYearTrendDefaultRow
+                      ? `
                         <div class="year-trend-chart" data-year-trend-chart>
                           <div class="year-trend-summary">
                             <div class="year-trend-summary-head">
@@ -4262,37 +4254,39 @@ export function createAppController(root: HTMLElement) {
                                 </linearGradient>
                               </defs>
                               ${dashboardYearTrendTicks
-              .map(
-                (tick) => `
+                                .map(
+                                  (tick) => `
                                     <g>
                                       <line class="year-trend-grid-line" x1="${dashboardYearTrendPaddingLeft}" y1="${tick.y.toFixed(1)}" x2="${dashboardYearTrendChartWidth - dashboardYearTrendPaddingRight}" y2="${tick.y.toFixed(1)}"></line>
                                       <text class="year-trend-axis-label" x="${dashboardYearTrendPaddingLeft - 10}" y="${(tick.y + 4).toFixed(1)}" text-anchor="end">${centsToEuro(tick.valueCents)}</text>
                                     </g>
                                   `,
-              )
-              .join("")}
+                                )
+                                .join("")}
                               <line class="year-trend-zero-line" x1="${dashboardYearTrendPaddingLeft}" y1="${dashboardYearTrendZeroLineY.toFixed(1)}" x2="${dashboardYearTrendChartWidth - dashboardYearTrendPaddingRight}" y2="${dashboardYearTrendZeroLineY.toFixed(1)}"></line>
-                              ${dashboardYearTrendAreaPath
-              ? `<path class="year-trend-area" d="${dashboardYearTrendAreaPath}"></path>`
-              : ""
-            }
-                              ${dashboardYearTrendLinePath
-              ? `<path class="year-trend-line" d="${dashboardYearTrendLinePath}"></path>`
-              : ""
-            }
+                              ${
+                                dashboardYearTrendAreaPath
+                                  ? `<path class="year-trend-area" d="${dashboardYearTrendAreaPath}"></path>`
+                                  : ""
+                              }
+                              ${
+                                dashboardYearTrendLinePath
+                                  ? `<path class="year-trend-line" d="${dashboardYearTrendLinePath}"></path>`
+                                  : ""
+                              }
                               ${dashboardYearTrendPoints
-              .map(
-                (point) => `
+                                .map(
+                                  (point) => `
                                     <circle class="year-trend-node ${point.plannedNetCents < 0 ? "is-negative" : ""}" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="5"></circle>
                                     <text class="year-trend-month-label" x="${point.x.toFixed(1)}" y="${dashboardYearTrendChartHeight - 12}" text-anchor="middle">${escapeHtml(point.monthShortLabel)}</text>
                                   `,
-              )
-              .join("")}
+                                )
+                                .join("")}
                             </svg>
                             <div class="year-trend-point-layer" aria-hidden="true">
                               ${dashboardYearTrendPoints
-              .map(
-                (point, index) => `
+                                .map(
+                                  (point, index) => `
                                     <button
                                       class="year-trend-point-hit ${index === dashboardYearTrendPoints.length - 1 ? "is-active" : ""}"
                                       type="button"
@@ -4309,16 +4303,16 @@ export function createAppController(root: HTMLElement) {
                                       aria-pressed="${index === dashboardYearTrendPoints.length - 1 ? "true" : "false"}"
                                     ></button>
                                   `,
-              )
-              .join("")}
+                                )
+                                .join("")}
                             </div>
                           </div>
                           <div class="year-trend-footer muted">Hover oder Tippen zeigt den kalkulierten Monatswert direkt im Chart an.</div>
                           <div class="year-trend-live" aria-live="polite" data-year-trend-live></div>
                         </div>
                       `
-            : '<p class="muted">Keine Monatsdaten vorhanden.</p>'
-          }
+                      : '<p class="muted">Keine Monatsdaten vorhanden.</p>'
+                  }
                 </section>
 
                 <section class="chart-tile">
@@ -4331,27 +4325,27 @@ export function createAppController(root: HTMLElement) {
                   </header>
                   <div class="circle-chart-container" aria-label="Budgetnutzung je Kategorie (Jahr)">
                     ${dashboardYearCategoryRows
-            .map((row) => {
-              const usagePercentRaw = budgetUsagePercent(
-                row.actualCents,
-                row.budgetCents,
-              );
-              const ringPercent = Math.min(100, usagePercentRaw);
-              const usageText = `${usagePercentRaw.toFixed(0)}%`;
-              const diffCents = row.budgetCents - row.actualCents;
-              const diffClass =
-                diffCents < 0
-                  ? "danger"
-                  : diffCents > 0
-                    ? "budget-under"
-                    : "";
-              const ringClass =
-                budgetBarClass(row.budgetCents, row.actualCents) ===
-                  "bar-negative"
-                  ? "circle-negative"
-                  : "circle-positive";
+                      .map((row) => {
+                        const usagePercentRaw = budgetUsagePercent(
+                          row.actualCents,
+                          row.budgetCents,
+                        );
+                        const ringPercent = Math.min(100, usagePercentRaw);
+                        const usageText = `${usagePercentRaw.toFixed(0)}%`;
+                        const diffCents = row.budgetCents - row.actualCents;
+                        const diffClass =
+                          diffCents < 0
+                            ? "danger"
+                            : diffCents > 0
+                              ? "budget-under"
+                              : "";
+                        const ringClass =
+                          budgetBarClass(row.budgetCents, row.actualCents) ===
+                          "bar-negative"
+                            ? "circle-negative"
+                            : "circle-positive";
 
-              return `
+                        return `
                           <div class="circle-chart-item">
                             <div class="circle-chart-ring ${ringClass}" style="--circle-pct:${ringPercent.toFixed(1)}%" title="${row.label}: ${centsToEuro(row.actualCents)} von ${centsToEuro(row.budgetCents)}">
                               <span class="circle-chart-value">${usageText}</span>
@@ -4361,8 +4355,8 @@ export function createAppController(root: HTMLElement) {
                             <div class="circle-chart-meta ${diffClass}">${diffCents >= 0 ? "+" : ""}${centsToEuro(diffCents)}</div>
                           </div>
                         `;
-            })
-            .join("")}
+                      })
+                      .join("")}
                   </div>
                 </section>
 
@@ -4375,19 +4369,19 @@ export function createAppController(root: HTMLElement) {
                   </header>
                   <div class="spark-bars" style="grid-template-columns: repeat(${Math.max(dashboardYearMonthlyRows.length, 1)}, minmax(0, 1fr));">
                     ${dashboardYearMonthlyRows
-            .map((row) => {
-              const height = percent(
-                row.actualCostCents,
-                dashboardYearExpenseMaxCents,
-              );
-              return `
+                      .map((row) => {
+                        const height = percent(
+                          row.actualCostCents,
+                          dashboardYearExpenseMaxCents,
+                        );
+                        return `
                           <div class="spark-bar" title="${monthLabel(row.month)}: ${centsToEuro(row.actualCostCents)}">
                             <div class="spark-bar-fill" style="height:${height}"></div>
                             <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
                           </div>
                         `;
-            })
-            .join("")}
+                      })
+                      .join("")}
                   </div>
                 </section>
 
@@ -4401,25 +4395,25 @@ export function createAppController(root: HTMLElement) {
                   </header>
                   <div class="bar-chart">
                     ${dashboardYearMonthlyRows
-            .map((row) => {
-              const plannedWidth = percent(
-                Math.abs(row.plannedNetCents),
-                dashboardYearMonthlyNetMaxCents,
-              );
-              const actualWidth = percent(
-                Math.abs(row.actualNetCents),
-                dashboardYearMonthlyNetMaxCents,
-              );
-              const plannedClass =
-                row.plannedNetCents < 0
-                  ? "bar-negative"
-                  : "bar-positive";
-              const actualClass =
-                row.actualNetCents < 0
-                  ? "bar-negative"
-                  : "bar-positive";
+                      .map((row) => {
+                        const plannedWidth = percent(
+                          Math.abs(row.plannedNetCents),
+                          dashboardYearMonthlyNetMaxCents,
+                        );
+                        const actualWidth = percent(
+                          Math.abs(row.actualNetCents),
+                          dashboardYearMonthlyNetMaxCents,
+                        );
+                        const plannedClass =
+                          row.plannedNetCents < 0
+                            ? "bar-negative"
+                            : "bar-positive";
+                        const actualClass =
+                          row.actualNetCents < 0
+                            ? "bar-negative"
+                            : "bar-positive";
 
-              return `
+                        return `
                           <div class="bar-row">
                             <div class="bar-label">${monthLabel(row.month)}</div>
                             <div class="bar-track" title="Budget-Saldo: ${centsToEuro(row.plannedNetCents)} | Ist-Saldo: ${centsToEuro(row.actualNetCents)}">
@@ -4432,8 +4426,8 @@ export function createAppController(root: HTMLElement) {
                             </div>
                           </div>
                         `;
-            })
-            .join("")}
+                      })
+                      .join("")}
                   </div>
                 </section>
               </div>
@@ -4451,8 +4445,8 @@ export function createAppController(root: HTMLElement) {
                 </thead>
                 <tbody>
                   ${dashboardYearMonthlyRows
-            .map(
-              (row) => `<tr>
+                    .map(
+                      (row) => `<tr>
                         <td>${monthLabel(row.month)}</td>
                         <td>${centsToEuro(row.effectiveIncomeCents)}</td>
                         <td>${centsToEuro(row.plannedBudgetCents)}</td>
@@ -4460,23 +4454,23 @@ export function createAppController(root: HTMLElement) {
                         <td class="${incomeBudgetBalanceClass(row.plannedNetCents)}">${centsToEuro(row.plannedNetCents)}</td>
                         <td class="${incomeBudgetBalanceClass(row.actualNetCents)}">${centsToEuro(row.actualNetCents)}</td>
                       </tr>`,
-            )
-            .join("")}
+                    )
+                    .join("")}
                 </tbody>
               </table>
             `
-          : state.dashboardTab === "food"
-            ? `
+              : state.dashboardTab === "food"
+                ? `
               <div class="inline">
                 <label>
                   Jahr
                   <select id="dashboard-year-select">
                     ${sortedYears
-              .map(
-                (item) =>
-                  `<option value="${item.year}" ${item.year === dashboardYearNumber ? "selected" : ""}>${item.year}</option>`,
-              )
-              .join("")}
+                      .map(
+                        (item) =>
+                          `<option value="${item.year}" ${item.year === dashboardYearNumber ? "selected" : ""}>${item.year}</option>`,
+                      )
+                      .join("")}
                   </select>
                 </label>
               </div>
@@ -4491,20 +4485,20 @@ export function createAppController(root: HTMLElement) {
                   </header>
                   <div class="spark-bars">
                     ${dashboardYearMonthlyRows
-              .map((row) => {
-                const height = percent(
-                  row.foodAndGoingOutCents,
-                  dashboardYearFoodAndGoingOutMaxCents,
-                );
+                      .map((row) => {
+                        const height = percent(
+                          row.foodAndGoingOutCents,
+                          dashboardYearFoodAndGoingOutMaxCents,
+                        );
 
-                return `
+                        return `
                           <div class="spark-bar" title="${monthLabel(row.month)}: ${centsToEuro(row.foodAndGoingOutCents)}">
                             <div class="spark-bar-fill" style="height:${height}"></div>
                             <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
                           </div>
                         `;
-              })
-              .join("")}
+                      })
+                      .join("")}
                   </div>
                 </section>
 
@@ -4517,20 +4511,20 @@ export function createAppController(root: HTMLElement) {
                   </header>
                   <div class="spark-bars" style="grid-template-columns: repeat(${Math.max(dashboardYearMonthlyRows.length, 1)}, minmax(0, 1fr));">
                     ${dashboardYearMonthlyRows
-              .map((row) => {
-                const height = percent(
-                  row.foodCents,
-                  dashboardYearFoodMaxCents,
-                );
+                      .map((row) => {
+                        const height = percent(
+                          row.foodCents,
+                          dashboardYearFoodMaxCents,
+                        );
 
-                return `
+                        return `
                           <div class="spark-bar" title="${monthLabel(row.month)}: ${centsToEuro(row.foodCents)}">
                             <div class="spark-bar-fill" style="height:${height}"></div>
                             <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
                           </div>
                         `;
-              })
-              .join("")}
+                      })
+                      .join("")}
                   </div>
                 </section>
 
@@ -4543,25 +4537,25 @@ export function createAppController(root: HTMLElement) {
                   </header>
                   <div class="spark-bars" style="grid-template-columns: repeat(${Math.max(dashboardYearMonthlyRows.length, 1)}, minmax(0, 1fr));">
                     ${dashboardYearMonthlyRows
-              .map((row) => {
-                const height = percent(
-                  row.goingOutCents,
-                  dashboardYearGoingOutMaxCents,
-                );
+                      .map((row) => {
+                        const height = percent(
+                          row.goingOutCents,
+                          dashboardYearGoingOutMaxCents,
+                        );
 
-                return `
+                        return `
                           <div class="spark-bar" title="${monthLabel(row.month)}: ${centsToEuro(row.goingOutCents)}">
                             <div class="spark-bar-fill" style="height:${height}"></div>
                             <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
                           </div>
                         `;
-              })
-              .join("")}
+                      })
+                      .join("")}
                   </div>
                 </section>
               </div>
             `
-            : `
+                : `
               <div class="eval-grid">
                 <section class="eval-tile">
                   <header class="eval-tile-header">
@@ -4589,21 +4583,21 @@ export function createAppController(root: HTMLElement) {
                   </header>
                   <div class="bar-chart">
                     ${allYearsCategoryRows
-              .map((row) => {
-                const budgetWidth = percent(
-                  row.budgetCents,
-                  allYearsCategoryMaxCents,
-                );
-                const actualWidth = percent(
-                  row.actualCents,
-                  allYearsCategoryMaxCents,
-                );
-                const actualClass = budgetBarClass(
-                  row.budgetCents,
-                  row.actualCents,
-                );
+                      .map((row) => {
+                        const budgetWidth = percent(
+                          row.budgetCents,
+                          allYearsCategoryMaxCents,
+                        );
+                        const actualWidth = percent(
+                          row.actualCents,
+                          allYearsCategoryMaxCents,
+                        );
+                        const actualClass = budgetBarClass(
+                          row.budgetCents,
+                          row.actualCents,
+                        );
 
-                return `
+                        return `
                           <div class="bar-row">
                             <div class="bar-label">${row.label}</div>
                             <div class="bar-track" title="Budget: ${centsToEuro(row.budgetCents)} | Ist: ${centsToEuro(row.actualCents)}">
@@ -4617,8 +4611,8 @@ export function createAppController(root: HTMLElement) {
                             </div>
                           </div>
                         `;
-              })
-              .join("")}
+                      })
+                      .join("")}
                   </div>
                 </section>
 
@@ -4631,19 +4625,19 @@ export function createAppController(root: HTMLElement) {
                   </header>
                   <div class="spark-bars" style="grid-template-columns: repeat(${Math.max(allYearsRows.length, 1)}, minmax(0, 1fr));">
                     ${allYearsRows
-              .map((row) => {
-                const height = percent(
-                  row.actualTotalCents,
-                  allYearsExpenseMaxCents,
-                );
-                return `
+                      .map((row) => {
+                        const height = percent(
+                          row.actualTotalCents,
+                          allYearsExpenseMaxCents,
+                        );
+                        return `
                           <div class="spark-bar" title="${row.year}: ${centsToEuro(row.actualTotalCents)}">
                             <div class="spark-bar-fill" style="height:${height}"></div>
                             <div class="spark-bar-label">${row.year}</div>
                           </div>
                         `;
-              })
-              .join("")}
+                      })
+                      .join("")}
                   </div>
                 </section>
 
@@ -4657,25 +4651,25 @@ export function createAppController(root: HTMLElement) {
                   </header>
                   <div class="bar-chart">
                     ${allYearsRows
-              .map((row) => {
-                const plannedWidth = percent(
-                  Math.abs(row.plannedNetCents),
-                  allYearsNetMaxCents,
-                );
-                const actualWidth = percent(
-                  Math.abs(row.actualNetCents),
-                  allYearsNetMaxCents,
-                );
-                const plannedClass =
-                  row.plannedNetCents < 0
-                    ? "bar-negative"
-                    : "bar-positive";
-                const actualClass =
-                  row.actualNetCents < 0
-                    ? "bar-negative"
-                    : "bar-positive";
+                      .map((row) => {
+                        const plannedWidth = percent(
+                          Math.abs(row.plannedNetCents),
+                          allYearsNetMaxCents,
+                        );
+                        const actualWidth = percent(
+                          Math.abs(row.actualNetCents),
+                          allYearsNetMaxCents,
+                        );
+                        const plannedClass =
+                          row.plannedNetCents < 0
+                            ? "bar-negative"
+                            : "bar-positive";
+                        const actualClass =
+                          row.actualNetCents < 0
+                            ? "bar-negative"
+                            : "bar-positive";
 
-                return `
+                        return `
                           <div class="bar-row">
                             <div class="bar-label">${row.year}</div>
                             <div class="bar-track" title="Budget-Saldo: ${centsToEuro(row.plannedNetCents)} | Ist-Saldo: ${centsToEuro(row.actualNetCents)}">
@@ -4688,8 +4682,8 @@ export function createAppController(root: HTMLElement) {
                             </div>
                           </div>
                         `;
-              })
-              .join("")}
+                      })
+                      .join("")}
                   </div>
                 </section>
               </div>
@@ -4708,8 +4702,8 @@ export function createAppController(root: HTMLElement) {
                 </thead>
                 <tbody>
                   ${allYearsRows
-              .map(
-                (row) => `<tr>
+                    .map(
+                      (row) => `<tr>
                         <td>${row.year}</td>
                         <td>${centsToEuro(row.salaryIncomeCents)}</td>
                         <td>${centsToEuro(row.effectiveIncomeCents)}</td>
@@ -4718,12 +4712,12 @@ export function createAppController(root: HTMLElement) {
                         <td class="${incomeBudgetBalanceClass(row.plannedNetCents)}">${centsToEuro(row.plannedNetCents)}</td>
                         <td class="${incomeBudgetBalanceClass(row.actualNetCents)}">${centsToEuro(row.actualNetCents)}</td>
                       </tr>`,
-              )
-              .join("")}
+                    )
+                    .join("")}
                 </tbody>
               </table>
             `
-      }
+        }
       </div>
     `;
 
@@ -4759,16 +4753,16 @@ export function createAppController(root: HTMLElement) {
           </thead>
           <tbody>
             ${state.fixedTemplates
-        .map(
-          (template) =>
-            `<tr>
+              .map(
+                (template) =>
+                  `<tr>
                     <td>${template.name}</td>
                     <td>${centsToEuro(template.plannedCents)}</td>
                     <td><button class="btn btn-quiet" data-edit-fixed-template="${template.id}">Bearbeiten</button></td>
                     <td><button class="btn btn-quiet" data-remove-fixed-template="${template.id}">Löschen</button></td>
                   </tr>`,
-        )
-        .join("")}
+              )
+              .join("")}
           </tbody>
         </table>
       </div>
@@ -4828,20 +4822,20 @@ export function createAppController(root: HTMLElement) {
           </thead>
           <tbody>
             ${state.annualVariableFixedTemplates
-        .map((template) => {
-          const parsedDate = parseDueDateParts(template.dueDateIso);
-          const monthText = parsedDate
-            ? monthLabel(parsedDate.month)
-            : "-";
-          return `<tr>
+              .map((template) => {
+                const parsedDate = parseDueDateParts(template.dueDateIso);
+                const monthText = parsedDate
+                  ? monthLabel(parsedDate.month)
+                  : "-";
+                return `<tr>
                     <td>${template.name}</td>
                     <td>${template.dueDateIso}</td>
                     <td>${monthText}</td>
                     <td>${centsToEuro(template.plannedCents)}</td>
                     <td><button class="btn btn-quiet" data-remove-annual-variable-fixed-template="${template.id}">Löschen</button></td>
                   </tr>`;
-        })
-        .join("")}
+              })
+              .join("")}
           </tbody>
         </table>
       </div>
@@ -4879,9 +4873,9 @@ export function createAppController(root: HTMLElement) {
               Theme
               <select id="theme-select">
                 ${AVAILABLE_THEMES.map(
-      (theme) =>
-        `<option value="${theme}" ${state.theme === theme ? "selected" : ""}>${themeLabel(theme)}</option>`,
-    ).join("")}
+                  (theme) =>
+                    `<option value="${theme}" ${state.theme === theme ? "selected" : ""}>${themeLabel(theme)}</option>`,
+                ).join("")}
               </select>
             </label>
           </div>
@@ -4898,8 +4892,9 @@ export function createAppController(root: HTMLElement) {
           <a class="btn" href="#section-misc-costs">Sonstige</a>
         </div>
 
-        ${state.topModal
-        ? `
+        ${
+          state.topModal
+            ? `
             <div class="panel-modal-backdrop" id="panel-modal-backdrop" role="dialog" aria-modal="true" aria-label="${modalTitle}">
               <div class="panel-modal card">
                 <div class="panel-modal-header inline">
@@ -4912,11 +4907,12 @@ export function createAppController(root: HTMLElement) {
               </div>
             </div>
           `
-        : ""
-      }
+            : ""
+        }
 
-        ${state.showUnexportedChangeLogModal
-        ? `
+        ${
+          state.showUnexportedChangeLogModal
+            ? `
             <div class="panel-modal-backdrop" id="unexported-change-log-backdrop" role="dialog" aria-modal="true" aria-label="Ungesicherte Änderungen">
               <div class="panel-modal card">
                 <div class="panel-modal-header inline">
@@ -4924,21 +4920,22 @@ export function createAppController(root: HTMLElement) {
                   <button class="btn btn-quiet" id="unexported-change-log-close" type="button">Schließen</button>
                 </div>
                 <div class="panel-modal-body">
-                  ${unexportedChangeLogForDisplay.length === 0
-          ? '<p class="muted">Keine ungesicherten Änderungen vorhanden.</p>'
-          : `<ol class="change-log-list">${unexportedChangeLogForDisplay
-            .map(
-              (entry) =>
-                `<li><strong>${new Date(entry.timestampIso).toLocaleString("de-DE")}</strong><span>${escapeHtml(entry.message)}</span></li>`,
-            )
-            .join("")}</ol>`
-        }
+                  ${
+                    unexportedChangeLogForDisplay.length === 0
+                      ? '<p class="muted">Keine ungesicherten Änderungen vorhanden.</p>'
+                      : `<ol class="change-log-list">${unexportedChangeLogForDisplay
+                          .map(
+                            (entry) =>
+                              `<li><strong>${new Date(entry.timestampIso).toLocaleString("de-DE")}</strong><span>${escapeHtml(entry.message)}</span></li>`,
+                          )
+                          .join("")}</ol>`
+                  }
                 </div>
               </div>
             </div>
           `
-        : ""
-      }
+            : ""
+        }
 
         <section class="card grid">
           <div class="month-year-sticky">
@@ -4948,22 +4945,22 @@ export function createAppController(root: HTMLElement) {
                 Jahr wählen
                 <select id="year-select">
                   ${state.years
-        .map(
-          (item) =>
-            `<option value="${item.year}" ${item.year === state.selectedYear ? "selected" : ""}>${item.year}</option>`,
-        )
-        .join("")}
+                    .map(
+                      (item) =>
+                        `<option value="${item.year}" ${item.year === state.selectedYear ? "selected" : ""}>${item.year}</option>`,
+                    )
+                    .join("")}
                 </select>
               </label>
               <label>
                 Monat wählen
                 <select id="month-select" ${state.selectedYear ? "" : "disabled"}>
                   ${Array.from({ length: 12 }, (_, index) => index + 1)
-        .map(
-          (monthNumber) =>
-            `<option value="${monthNumber}" ${monthNumber === state.selectedMonth ? "selected" : ""}>${monthLabel(monthNumber)}</option>`,
-        )
-        .join("")}
+                    .map(
+                      (monthNumber) =>
+                        `<option value="${monthNumber}" ${monthNumber === state.selectedMonth ? "selected" : ""}>${monthLabel(monthNumber)}</option>`,
+                    )
+                    .join("")}
                 </select>
               </label>
             </div>
@@ -4982,8 +4979,8 @@ export function createAppController(root: HTMLElement) {
                 </header>
                 <div class="budget-canvas-grid">
                   ${budgetVsActualChartRows
-        .map((row) => {
-          return `
+                    .map((row) => {
+                      return `
                         <div class="budget-canvas-card">
                           <canvas
                             class="budget-vs-canvas"
@@ -4996,8 +4993,8 @@ export function createAppController(root: HTMLElement) {
                           ></canvas>
                         </div>
                       `;
-        })
-        .join("")}
+                    })
+                    .join("")}
                 </div>
               </section>
 
@@ -5012,22 +5009,22 @@ export function createAppController(root: HTMLElement) {
                 </header>
                 <div class="bar-chart">
                   ${incomeExpenseChartRows
-        .map((row) => {
-          const width = percent(
-            Math.abs(row.valueCents),
-            incomeExpenseMaxCents,
-          );
-          const sign = row.valueCents >= 0 ? "+" : "";
-          const valueClass =
-            row.label === "Netto"
-              ? row.valueCents < 0
-                ? "danger"
-                : row.valueCents > 0
-                  ? "budget-under"
-                  : ""
-              : "";
+                    .map((row) => {
+                      const width = percent(
+                        Math.abs(row.valueCents),
+                        incomeExpenseMaxCents,
+                      );
+                      const sign = row.valueCents >= 0 ? "+" : "";
+                      const valueClass =
+                        row.label === "Netto"
+                          ? row.valueCents < 0
+                            ? "danger"
+                            : row.valueCents > 0
+                              ? "budget-under"
+                              : ""
+                          : "";
 
-          return `
+                      return `
                         <div class="bar-row">
                           <div class="bar-label">${row.label}</div>
                           <div class="bar-track" title="${centsToEuro(row.valueCents)}">
@@ -5036,8 +5033,8 @@ export function createAppController(root: HTMLElement) {
                           <div class="bar-meta"><span class="${valueClass}">${sign}${centsToEuro(row.valueCents)}</span></div>
                         </div>
                       `;
-        })
-        .join("")}
+                    })
+                    .join("")}
                 </div>
               </section>
 
@@ -5049,23 +5046,24 @@ export function createAppController(root: HTMLElement) {
                     <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist</span>
                   </div>
                 </header>
-                ${year
-        ? `
+                ${
+                  year
+                    ? `
                     <div class="spark-bars" aria-label="Jahresverlauf Gesamtausgaben (Budget vs. Ist)">
                       ${yearByMonth
-          .map((row) => {
-            const plannedCents =
-              yearPlannedByMonthMap.get(row.month)
-                ?.totalBudgetCents ?? 0;
-            const plannedHeight = percent(
-              plannedCents,
-              yearTotalMaxCents,
-            );
-            const actualHeight = percent(
-              row.summary.totalCents,
-              yearTotalMaxCents,
-            );
-            return `
+                        .map((row) => {
+                          const plannedCents =
+                            yearPlannedByMonthMap.get(row.month)
+                              ?.totalBudgetCents ?? 0;
+                          const plannedHeight = percent(
+                            plannedCents,
+                            yearTotalMaxCents,
+                          );
+                          const actualHeight = percent(
+                            row.summary.totalCents,
+                            yearTotalMaxCents,
+                          );
+                          return `
                             <div class="spark-bar" title="${monthLabel(row.month)}: Ist ${centsToEuro(row.summary.totalCents)} € | Budget ${centsToEuro(plannedCents)} €">
                               <div class="spark-bar-stack">
                                 <div class="spark-bar-track" aria-hidden="true">
@@ -5076,12 +5074,12 @@ export function createAppController(root: HTMLElement) {
                               <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
                             </div>
                           `;
-          })
-          .join("")}
+                        })
+                        .join("")}
                     </div>
                   `
-        : `<p class="muted">Kein Jahr gewählt.</p>`
-      }
+                    : `<p class="muted">Kein Jahr gewählt.</p>`
+                }
               </section>
 
               <section class="chart-tile">
@@ -5092,28 +5090,29 @@ export function createAppController(root: HTMLElement) {
                     <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist</span>
                   </div>
                 </header>
-                ${year
-        ? `
+                ${
+                  year
+                    ? `
                     <div class="spark-bars" aria-label="Jahresverlauf Essen und Ausgehen (Budget vs. Ist)">
                       ${yearByMonth
-          .map((row) => {
-            const plannedRow = yearPlannedByMonthMap.get(
-              row.month,
-            );
-            const plannedCents =
-              (plannedRow?.foodBudgetCents ?? 0) +
-              (plannedRow?.goingOutBudgetCents ?? 0);
-            const actualCents =
-              row.summary.foodCents + row.summary.goingOutCents;
-            const plannedHeight = percent(
-              plannedCents,
-              yearFoodAndGoingOutMaxCents,
-            );
-            const actualHeight = percent(
-              actualCents,
-              yearFoodAndGoingOutMaxCents,
-            );
-            return `
+                        .map((row) => {
+                          const plannedRow = yearPlannedByMonthMap.get(
+                            row.month,
+                          );
+                          const plannedCents =
+                            (plannedRow?.foodBudgetCents ?? 0) +
+                            (plannedRow?.goingOutBudgetCents ?? 0);
+                          const actualCents =
+                            row.summary.foodCents + row.summary.goingOutCents;
+                          const plannedHeight = percent(
+                            plannedCents,
+                            yearFoodAndGoingOutMaxCents,
+                          );
+                          const actualHeight = percent(
+                            actualCents,
+                            yearFoodAndGoingOutMaxCents,
+                          );
+                          return `
                             <div class="spark-bar" title="${monthLabel(row.month)}: Ist ${centsToEuro(actualCents)} € | Budget ${centsToEuro(plannedCents)} €">
                               <div class="spark-bar-stack">
                                 <div class="spark-bar-track" aria-hidden="true">
@@ -5124,12 +5123,12 @@ export function createAppController(root: HTMLElement) {
                               <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
                             </div>
                           `;
-          })
-          .join("")}
+                        })
+                        .join("")}
                     </div>
                   `
-        : `<p class="muted">Kein Jahr gewählt.</p>`
-      }
+                    : `<p class="muted">Kein Jahr gewählt.</p>`
+                }
               </section>
 
               <section class="chart-tile">
@@ -5140,23 +5139,24 @@ export function createAppController(root: HTMLElement) {
                     <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist</span>
                   </div>
                 </header>
-                ${year
-        ? `
+                ${
+                  year
+                    ? `
                     <div class="spark-bars" aria-label="Jahresverlauf Fixkosten (Budget vs. Ist)">
                       ${yearByMonth
-          .map((row) => {
-            const plannedCents =
-              yearPlannedByMonthMap.get(row.month)
-                ?.fixedBudgetCents ?? 0;
-            const plannedHeight = percent(
-              plannedCents,
-              yearFixedMaxCents,
-            );
-            const actualHeight = percent(
-              row.summary.fixedCents,
-              yearFixedMaxCents,
-            );
-            return `
+                        .map((row) => {
+                          const plannedCents =
+                            yearPlannedByMonthMap.get(row.month)
+                              ?.fixedBudgetCents ?? 0;
+                          const plannedHeight = percent(
+                            plannedCents,
+                            yearFixedMaxCents,
+                          );
+                          const actualHeight = percent(
+                            row.summary.fixedCents,
+                            yearFixedMaxCents,
+                          );
+                          return `
                             <div class="spark-bar" title="${monthLabel(row.month)}: Ist ${centsToEuro(row.summary.fixedCents)} € | Budget ${centsToEuro(plannedCents)} €">
                               <div class="spark-bar-stack">
                                 <div class="spark-bar-track" aria-hidden="true">
@@ -5167,12 +5167,12 @@ export function createAppController(root: HTMLElement) {
                               <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
                             </div>
                           `;
-          })
-          .join("")}
+                        })
+                        .join("")}
                     </div>
                   `
-        : `<p class="muted">Kein Jahr gewählt.</p>`
-      }
+                    : `<p class="muted">Kein Jahr gewählt.</p>`
+                }
               </section>
 
               <section class="chart-tile">
@@ -5183,23 +5183,24 @@ export function createAppController(root: HTMLElement) {
                     <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist</span>
                   </div>
                 </header>
-                ${year
-        ? `
+                ${
+                  year
+                    ? `
                     <div class="spark-bars" aria-label="Jahresverlauf Variable Kosten (Budget vs. Ist)">
                       ${yearByMonth
-          .map((row) => {
-            const plannedCents =
-              yearPlannedByMonthMap.get(row.month)
-                ?.variableBudgetCents ?? 0;
-            const plannedHeight = percent(
-              plannedCents,
-              yearVariableMaxCents,
-            );
-            const actualHeight = percent(
-              row.summary.variableCents,
-              yearVariableMaxCents,
-            );
-            return `
+                        .map((row) => {
+                          const plannedCents =
+                            yearPlannedByMonthMap.get(row.month)
+                              ?.variableBudgetCents ?? 0;
+                          const plannedHeight = percent(
+                            plannedCents,
+                            yearVariableMaxCents,
+                          );
+                          const actualHeight = percent(
+                            row.summary.variableCents,
+                            yearVariableMaxCents,
+                          );
+                          return `
                             <div class="spark-bar" title="${monthLabel(row.month)}: Ist ${centsToEuro(row.summary.variableCents)} € | Budget ${centsToEuro(plannedCents)} €">
                               <div class="spark-bar-stack">
                                 <div class="spark-bar-track" aria-hidden="true">
@@ -5210,12 +5211,12 @@ export function createAppController(root: HTMLElement) {
                               <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
                             </div>
                           `;
-          })
-          .join("")}
+                        })
+                        .join("")}
                     </div>
                   `
-        : `<p class="muted">Kein Jahr gewählt.</p>`
-      }
+                    : `<p class="muted">Kein Jahr gewählt.</p>`
+                }
               </section>
 
               <section class="chart-tile">
@@ -5226,23 +5227,24 @@ export function createAppController(root: HTMLElement) {
                     <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist</span>
                   </div>
                 </header>
-                ${year
-        ? `
+                ${
+                  year
+                    ? `
                     <div class="spark-bars" aria-label="Jahresverlauf Sonstige (Budget vs. Ist)">
                       ${yearByMonth
-          .map((row) => {
-            const plannedCents =
-              yearPlannedByMonthMap.get(row.month)
-                ?.miscBudgetCents ?? 0;
-            const plannedHeight = percent(
-              plannedCents,
-              yearMiscMaxCents,
-            );
-            const actualHeight = percent(
-              row.summary.miscCents,
-              yearMiscMaxCents,
-            );
-            return `
+                        .map((row) => {
+                          const plannedCents =
+                            yearPlannedByMonthMap.get(row.month)
+                              ?.miscBudgetCents ?? 0;
+                          const plannedHeight = percent(
+                            plannedCents,
+                            yearMiscMaxCents,
+                          );
+                          const actualHeight = percent(
+                            row.summary.miscCents,
+                            yearMiscMaxCents,
+                          );
+                          return `
                             <div class="spark-bar" title="${monthLabel(row.month)}: Ist ${centsToEuro(row.summary.miscCents)} € | Budget ${centsToEuro(plannedCents)} €">
                               <div class="spark-bar-stack">
                                 <div class="spark-bar-track" aria-hidden="true">
@@ -5253,12 +5255,12 @@ export function createAppController(root: HTMLElement) {
                               <div class="spark-bar-label">${monthLabel(row.month).slice(0, 3)}</div>
                             </div>
                           `;
-          })
-          .join("")}
+                        })
+                        .join("")}
                     </div>
                   `
-        : `<p class="muted">Kein Jahr gewählt.</p>`
-      }
+                    : `<p class="muted">Kein Jahr gewählt.</p>`
+                }
               </section>
             </div>
             <div class="eval-grid">
@@ -5400,11 +5402,6 @@ export function createAppController(root: HTMLElement) {
                     <div class="eval-value ${monthSalaryCoverageClass}">${monthSalaryVsExpensesPercent}</div>
                     <div class="eval-value ${yearSalaryCoverageClass}">${yearSalaryVsExpensesPercent}</div>
                   </div>
-                  <div class="eval-row eval-strong">
-                    <div class="eval-label">Summe (ohne %)</div>
-                    <div class="eval-value ${incomeBudgetBalanceClass(monthSaldenSumCents)}">${centsToEuro(monthSaldenSumCents)}</div>
-                    <div class="eval-value ${incomeBudgetBalanceClass(yearSaldenSumCents)}">${centsToEuro(yearSaldenSumCents)}</div>
-                  </div>
                 </div>
               </section>
             </div>
@@ -5427,124 +5424,124 @@ export function createAppController(root: HTMLElement) {
               </thead>
               <tbody>
                 ${yearByMonth
-        .map((row, index, rows) => {
-          const rowIncomeFlow = year
-            ? incomeFlowByMonth.get(monthKey(year.year, row.month))
-            : undefined;
-          const rowPlannedBudgetCents =
-            rowIncomeFlow?.plannedBudgetCents ?? 0;
-          const rowNetCents = rowIncomeFlow?.netCents ?? 0;
-          const rowSalaryCents =
-            yearSalaryByMonthMap.get(row.month) ?? 0;
-          const rowNetClass =
-            rowNetCents < 0
-              ? "danger"
-              : rowNetCents > 0
-                ? "budget-under"
-                : "";
-          const previousRow = rows[index - 1];
+                  .map((row, index, rows) => {
+                    const rowIncomeFlow = year
+                      ? incomeFlowByMonth.get(monthKey(year.year, row.month))
+                      : undefined;
+                    const rowPlannedBudgetCents =
+                      rowIncomeFlow?.plannedBudgetCents ?? 0;
+                    const rowNetCents = rowIncomeFlow?.netCents ?? 0;
+                    const rowSalaryCents =
+                      yearSalaryByMonthMap.get(row.month) ?? 0;
+                    const rowNetClass =
+                      rowNetCents < 0
+                        ? "danger"
+                        : rowNetCents > 0
+                          ? "budget-under"
+                          : "";
+                    const previousRow = rows[index - 1];
 
-          const previousFoodCents =
-            previousRow?.summary.foodCents ?? null;
-          const previousGoingOutCents =
-            previousRow?.summary.goingOutCents ?? null;
-          const previousFixedCents =
-            previousRow?.summary.fixedCents ?? null;
-          const previousVariableCents =
-            previousRow?.summary.variableCents ?? null;
-          const previousMiscCents =
-            previousRow?.summary.miscCents ?? null;
-          const previousTotalCents =
-            previousRow?.summary.totalCents ?? null;
-          const previousSalaryCents =
-            previousRow !== undefined
-              ? (yearSalaryByMonthMap.get(previousRow.month) ?? 0)
-              : null;
-          const previousBudgetCents =
-            year && previousRow
-              ? (incomeFlowByMonth.get(
-                monthKey(year.year, previousRow.month),
-              )?.plannedBudgetCents ?? 0)
-              : null;
+                    const previousFoodCents =
+                      previousRow?.summary.foodCents ?? null;
+                    const previousGoingOutCents =
+                      previousRow?.summary.goingOutCents ?? null;
+                    const previousFixedCents =
+                      previousRow?.summary.fixedCents ?? null;
+                    const previousVariableCents =
+                      previousRow?.summary.variableCents ?? null;
+                    const previousMiscCents =
+                      previousRow?.summary.miscCents ?? null;
+                    const previousTotalCents =
+                      previousRow?.summary.totalCents ?? null;
+                    const previousSalaryCents =
+                      previousRow !== undefined
+                        ? (yearSalaryByMonthMap.get(previousRow.month) ?? 0)
+                        : null;
+                    const previousBudgetCents =
+                      year && previousRow
+                        ? (incomeFlowByMonth.get(
+                            monthKey(year.year, previousRow.month),
+                          )?.plannedBudgetCents ?? 0)
+                        : null;
 
-          const foodDiffCents =
-            previousFoodCents === null
-              ? null
-              : row.summary.foodCents - previousFoodCents;
-          const goingOutDiffCents =
-            previousGoingOutCents === null
-              ? null
-              : row.summary.goingOutCents - previousGoingOutCents;
-          const fixedDiffCents =
-            previousFixedCents === null
-              ? null
-              : row.summary.fixedCents - previousFixedCents;
-          const variableDiffCents =
-            previousVariableCents === null
-              ? null
-              : row.summary.variableCents - previousVariableCents;
-          const miscDiffCents =
-            previousMiscCents === null
-              ? null
-              : row.summary.miscCents - previousMiscCents;
-          const totalDiffCents =
-            previousTotalCents === null
-              ? null
-              : row.summary.totalCents - previousTotalCents;
-          const salaryDiffCents =
-            previousSalaryCents === null
-              ? null
-              : rowSalaryCents - previousSalaryCents;
-          const budgetDiffCents =
-            previousBudgetCents === null
-              ? null
-              : rowPlannedBudgetCents - previousBudgetCents;
+                    const foodDiffCents =
+                      previousFoodCents === null
+                        ? null
+                        : row.summary.foodCents - previousFoodCents;
+                    const goingOutDiffCents =
+                      previousGoingOutCents === null
+                        ? null
+                        : row.summary.goingOutCents - previousGoingOutCents;
+                    const fixedDiffCents =
+                      previousFixedCents === null
+                        ? null
+                        : row.summary.fixedCents - previousFixedCents;
+                    const variableDiffCents =
+                      previousVariableCents === null
+                        ? null
+                        : row.summary.variableCents - previousVariableCents;
+                    const miscDiffCents =
+                      previousMiscCents === null
+                        ? null
+                        : row.summary.miscCents - previousMiscCents;
+                    const totalDiffCents =
+                      previousTotalCents === null
+                        ? null
+                        : row.summary.totalCents - previousTotalCents;
+                    const salaryDiffCents =
+                      previousSalaryCents === null
+                        ? null
+                        : rowSalaryCents - previousSalaryCents;
+                    const budgetDiffCents =
+                      previousBudgetCents === null
+                        ? null
+                        : rowPlannedBudgetCents - previousBudgetCents;
 
-          const costDiffClass = (value: number | null): string =>
-            value === null
-              ? "muted"
-              : value > 0
-                ? "danger"
-                : value < 0
-                  ? "budget-under"
-                  : "muted";
-          const budgetDiffClass = (value: number | null): string =>
-            value === null
-              ? "muted"
-              : value > 0
-                ? "danger"
-                : value < 0
-                  ? "budget-under"
-                  : "muted";
-          const diffLabel = (value: number | null): string =>
-            value === null
-              ? "(Δ -)"
-              : `(Δ ${value > 0 ? "+" : ""}${centsToEuro(value)})`;
+                    const costDiffClass = (value: number | null): string =>
+                      value === null
+                        ? "muted"
+                        : value > 0
+                          ? "danger"
+                          : value < 0
+                            ? "budget-under"
+                            : "muted";
+                    const budgetDiffClass = (value: number | null): string =>
+                      value === null
+                        ? "muted"
+                        : value > 0
+                          ? "danger"
+                          : value < 0
+                            ? "budget-under"
+                            : "muted";
+                    const diffLabel = (value: number | null): string =>
+                      value === null
+                        ? "(Δ -)"
+                        : `(Δ ${value > 0 ? "+" : ""}${centsToEuro(value)})`;
 
-          const previousNetCents =
-            year && previousRow
-              ? (incomeFlowByMonth.get(
-                monthKey(year.year, previousRow.month),
-              )?.netCents ?? 0)
-              : null;
-          const monthDiffCents =
-            previousNetCents === null
-              ? null
-              : rowNetCents - previousNetCents;
-          const monthDiffLabel =
-            monthDiffCents === null
-              ? "(Δ -)"
-              : `(Δ ${monthDiffCents > 0 ? "+" : ""}${centsToEuro(monthDiffCents)})`;
-          const monthDiffClass =
-            monthDiffCents === null
-              ? "muted"
-              : monthDiffCents < 0
-                ? "danger"
-                : monthDiffCents > 0
-                  ? "budget-under"
-                  : "muted";
+                    const previousNetCents =
+                      year && previousRow
+                        ? (incomeFlowByMonth.get(
+                            monthKey(year.year, previousRow.month),
+                          )?.netCents ?? 0)
+                        : null;
+                    const monthDiffCents =
+                      previousNetCents === null
+                        ? null
+                        : rowNetCents - previousNetCents;
+                    const monthDiffLabel =
+                      monthDiffCents === null
+                        ? "(Δ -)"
+                        : `(Δ ${monthDiffCents > 0 ? "+" : ""}${centsToEuro(monthDiffCents)})`;
+                    const monthDiffClass =
+                      monthDiffCents === null
+                        ? "muted"
+                        : monthDiffCents < 0
+                          ? "danger"
+                          : monthDiffCents > 0
+                            ? "budget-under"
+                            : "muted";
 
-          return `<tr>
+                    return `<tr>
                   <td>${monthLabel(row.month)}</td>
                   <td>${centsToEuro(row.summary.foodCents)} <span class="${costDiffClass(foodDiffCents)}">${diffLabel(foodDiffCents)}</span></td>
                   <td>${centsToEuro(row.summary.goingOutCents)} <span class="${costDiffClass(goingOutDiffCents)}">${diffLabel(goingOutDiffCents)}</span></td>
@@ -5556,8 +5553,8 @@ export function createAppController(root: HTMLElement) {
                   <td>${centsToEuro(rowPlannedBudgetCents)} <span class="${budgetDiffClass(budgetDiffCents)}">${diffLabel(budgetDiffCents)}</span></td>
                   <td class="${rowNetClass}">${centsToEuro(rowNetCents)} <span class="${monthDiffClass}">${monthDiffLabel}</span></td>
                 </tr>`;
-        })
-        .join("")}
+                  })
+                  .join("")}
                 ${yearComparisonStatsRowsHtml}
                 ${yearComparisonSumsRowHtml}
               </tbody>
@@ -5591,8 +5588,9 @@ export function createAppController(root: HTMLElement) {
                 <tr><th>Beschreibung</th><th>Herkunft</th><th>Betrag (€)</th><th></th></tr>
               </thead>
               <tbody>
-                ${month
-        ? `<tr>
+                ${
+                  month
+                    ? `<tr>
                     <td>Übernahme aus Vormonat</td>
                     <td>-</td>
                     <td class="${carryoverClass}">
@@ -5600,8 +5598,8 @@ export function createAppController(root: HTMLElement) {
                     </td>
                     <td>-</td>
                   </tr>${month.incomes
-          .map(
-            (entry) => `<tr>
+                    .map(
+                      (entry) => `<tr>
                     <td>${entry.description}</td>
                     <td>
                       <select data-income-source="${entry.id}">
@@ -5614,10 +5612,10 @@ export function createAppController(root: HTMLElement) {
                     <td>${centsToEuro(entry.amountCents)}</td>
                     <td><button class="btn btn-quiet" data-remove-income="${entry.id}">Löschen</button></td>
                   </tr>`,
-          )
-          .join("")}`
-        : ""
-      }
+                    )
+                    .join("")}`
+                    : ""
+                }
               </tbody>
             </table>
             <div class="column-overview income-flow-overview">
@@ -5683,27 +5681,28 @@ export function createAppController(root: HTMLElement) {
                   <tr><th>Datum</th><th>Essen (€)</th><th>Ausgehen (€)</th></tr>
                 </thead>
                 <tbody>
-                  ${month
-        ? month.days
-          .map((day) => {
-            const hasFoodAmount = day.foodCents > 0;
-            const hasGoingOutAmount = day.goingOutCents > 0;
-            const rowClass =
-              `${day.isoDate === todayIsoDate ? "today-row" : ""} ${hasFoodAmount || hasGoingOutAmount ? "day-has-entry" : ""}`.trim();
-            const foodInputClass =
-              `amount-input ${hasFoodAmount ? "day-input-has-value" : ""}`.trim();
-            const goingInputClass =
-              `amount-input ${hasGoingOutAmount ? "day-input-has-value" : ""}`.trim();
+                  ${
+                    month
+                      ? month.days
+                          .map((day) => {
+                            const hasFoodAmount = day.foodCents > 0;
+                            const hasGoingOutAmount = day.goingOutCents > 0;
+                            const rowClass =
+                              `${day.isoDate === todayIsoDate ? "today-row" : ""} ${hasFoodAmount || hasGoingOutAmount ? "day-has-entry" : ""}`.trim();
+                            const foodInputClass =
+                              `amount-input ${hasFoodAmount ? "day-input-has-value" : ""}`.trim();
+                            const goingInputClass =
+                              `amount-input ${hasGoingOutAmount ? "day-input-has-value" : ""}`.trim();
 
-            return `<tr class="${rowClass}">
+                            return `<tr class="${rowClass}">
                       <td>${new Date(day.isoDate).toLocaleDateString("de-DE", { weekday: "short", year: "numeric", month: "2-digit", day: "2-digit" })}</td>
                       <td><input class="${foodInputClass}" data-day-food="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuroInput(day.foodCents)}" /></td>
                       <td><input class="${goingInputClass}" data-day-going="${day.isoDate}" type="number" min="0" step="0.01" value="${centsToEuroInput(day.goingOutCents)}" /></td>
                     </tr>`;
-          })
-          .join("")
-        : ""
-      }
+                          })
+                          .join("")
+                      : ""
+                  }
                 </tbody>
               </table>
             </article>
@@ -5733,20 +5732,21 @@ export function createAppController(root: HTMLElement) {
                   <tr><th>Name</th><th>Budget (€)</th><th>Ist (€)</th><th>Abweichung (€)</th><th></th></tr>
                 </thead>
                 <tbody>
-                ${month
-        ? month.fixedCosts
-          .map(
-            (cost) => `<tr>
+                ${
+                  month
+                    ? month.fixedCosts
+                        .map(
+                          (cost) => `<tr>
                     <td>${cost.name}</td>
                     <td><input class="amount-input" data-fixed-planned="${cost.id}" type="number" min="0" step="0.01" value="${centsToEuroInput(cost.plannedCents)}" /></td>
                     <td class="${budgetStatusClass(cost.actualCents, cost.plannedCents)}"><input class="amount-input" data-fixed-actual="${cost.id}" type="number" min="0" step="0.01" value="${centsToEuroInput(cost.actualCents)}" /></td>
                     <td class="${budgetStatusClass(cost.actualCents, cost.plannedCents)}">${centsToEuro(cost.actualCents - cost.plannedCents)}</td>
                     <td><button class="btn btn-quiet" data-remove-fixed="${cost.id}">Löschen</button></td>
                   </tr>`,
-          )
-          .join("")
-        : ""
-      }
+                        )
+                        .join("")
+                    : ""
+                }
                 </tbody>
               </table>
             </article>
@@ -5777,10 +5777,11 @@ export function createAppController(root: HTMLElement) {
                   <tr><th>Position</th><th>Budget (€)</th><th>Ist (€)</th><th>Abweichung (€)</th><th></th></tr>
                 </thead>
                 <tbody>
-                ${month
-        ? month.variablePositions
-          .map(
-            (position) => `<tr>
+                ${
+                  month
+                    ? month.variablePositions
+                        .map(
+                          (position) => `<tr>
                     <td>${position.name}${position.autoAnnualTemplateId ? ' <span class="danger">(A)</span>' : ""}</td>
                     <td><input class="amount-input" data-variable-position-budget="${position.id}" type="number" min="0" step="0.01" value="${centsToEuroInput(position.budgetCents)}" /></td>
                     <td class="${budgetStatusClass(position.actualCents, position.budgetCents)}"><input class="amount-input" data-variable-position-actual="${position.id}" type="number" min="0" step="0.01" value="${centsToEuroInput(position.actualCents)}" /></td>
@@ -5790,10 +5791,10 @@ export function createAppController(root: HTMLElement) {
                       <button class="btn btn-quiet" data-remove-variable-position="${position.id}">Löschen</button>
                     </td>
                   </tr>`,
-          )
-          .join("")
-        : ""
-      }
+                        )
+                        .join("")
+                    : ""
+                }
                 </tbody>
               </table>
             </article>
@@ -5824,18 +5825,19 @@ export function createAppController(root: HTMLElement) {
                   <tr><th>Beschreibung</th><th>Betrag (€)</th><th></th></tr>
                 </thead>
                 <tbody>
-                ${month
-        ? month.miscCosts
-          .map(
-            (entry) => `<tr>
+                ${
+                  month
+                    ? month.miscCosts
+                        .map(
+                          (entry) => `<tr>
                     <td>${entry.description}</td>
                     <td>${centsToEuro(entry.amountCents)}</td>
                     <td><button class="btn btn-quiet" data-remove-misc="${entry.id}">Löschen</button></td>
                   </tr>`,
-          )
-          .join("")
-        : ""
-      }
+                        )
+                        .join("")
+                    : ""
+                }
                 </tbody>
               </table>
             </article>
@@ -6346,8 +6348,8 @@ export function createAppController(root: HTMLElement) {
       const selectedSource = incomeSourceInput?.value;
       const incomeSource =
         selectedSource === "balance" ||
-          selectedSource === "fresh" ||
-          selectedSource === "salary"
+        selectedSource === "fresh" ||
+        selectedSource === "salary"
           ? selectedSource
           : undefined;
       await addIncome(
@@ -6366,8 +6368,8 @@ export function createAppController(root: HTMLElement) {
       const selectedSource = incomeSourceInput?.value;
       const incomeSource =
         selectedSource === "balance" ||
-          selectedSource === "fresh" ||
-          selectedSource === "salary"
+        selectedSource === "fresh" ||
+        selectedSource === "salary"
           ? selectedSource
           : undefined;
       await addIncome(
