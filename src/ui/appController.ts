@@ -3529,6 +3529,11 @@ export function createAppController(root: HTMLElement) {
         className: "bar-income",
       },
       {
+        label: "Budget gesamt",
+        valueCents: monthPlannedBudgetTotalCents,
+        className: "bar-budget",
+      },
+      {
         label: "Echte Ausgaben",
         valueCents: monthSummary.totalCents,
         className: "bar-expense",
@@ -5082,6 +5087,7 @@ export function createAppController(root: HTMLElement) {
                   <h4>Einkommen / Ausgaben / Netto (Monat)</h4>
                   <div class="chart-legend">
                     <span class="chart-legend-item"><span class="chart-dot chart-dot-income"></span>Einkommen</span>
+                    <span class="chart-legend-item"><span class="chart-dot chart-dot-budget"></span>Budget</span>
                     <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ausgaben</span>
                     <span class="chart-legend-item"><span class="chart-dot chart-dot-net"></span>Netto</span>
                   </div>
