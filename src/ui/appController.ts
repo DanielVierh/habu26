@@ -5620,6 +5620,14 @@ export function createAppController(root: HTMLElement) {
                           : value < 0
                             ? "budget-under"
                             : "muted";
+                    const incomeDiffClass = (value: number | null): string =>
+                      value === null
+                        ? "muted"
+                        : value > 0
+                          ? "budget-under"
+                          : value < 0
+                            ? "danger"
+                            : "muted";
                     const budgetDiffClass = (value: number | null): string =>
                       value === null
                         ? "muted"
@@ -5664,7 +5672,7 @@ export function createAppController(root: HTMLElement) {
                   <td>${centsToEuro(row.summary.variableCents)} <span class="${costDiffClass(variableDiffCents)}">${diffLabel(variableDiffCents)}</span></td>
                   <td>${centsToEuro(row.summary.miscCents)} <span class="${costDiffClass(miscDiffCents)}">${diffLabel(miscDiffCents)}</span></td>
                   <td>${centsToEuro(row.summary.totalCents)} <span class="${costDiffClass(totalDiffCents)}">${diffLabel(totalDiffCents)}</span></td>
-                  <td>${centsToEuro(rowSalaryCents)} <span class="${costDiffClass(salaryDiffCents)}">${diffLabel(salaryDiffCents)}</span></td>
+                  <td>${centsToEuro(rowSalaryCents)} <span class="${incomeDiffClass(salaryDiffCents)}">${diffLabel(salaryDiffCents)}</span></td>
                   <td>${centsToEuro(rowPlannedBudgetCents)} <span class="${budgetDiffClass(budgetDiffCents)}">${diffLabel(budgetDiffCents)}</span></td>
                   <td class="${rowNetClass}">${centsToEuro(rowNetCents)} <span class="${monthDiffClass}">${monthDiffLabel}</span></td>
                 </tr>`;
