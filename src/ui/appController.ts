@@ -3625,31 +3625,36 @@ export function createAppController(root: HTMLElement) {
       return { min, avg, max };
     };
 
-    const yearComparisonFoodValues = yearByMonth.map(
+    const yearComparisonRowsForStats =
+      year && year.year === getCurrentYearNumber()
+        ? yearByMonth.filter((row) => row.month <= getCurrentMonthNumber())
+        : yearByMonth;
+
+    const yearComparisonFoodValues = yearComparisonRowsForStats.map(
       (row) => row.summary.foodCents,
     );
-    const yearComparisonGoingOutValues = yearByMonth.map(
+    const yearComparisonGoingOutValues = yearComparisonRowsForStats.map(
       (row) => row.summary.goingOutCents,
     );
-    const yearComparisonFixedValues = yearByMonth.map(
+    const yearComparisonFixedValues = yearComparisonRowsForStats.map(
       (row) => row.summary.fixedCents,
     );
-    const yearComparisonVariableValues = yearByMonth.map(
+    const yearComparisonVariableValues = yearComparisonRowsForStats.map(
       (row) => row.summary.variableCents,
     );
-    const yearComparisonMiscValues = yearByMonth.map(
+    const yearComparisonMiscValues = yearComparisonRowsForStats.map(
       (row) => row.summary.miscCents,
     );
-    const yearComparisonTotalValues = yearByMonth.map(
+    const yearComparisonTotalValues = yearComparisonRowsForStats.map(
       (row) => row.summary.totalCents,
     );
-    const yearComparisonBudgetValues = yearByMonth.map((row) =>
+    const yearComparisonBudgetValues = yearComparisonRowsForStats.map((row) =>
       year
         ? (incomeFlowByMonth.get(monthKey(year.year, row.month))
             ?.plannedBudgetCents ?? 0)
         : 0,
     );
-    const yearComparisonNetValues = yearByMonth.map((row) =>
+    const yearComparisonNetValues = yearComparisonRowsForStats.map((row) =>
       year
         ? (incomeFlowByMonth.get(monthKey(year.year, row.month))?.netCents ?? 0)
         : 0,
@@ -3664,7 +3669,7 @@ export function createAppController(root: HTMLElement) {
         ),
       ]),
     );
-    const yearComparisonSalaryValues = yearByMonth.map(
+    const yearComparisonSalaryValues = yearComparisonRowsForStats.map(
       (row) => yearSalaryByMonthMap.get(row.month) ?? 0,
     );
 
