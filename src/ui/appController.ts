@@ -3822,7 +3822,7 @@ export function createAppController(root: HTMLElement) {
     const persistentAuditLogForDisplay = state.persistentAuditLog
       .slice()
       .sort((left, right) =>
-        left.timestampIso.localeCompare(right.timestampIso),
+        right.timestampIso.localeCompare(left.timestampIso),
       );
     const lastBackupFileNameLabel = state.lastBackupFileName
       ? escapeHtml(state.lastBackupFileName)
