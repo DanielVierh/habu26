@@ -1053,11 +1053,11 @@ tbody tr:nth-child(even) {
 .compact-cost-kicker {
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  display: grid;
-  height: 100%;
+  display: flex;
+  justify-self: stretch;
   align-self: stretch;
-  place-content: center;
-  place-items: center;
+  justify-content: center;
+  align-items: center;
   text-align: center;
   font-weight: 700;
   font-size: 0.92rem;
