@@ -1071,13 +1071,10 @@ tbody tr:nth-child(even) {
 .compact-cost-head,
 .compact-cost-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(96px, max-content) minmax(
-      96px,
-      max-content
-    );
-  gap: 0.7rem;
+  grid-template-columns: minmax(220px, 2.4fr) minmax(150px, 1fr) minmax(150px, 1fr);
+  gap: 0.95rem;
   align-items: baseline;
-  padding: 0.42rem 0.7rem;
+  padding: 0.42rem 0.9rem;
 }
 
 .compact-cost-head {
@@ -1112,6 +1109,11 @@ tbody tr:nth-child(even) {
 @media (min-width: 1024px) {
   .compact-month-overview {
     display: grid;
+  }
+
+  .compact-cost-head,
+  .compact-cost-row {
+    grid-template-columns: minmax(300px, 2.8fr) minmax(190px, 1fr) minmax(190px, 1fr);
   }
 }
 
