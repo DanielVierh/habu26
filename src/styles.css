@@ -997,6 +997,124 @@ tbody tr:nth-child(even) {
   font-weight: 700;
 }
 
+.compact-month-overview {
+  display: none;
+  gap: 0.85rem;
+}
+
+.compact-month-overview > h3 {
+  margin: 0;
+  padding: 0;
+  font-size: 1.15rem;
+}
+
+.compact-income-panel {
+  border: 1px solid color-mix(in srgb, var(--budget-under) 38%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--budget-under) 12%, var(--card-bg));
+  padding: 0.7rem 0.8rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.compact-income-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.2rem 0;
+}
+
+.compact-income-row > strong {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.compact-income-total {
+  border-top: 1px solid color-mix(in srgb, var(--budget-under) 48%, transparent);
+  margin-top: 0.15rem;
+  padding-top: 0.4rem;
+}
+
+.compact-costs-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.compact-cost-section {
+  border: 1px solid var(--table-border);
+  border-radius: 12px;
+  background: var(--table-stripe);
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.compact-cost-kicker {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-soft);
+  background: color-mix(in srgb, var(--bg-accent-2) 72%, transparent);
+  border-inline-end: 1px solid var(--table-border);
+  padding: 0.45rem 0.25rem;
+}
+
+.compact-cost-table {
+  display: grid;
+}
+
+.compact-cost-head,
+.compact-cost-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(96px, max-content) minmax(
+      96px,
+      max-content
+    );
+  gap: 0.7rem;
+  align-items: baseline;
+  padding: 0.42rem 0.7rem;
+}
+
+.compact-cost-head {
+  background: var(--table-head);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.compact-cost-row {
+  border-top: 1px solid var(--table-border);
+}
+
+.compact-cost-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact-cost-budget,
+.compact-cost-actual {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.compact-cost-row-empty .compact-cost-name {
+  white-space: normal;
+}
+
+@media (min-width: 1024px) {
+  .compact-month-overview {
+    display: grid;
+  }
+}
+
 .chart-grid {
   display: grid;
   gap: 0.9rem;

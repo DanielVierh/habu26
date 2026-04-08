@@ -3815,6 +3815,51 @@ export function createAppController(root: HTMLElement) {
       monthSummary.miscCents,
       miscBudgetCents,
     );
+    const compactActualValue = (valueCents: number): string =>
+      valueCents === 0 ? "-" : centsToEuro(valueCents);
+    const compactFixedRowsHtml = month
+      ? month.fixedCosts.length > 0
+        ? month.fixedCosts
+            .map(
+              (cost) => `<div class="compact-cost-row">
+                  <div class="compact-cost-name">${escapeHtml(cost.name)}</div>
+                  <div class="compact-cost-budget">${centsToEuro(cost.plannedCents)}</div>
+                  <div class="compact-cost-actual ${budgetStatusClass(cost.actualCents, cost.plannedCents)}">${compactActualValue(cost.actualCents)}</div>
+                </div>`,
+            )
+            .join("")
+        : `<div class="compact-cost-row compact-cost-row-empty">
+            <div class="compact-cost-name muted">Keine Positionen</div>
+            <div class="compact-cost-budget">-</div>
+            <div class="compact-cost-actual">-</div>
+          </div>`
+      : `<div class="compact-cost-row compact-cost-row-empty">
+          <div class="compact-cost-name muted">Kein Monat gewählt</div>
+          <div class="compact-cost-budget">-</div>
+          <div class="compact-cost-actual">-</div>
+        </div>`;
+    const compactVariableRowsHtml = month
+      ? month.variablePositions.length > 0
+        ? month.variablePositions
+            .map((position) => {
+              const name = `${escapeHtml(position.name)}${position.autoAnnualTemplateId ? " (A)" : ""}`;
+              return `<div class="compact-cost-row">
+                  <div class="compact-cost-name">${name}</div>
+                  <div class="compact-cost-budget">${centsToEuro(position.budgetCents)}</div>
+                  <div class="compact-cost-actual ${budgetStatusClass(position.actualCents, position.budgetCents)}">${compactActualValue(position.actualCents)}</div>
+                </div>`;
+            })
+            .join("")
+        : `<div class="compact-cost-row compact-cost-row-empty">
+            <div class="compact-cost-name muted">Keine Positionen</div>
+            <div class="compact-cost-budget">-</div>
+            <div class="compact-cost-actual">-</div>
+          </div>`
+      : `<div class="compact-cost-row compact-cost-row-empty">
+          <div class="compact-cost-name muted">Kein Monat gewählt</div>
+          <div class="compact-cost-budget">-</div>
+          <div class="compact-cost-actual">-</div>
+        </div>`;
     const editingFixedTemplate = state.editingFixedTemplateId
       ? state.fixedTemplates.find(
           (template) => template.id === state.editingFixedTemplateId,
@@ -5074,6 +5119,90 @@ export function createAppController(root: HTMLElement) {
               </label>
             </div>
           </div>
+
+          <article class="card compact-month-overview" aria-label="Kompakte Monatsübersicht">
+            <h3>Monatsübersicht kompakt</h3>
+            <section class="compact-income-panel">
+              <div class="compact-income-row">
+                <span>Erfasstes Einkommen</span>
+                <strong>${centsToEuro(recordedIncomeTotalCents)}</strong>
+              </div>
+              <div class="compact-income-row">
+                <span>Davon Gehalt</span>
+                <strong>${centsToEuro(monthSalaryIncomeCents)}</strong>
+              </div>
+              <div class="compact-income-row">
+                <span>Frisches Einkommen</span>
+                <strong>${centsToEuro(monthFreshIncomeCents)}</strong>
+              </div>
+              <div class="compact-income-row ${carryoverClass}">
+                <span>Übernahme aus Vormonat</span>
+                <strong>${hasCarryoverFromPreviousMonth ? centsToEuro(carryoverCents) : "-"}</strong>
+              </div>
+              <div class="compact-income-row compact-income-total">
+                <span>Summe Einkommen</span>
+                <strong>${centsToEuro(effectiveIncomeTotalCents)}</strong>
+              </div>
+            </section>
+
+            <div class="compact-costs-grid">
+              <section class="compact-cost-section">
+                <div class="compact-cost-kicker">Fixkosten</div>
+                <div class="compact-cost-table" role="table" aria-label="Fixkosten im Monat">
+                  <div class="compact-cost-head" role="row">
+                    <span>Name</span>
+                    <span>Budget</span>
+                    <span>Ist</span>
+                  </div>
+                  ${compactFixedRowsHtml}
+                </div>
+              </section>
+
+              <section class="compact-cost-section">
+                <div class="compact-cost-kicker">Variable</div>
+                <div class="compact-cost-table" role="table" aria-label="Variable Kosten im Monat">
+                  <div class="compact-cost-head" role="row">
+                    <span>Name</span>
+                    <span>Budget</span>
+                    <span>Ist</span>
+                  </div>
+                  ${compactVariableRowsHtml}
+                </div>
+              </section>
+
+              <section class="compact-cost-section compact-cost-section-summary">
+                <div class="compact-cost-kicker">Essen + Trinken</div>
+                <div class="compact-cost-table" role="table" aria-label="Essen und Trinken Summen">
+                  <div class="compact-cost-head" role="row">
+                    <span>Bereich</span>
+                    <span>Budget</span>
+                    <span>Ist</span>
+                  </div>
+                  <div class="compact-cost-row">
+                    <div class="compact-cost-name">Monatssumme</div>
+                    <div class="compact-cost-budget">${centsToEuro(foodAndGoingOutBudgetCents)}</div>
+                    <div class="compact-cost-actual ${foodAndGoingOutStatusClass}">${compactActualValue(foodAndGoingOutActualCents)}</div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="compact-cost-section compact-cost-section-summary">
+                <div class="compact-cost-kicker">Sonstiges</div>
+                <div class="compact-cost-table" role="table" aria-label="Sonstige Kosten Summen">
+                  <div class="compact-cost-head" role="row">
+                    <span>Bereich</span>
+                    <span>Budget</span>
+                    <span>Ist</span>
+                  </div>
+                  <div class="compact-cost-row">
+                    <div class="compact-cost-name">Monatssumme</div>
+                    <div class="compact-cost-budget">${centsToEuro(miscBudgetCents)}</div>
+                    <div class="compact-cost-actual ${miscSummaryBudgetClass}">${compactActualValue(monthSummary.miscCents)}</div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </article>
 
           <article class="card">
             <h3>Auswertung (Monat & Jahr)</h3>
