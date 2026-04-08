@@ -3817,6 +3817,16 @@ export function createAppController(root: HTMLElement) {
     );
     const compactActualValue = (valueCents: number): string =>
       valueCents === 0 ? "-" : centsToEuro(valueCents);
+    const compactFixedTotalRowHtml = `<div class="compact-cost-row compact-cost-row-total">
+        <div class="compact-cost-name">Summe</div>
+        <div class="compact-cost-budget">${centsToEuro(fixedBudgetCents)}</div>
+        <div class="compact-cost-actual ${fixedSummaryBudgetClass}">${compactActualValue(monthSummary.fixedCents)}</div>
+      </div>`;
+    const compactVariableTotalRowHtml = `<div class="compact-cost-row compact-cost-row-total">
+        <div class="compact-cost-name">Summe</div>
+        <div class="compact-cost-budget">${centsToEuro(variableBudgetCents)}</div>
+        <div class="compact-cost-actual ${variableSummaryBudgetClass}">${compactActualValue(monthSummary.variableCents)}</div>
+      </div>`;
     const compactFixedRowsHtml = month
       ? month.fixedCosts.length > 0
         ? month.fixedCosts
@@ -5155,6 +5165,7 @@ export function createAppController(root: HTMLElement) {
                     <span>Ist</span>
                   </div>
                   ${compactFixedRowsHtml}
+                  ${compactFixedTotalRowHtml}
                 </div>
               </section>
 
@@ -5167,6 +5178,7 @@ export function createAppController(root: HTMLElement) {
                     <span>Ist</span>
                   </div>
                   ${compactVariableRowsHtml}
+                  ${compactVariableTotalRowHtml}
                 </div>
               </section>
 

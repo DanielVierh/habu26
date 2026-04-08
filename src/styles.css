@@ -1046,7 +1046,7 @@ tbody tr:nth-child(even) {
   border-radius: 12px;
   background: var(--table-stripe);
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
+  grid-template-columns: 84px minmax(0, 1fr);
   overflow: hidden;
 }
 
@@ -1054,14 +1054,18 @@ tbody tr:nth-child(even) {
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   display: grid;
-  align-items: center;
-  justify-items: center;
+  height: 100%;
+  align-self: stretch;
+  place-content: center;
+  place-items: center;
+  text-align: center;
   font-weight: 700;
+  font-size: 0.92rem;
   letter-spacing: 0.02em;
   color: var(--text-soft);
   background: color-mix(in srgb, var(--bg-accent-2) 72%, transparent);
   border-inline-end: 1px solid var(--table-border);
-  padding: 0.45rem 0.25rem;
+  padding: 0.8rem 0.65rem;
 }
 
 .compact-cost-table {
@@ -1071,7 +1075,10 @@ tbody tr:nth-child(even) {
 .compact-cost-head,
 .compact-cost-row {
   display: grid;
-  grid-template-columns: minmax(220px, 2.4fr) minmax(150px, 1fr) minmax(150px, 1fr);
+  grid-template-columns: minmax(220px, 2.4fr) minmax(150px, 1fr) minmax(
+      150px,
+      1fr
+    );
   gap: 0.95rem;
   align-items: baseline;
   padding: 0.42rem 0.9rem;
@@ -1085,8 +1092,18 @@ tbody tr:nth-child(even) {
   letter-spacing: 0.03em;
 }
 
+.compact-cost-head > :nth-child(2),
+.compact-cost-head > :nth-child(3) {
+  text-align: right;
+}
+
 .compact-cost-row {
   border-top: 1px solid var(--table-border);
+}
+
+.compact-cost-row-total {
+  font-weight: 700;
+  background: color-mix(in srgb, var(--table-head) 84%, transparent);
 }
 
 .compact-cost-name {
@@ -1111,9 +1128,16 @@ tbody tr:nth-child(even) {
     display: grid;
   }
 
+  .compact-cost-section {
+    grid-template-columns: 104px minmax(0, 1fr);
+  }
+
   .compact-cost-head,
   .compact-cost-row {
-    grid-template-columns: minmax(300px, 2.8fr) minmax(190px, 1fr) minmax(190px, 1fr);
+    grid-template-columns: minmax(300px, 2.8fr) minmax(190px, 1fr) minmax(
+        190px,
+        1fr
+      );
   }
 }
 
