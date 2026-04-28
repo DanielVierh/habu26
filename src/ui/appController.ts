@@ -1936,6 +1936,21 @@ export function createAppController(root: HTMLElement) {
     return year * 100 + month;
   }
 
+  function formatBudgetChangeReason(
+    baseLabel: string,
+    previousCents: number,
+    nextCents: number,
+  ): string {
+    const base = `${baseLabel} auf ${centsToEuro(nextCents)} € gesetzt`;
+    if (nextCents > previousCents) {
+      return `${base} (erhöht um ${centsToEuro(nextCents - previousCents)} €)`;
+    }
+    if (nextCents < previousCents) {
+      return `${base} (verringert um ${centsToEuro(previousCents - nextCents)} €)`;
+    }
+    return base;
+  }
+
   function parseDueDateParts(
     dueDateIso: string,
   ): { year: number; month: number } | null {
@@ -2370,11 +2385,17 @@ export function createAppController(root: HTMLElement) {
     if (!month) {
       return;
     }
+    const targetDay = month.days.find((day) => day.isoDate === isoDate);
+    const previousAmountCents = targetDay?.[key] ?? 0;
     month.days = month.days.map((day) =>
       day.isoDate === isoDate ? { ...day, [key]: amountCents } : day,
     );
     await persistSelectedYear(
-      `${key === "foodCents" ? "Essen" : "Ausgehen"} am ${isoDate} angepasst auf ${centsToEuro(amountCents)} €`,
+      formatBudgetChangeReason(
+        `${key === "foodCents" ? "Essen" : "Ausgehen"} am ${isoDate} angepasst`,
+        previousAmountCents,
+        amountCents,
+      ),
     );
     render();
   }
@@ -2415,13 +2436,19 @@ export function createAppController(root: HTMLElement) {
       return;
     }
 
+    const previousPlannedCents = targetFixedCost.plannedCents;
+
     month.fixedCosts = month.fixedCosts.map((entry) =>
       entry.id === fixedCostId ? { ...entry, plannedCents } : entry,
     );
     recalculateFixedBudget(month);
 
     await persistSelectedYear(
-      `Fixkosten-Budget angepasst: ${targetFixedCost.name} auf ${centsToEuro(plannedCents)} €`,
+      formatBudgetChangeReason(
+        `Fixkosten-Budget angepasst: ${targetFixedCost.name}`,
+        previousPlannedCents,
+        plannedCents,
+      ),
     );
     render();
   }
@@ -2553,6 +2580,8 @@ export function createAppController(root: HTMLElement) {
       return;
     }
 
+    const previousBudgetCents = month[budgetField];
+
     month[budgetField] = amountCents;
 
     const shouldApplyFuture = confirm(
@@ -2572,8 +2601,13 @@ export function createAppController(root: HTMLElement) {
 
       state.recurringBudgetDefaults[budgetField] = amountCents;
       saveRecurringBudgetDefaults(state.recurringBudgetDefaults);
+      const baseReason = formatBudgetChangeReason(
+        `Budget "${label}"`,
+        previousBudgetCents ?? 0,
+        amountCents,
+      );
       await persistAllYears(
-        `Budget "${label}" auf ${centsToEuro(amountCents)} € gesetzt (inkl. zukünftiger Monate)`,
+        `${baseReason} (inkl. zukünftiger Monate)`,
       );
       showToast(`Budget "${label}" wurde für zukünftige Monate übernommen.`);
       render();
@@ -2581,7 +2615,11 @@ export function createAppController(root: HTMLElement) {
     }
 
     await persistSelectedYear(
-      `Budget "${label}" auf ${centsToEuro(amountCents)} € gesetzt`,
+      formatBudgetChangeReason(
+        `Budget "${label}"`,
+        previousBudgetCents ?? 0,
+        amountCents,
+      ),
     );
     render();
   }
@@ -2680,12 +2718,17 @@ export function createAppController(root: HTMLElement) {
     const targetPosition = month.variablePositions.find(
       (position) => position.id === positionId,
     );
+    const previousActualCents = targetPosition?.actualCents ?? 0;
     month.variablePositions = month.variablePositions.map((position) =>
       position.id === positionId ? { ...position, actualCents } : position,
     );
 
     await persistSelectedYear(
-      `Istwert Variable Position angepasst: ${targetPosition?.name ?? "Unbekannt"} auf ${centsToEuro(actualCents)} €`,
+      formatBudgetChangeReason(
+        `Istwert Variable Position angepasst: ${targetPosition?.name ?? "Unbekannt"}`,
+        previousActualCents,
+        actualCents,
+      ),
     );
     render();
   }
@@ -2702,13 +2745,18 @@ export function createAppController(root: HTMLElement) {
     const targetPosition = month.variablePositions.find(
       (position) => position.id === positionId,
     );
+    const previousBudgetCents = targetPosition?.budgetCents ?? 0;
     month.variablePositions = month.variablePositions.map((position) =>
       position.id === positionId ? { ...position, budgetCents } : position,
     );
     recalculateVariableBudget(month);
 
     await persistSelectedYear(
-      `Budget Variable Position angepasst: ${targetPosition?.name ?? "Unbekannt"} auf ${centsToEuro(budgetCents)} €`,
+      formatBudgetChangeReason(
+        `Budget Variable Position angepasst: ${targetPosition?.name ?? "Unbekannt"}`,
+        previousBudgetCents,
+        budgetCents,
+      ),
     );
     render();
   }
