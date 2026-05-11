@@ -4013,6 +4013,14 @@ export function createAppController(root: HTMLElement) {
     const dashboardYearSummary = dashboardYearBook
       ? summarizeYear(dashboardYearBook)
       : emptyCostSummary;
+    const dashboardYearIncomeSplit = dashboardYearBook
+      ? summarizeRecordedIncomeSplit(dashboardYearBook)
+      : { salaryIncomeCents: 0, freshIncomeCents: 0 };
+    const dashboardYearIncomeCents =
+      dashboardYearIncomeSplit.salaryIncomeCents +
+      dashboardYearIncomeSplit.freshIncomeCents;
+    const dashboardYearSalaryIncomeCents =
+      dashboardYearIncomeSplit.salaryIncomeCents;
     const dashboardYearBudgetTotals = dashboardYearBook
       ? summarizeYearBudgetByCategory(dashboardYearBook)
       : {
@@ -4075,8 +4083,15 @@ export function createAppController(root: HTMLElement) {
         )
         : undefined;
       const monthSummary = summarizeMonth(monthItem);
+      const monthSalaryIncomeCents = monthItem.incomes.reduce(
+        (sum, entry) =>
+          sum + (entry.incomeSource === "salary" ? entry.amountCents : 0),
+        0,
+      );
       const monthRecordedIncomeCents = monthItem.incomes.reduce(
-        (sum, entry) => sum + entry.amountCents,
+        (sum, entry) =>
+          sum +
+          (isRecordedIncomeSource(entry.incomeSource) ? entry.amountCents : 0),
         0,
       );
       const monthEffectiveIncomeCents =
@@ -4095,6 +4110,8 @@ export function createAppController(root: HTMLElement) {
 
       return {
         month: monthItem.month,
+        salaryIncomeCents: monthSalaryIncomeCents,
+        incomeCents: monthRecordedIncomeCents,
         foodCents: monthFoodCents,
         goingOutCents: monthGoingOutCents,
         foodAndGoingOutCents: monthFoodAndGoingOutCents,
@@ -4366,6 +4383,14 @@ export function createAppController(root: HTMLElement) {
         actualNetCents: effectiveIncomeCents - summary.totalCents,
       };
     });
+    const allYearsIncomeCents = allYearsRows.reduce(
+      (sum, row) => sum + row.totalIncomeCents,
+      0,
+    );
+    const allYearsSalaryIncomeCents = allYearsRows.reduce(
+      (sum, row) => sum + row.salaryIncomeCents,
+      0,
+    );
     const allYearsNetMaxCents = Math.max(
       1,
       ...allYearsRows.flatMap((row) => [
@@ -4430,7 +4455,8 @@ export function createAppController(root: HTMLElement) {
                     <div class="eval-tile-columns"><span>Wert</span><span></span></div>
                   </header>
                   <div class="eval-rows">
-                    <div class="eval-row"><div class="eval-label">Einkommen effektiv</div><div class="eval-value">${centsToEuro(dashboardYearEffectiveIncomeCents)}</div><div class="eval-value"></div></div>
+                    <div class="eval-row"><div class="eval-label">Einkommen</div><div class="eval-value">${centsToEuro(dashboardYearIncomeCents)}</div><div class="eval-value"></div></div>
+                    <div class="eval-row"><div class="eval-label">Gehalt</div><div class="eval-value">${centsToEuro(dashboardYearSalaryIncomeCents)}</div><div class="eval-value"></div></div>
                     <div class="eval-row"><div class="eval-label">Budget gesamt</div><div class="eval-value">${centsToEuro(dashboardYearPlannedBudgetTotalCents)}</div><div class="eval-value"></div></div>
                     <div class="eval-row"><div class="eval-label">Ausgaben gesamt</div><div class="eval-value">${centsToEuro(dashboardYearSummary.totalCents)}</div><div class="eval-value"></div></div>
                     <div class="eval-row eval-strong"><div class="eval-label">Saldo (gegen Budget)</div><div class="eval-value ${incomeBudgetBalanceClass(dashboardYearPlannedNetCents)}">${centsToEuro(dashboardYearPlannedNetCents)}</div><div class="eval-value"></div></div>
@@ -4677,7 +4703,8 @@ export function createAppController(root: HTMLElement) {
                 <thead>
                   <tr>
                     <th>Monat</th>
-                    <th>Einkommen effektiv (€)</th>
+                    <th>Gehalt (€)</th>
+                    <th>Einkommen (€)</th>
                     <th>Budget gesamt (€)</th>
                     <th>Ist-Kosten (€)</th>
                     <th>Saldo Budget (€)</th>
@@ -4689,7 +4716,8 @@ export function createAppController(root: HTMLElement) {
             .map(
               (row) => `<tr>
                         <td>${monthLabel(row.month)}</td>
-                        <td>${centsToEuro(row.effectiveIncomeCents)}</td>
+                    <td>${centsToEuro(row.salaryIncomeCents)}</td>
+                    <td>${centsToEuro(row.incomeCents)}</td>
                         <td>${centsToEuro(row.plannedBudgetCents)}</td>
                         <td>${centsToEuro(row.actualCostCents)}</td>
                         <td class="${incomeBudgetBalanceClass(row.plannedNetCents)}">${centsToEuro(row.plannedNetCents)}</td>
@@ -4816,7 +4844,8 @@ export function createAppController(root: HTMLElement) {
                     <div class="eval-tile-columns"><span>Wert</span><span></span></div>
                   </header>
                   <div class="eval-rows">
-                    <div class="eval-row"><div class="eval-label">Einkommen effektiv</div><div class="eval-value">${centsToEuro(allYearsEffectiveIncomeCents)}</div><div class="eval-value"></div></div>
+                    <div class="eval-row"><div class="eval-label">Einkommen</div><div class="eval-value">${centsToEuro(allYearsIncomeCents)}</div><div class="eval-value"></div></div>
+                    <div class="eval-row"><div class="eval-label">Gehalt</div><div class="eval-value">${centsToEuro(allYearsSalaryIncomeCents)}</div><div class="eval-value"></div></div>
                     <div class="eval-row"><div class="eval-label">Budget gesamt</div><div class="eval-value">${centsToEuro(allYearsBudgetTotals.totalCents)}</div><div class="eval-value"></div></div>
                     <div class="eval-row"><div class="eval-label">Ausgaben gesamt</div><div class="eval-value">${centsToEuro(allYearsActualTotals.totalCents)}</div><div class="eval-value"></div></div>
                     <div class="eval-row eval-strong"><div class="eval-label">Saldo (gegen Budget)</div><div class="eval-value ${incomeBudgetBalanceClass(allYearsPlannedNetCents)}">${centsToEuro(allYearsPlannedNetCents)}</div><div class="eval-value"></div></div>
@@ -4951,7 +4980,6 @@ export function createAppController(root: HTMLElement) {
                     <th>Jahr</th>
                     <th>Gehalt (€)</th>
                     <th>Einkommen (Gehalt + Einkommen) (€)</th>
-                    <th>Einkommen effektiv (€)</th>
                     <th>Budget gesamt (€)</th>
                     <th>Ist-Kosten (€)</th>
                     <th>Saldo Budget (€)</th>
@@ -4965,7 +4993,6 @@ export function createAppController(root: HTMLElement) {
                         <td>${row.year}</td>
                         <td>${centsToEuro(row.salaryIncomeCents)}</td>
                         <td>${centsToEuro(row.totalIncomeCents)}</td>
-                        <td>${centsToEuro(row.effectiveIncomeCents)}</td>
                         <td>${centsToEuro(row.budgetTotalCents)}</td>
                         <td>${centsToEuro(row.actualTotalCents)}</td>
                         <td class="${incomeBudgetBalanceClass(row.plannedNetCents)}">${centsToEuro(row.plannedNetCents)}</td>
