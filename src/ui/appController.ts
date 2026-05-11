@@ -4359,6 +4359,29 @@ export function createAppController(root: HTMLElement) {
         row.actualCents,
       ]),
     );
+    const allYearsCostOverviewRows = [
+      {
+        label: "Essen & Ausgehen",
+        actualCents:
+          allYearsActualTotals.foodCents + allYearsActualTotals.goingOutCents,
+      },
+      {
+        label: "Fixkosten",
+        actualCents: allYearsActualTotals.fixedCents,
+      },
+      {
+        label: "Variable",
+        actualCents: allYearsActualTotals.variableCents,
+      },
+      {
+        label: "Sonstige",
+        actualCents: allYearsActualTotals.miscCents,
+      },
+    ];
+    const allYearsCostOverviewMaxCents = Math.max(
+      1,
+      ...allYearsCostOverviewRows.map((row) => row.actualCents),
+    );
     const allYearsRows = sortedYears.map((yearItem) => {
       const summary = summarizeYear(yearItem);
       const budget = summarizeYearBudgetByCategory(yearItem);
@@ -4376,6 +4399,11 @@ export function createAppController(root: HTMLElement) {
         freshIncomeCents: incomeSplit.freshIncomeCents,
         totalIncomeCents:
           incomeSplit.salaryIncomeCents + incomeSplit.freshIncomeCents,
+        foodAndGoingOutCents:
+          summary.foodCents + summary.goingOutCents,
+        fixedCents: summary.fixedCents,
+        variableCents: summary.variableCents,
+        miscCents: summary.miscCents,
         budgetTotalCents: budget.totalCents,
         actualTotalCents: summary.totalCents,
         effectiveIncomeCents,
@@ -4420,6 +4448,22 @@ export function createAppController(root: HTMLElement) {
         row.salaryIncomeCents,
         row.actualTotalCents,
       ]),
+    );
+    const allYearsFoodAndGoingOutMaxCents = Math.max(
+      1,
+      ...allYearsRows.map((row) => row.foodAndGoingOutCents),
+    );
+    const allYearsFixedMaxCents = Math.max(
+      1,
+      ...allYearsRows.map((row) => row.fixedCents),
+    );
+    const allYearsVariableMaxCents = Math.max(
+      1,
+      ...allYearsRows.map((row) => row.variableCents),
+    );
+    const allYearsMiscMaxCents = Math.max(
+      1,
+      ...allYearsRows.map((row) => row.miscCents),
     );
 
     const dashboardPanelHtml = `
@@ -4852,6 +4896,22 @@ export function createAppController(root: HTMLElement) {
                     <div class="eval-row eval-strong"><div class="eval-label">Saldo (gegen Ist)</div><div class="eval-value ${incomeBudgetBalanceClass(allYearsActualNetCents)}">${centsToEuro(allYearsActualNetCents)}</div><div class="eval-value"></div></div>
                   </div>
                 </section>
+
+                <section class="eval-tile">
+                  <header class="eval-tile-header">
+                    <h4>Gesamtkosten nach Kategorien</h4>
+                    <div class="eval-tile-columns"><span>Bereich</span><span>Wert</span></div>
+                  </header>
+                  <div class="eval-rows">
+                    ${allYearsCostOverviewRows
+              .map(
+                (row) =>
+                  `<div class="eval-row"><div class="eval-label">${row.label}</div><div class="eval-value">${centsToEuro(row.actualCents)}</div><div class="eval-value"></div></div>`,
+              )
+              .join("")}
+                    <div class="eval-row eval-strong"><div class="eval-label">Ausgaben gesamt</div><div class="eval-value">${centsToEuro(allYearsActualTotals.totalCents)}</div><div class="eval-value"></div></div>
+                  </div>
+                </section>
               </div>
 
               <div class="chart-grid">
@@ -4889,6 +4949,37 @@ export function createAppController(root: HTMLElement) {
                             </div>
                             <div class="bar-meta">
                               <span class="muted">B ${centsToEuro(row.budgetCents)}</span>
+                              <span class="muted">I ${centsToEuro(row.actualCents)}</span>
+                            </div>
+                          </div>
+                        `;
+              })
+              .join("")}
+                  </div>
+                </section>
+
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Gesamtkosten nach Kategorien (Ist)</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist-Kosten</span>
+                    </div>
+                  </header>
+                  <div class="bar-chart">
+                    ${allYearsCostOverviewRows
+              .map((row) => {
+                const actualWidth = percent(
+                  row.actualCents,
+                  allYearsCostOverviewMaxCents,
+                );
+
+                return `
+                          <div class="bar-row">
+                            <div class="bar-label">${row.label}</div>
+                            <div class="bar-track" title="Ist: ${centsToEuro(row.actualCents)}">
+                              <div class="bar bar-expense" style="width:${actualWidth}"></div>
+                            </div>
+                            <div class="bar-meta">
                               <span class="muted">I ${centsToEuro(row.actualCents)}</span>
                             </div>
                           </div>
@@ -4966,6 +5057,118 @@ export function createAppController(root: HTMLElement) {
                               <span class="${incomeBudgetBalanceClass(row.plannedNetCents)}">B ${centsToEuro(row.plannedNetCents)}</span>
                               <span class="${incomeBudgetBalanceClass(row.actualNetCents)}">I ${centsToEuro(row.actualNetCents)}</span>
                             </div>
+                          </div>
+                        `;
+              })
+              .join("")}
+                  </div>
+                </section>
+              </div>
+
+              <div class="chart-grid">
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Essen & Ausgehen pro Jahr</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist-Kosten</span>
+                    </div>
+                  </header>
+                  <div class="spark-bars" style="grid-template-columns: repeat(${Math.max(allYearsRows.length, 1)}, minmax(0, 1fr));">
+                    ${allYearsRows
+              .map((row) => {
+                const height = percent(
+                  row.foodAndGoingOutCents,
+                  allYearsFoodAndGoingOutMaxCents,
+                );
+                return `
+                          <div class="spark-bar" title="${row.year}: ${centsToEuro(row.foodAndGoingOutCents)}">
+                            <div class="spark-bar-stack">
+                              <div class="spark-bar-track" aria-hidden="true">
+                                <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${height}"><span class="spark-bar-fill-value">${centsToEuro(row.foodAndGoingOutCents)} €</span></div>
+                              </div>
+                            </div>
+                            <div class="spark-bar-label">${row.year}</div>
+                          </div>
+                        `;
+              })
+              .join("")}
+                  </div>
+                </section>
+
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Fixkosten pro Jahr</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist-Kosten</span>
+                    </div>
+                  </header>
+                  <div class="spark-bars" style="grid-template-columns: repeat(${Math.max(allYearsRows.length, 1)}, minmax(0, 1fr));">
+                    ${allYearsRows
+              .map((row) => {
+                const height = percent(row.fixedCents, allYearsFixedMaxCents);
+                return `
+                          <div class="spark-bar" title="${row.year}: ${centsToEuro(row.fixedCents)}">
+                            <div class="spark-bar-stack">
+                              <div class="spark-bar-track" aria-hidden="true">
+                                <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${height}"><span class="spark-bar-fill-value">${centsToEuro(row.fixedCents)} €</span></div>
+                              </div>
+                            </div>
+                            <div class="spark-bar-label">${row.year}</div>
+                          </div>
+                        `;
+              })
+              .join("")}
+                  </div>
+                </section>
+
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Variable Kosten pro Jahr</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist-Kosten</span>
+                    </div>
+                  </header>
+                  <div class="spark-bars" style="grid-template-columns: repeat(${Math.max(allYearsRows.length, 1)}, minmax(0, 1fr));">
+                    ${allYearsRows
+              .map((row) => {
+                const height = percent(
+                  row.variableCents,
+                  allYearsVariableMaxCents,
+                );
+                return `
+                          <div class="spark-bar" title="${row.year}: ${centsToEuro(row.variableCents)}">
+                            <div class="spark-bar-stack">
+                              <div class="spark-bar-track" aria-hidden="true">
+                                <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${height}"><span class="spark-bar-fill-value">${centsToEuro(row.variableCents)} €</span></div>
+                              </div>
+                            </div>
+                            <div class="spark-bar-label">${row.year}</div>
+                          </div>
+                        `;
+              })
+              .join("")}
+                  </div>
+                </section>
+
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Sonstige Kosten pro Jahr</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Ist-Kosten</span>
+                    </div>
+                  </header>
+                  <div class="spark-bars" style="grid-template-columns: repeat(${Math.max(allYearsRows.length, 1)}, minmax(0, 1fr));">
+                    ${allYearsRows
+              .map((row) => {
+                const height = percent(row.miscCents, allYearsMiscMaxCents);
+                return `
+                          <div class="spark-bar" title="${row.year}: ${centsToEuro(row.miscCents)}">
+                            <div class="spark-bar-stack">
+                              <div class="spark-bar-track" aria-hidden="true">
+                                <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${height}"><span class="spark-bar-fill-value">${centsToEuro(row.miscCents)} €</span></div>
+                              </div>
+                            </div>
+                            <div class="spark-bar-label">${row.year}</div>
                           </div>
                         `;
               })
