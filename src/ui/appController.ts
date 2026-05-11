@@ -1725,6 +1725,28 @@ export function createAppController(root: HTMLElement) {
     );
   }
 
+  function summarizeRecordedIncomeSplit(year: YearBook): {
+    salaryIncomeCents: number;
+    freshIncomeCents: number;
+  } {
+    return year.months.reduce(
+      (sum, monthItem) => {
+        monthItem.incomes.forEach((entry) => {
+          if (entry.incomeSource === "salary") {
+            sum.salaryIncomeCents += entry.amountCents;
+            return;
+          }
+          if (entry.incomeSource === "fresh" || entry.incomeSource == null) {
+            sum.freshIncomeCents += entry.amountCents;
+          }
+        });
+
+        return sum;
+      },
+      { salaryIncomeCents: 0, freshIncomeCents: 0 },
+    );
+  }
+
   function getYearOpeningCarryoverCents(
     year: YearBook,
     incomeFlowByMonth: Map<number, IncomeFlowSummary>,
@@ -4299,17 +4321,7 @@ export function createAppController(root: HTMLElement) {
       const summary = summarizeYear(yearItem);
       const budget = summarizeYearBudgetByCategory(yearItem);
       const recordedIncomeCents = summarizeRecordedIncomeCents(yearItem);
-      const salaryIncomeCents = yearItem.months.reduce(
-        (sum, monthItem) =>
-          sum +
-          monthItem.incomes.reduce(
-            (monthSum, entry) =>
-              monthSum +
-              (entry.incomeSource === "salary" ? entry.amountCents : 0),
-            0,
-          ),
-        0,
-      );
+      const incomeSplit = summarizeRecordedIncomeSplit(yearItem);
       const openingCarryoverCents = getYearOpeningCarryoverCents(
         yearItem,
         incomeFlowByMonth,
@@ -4318,7 +4330,10 @@ export function createAppController(root: HTMLElement) {
 
       return {
         year: yearItem.year,
-        salaryIncomeCents,
+        salaryIncomeCents: incomeSplit.salaryIncomeCents,
+        freshIncomeCents: incomeSplit.freshIncomeCents,
+        totalIncomeCents:
+          incomeSplit.salaryIncomeCents + incomeSplit.freshIncomeCents,
         budgetTotalCents: budget.totalCents,
         actualTotalCents: summary.totalCents,
         effectiveIncomeCents,
@@ -4336,6 +4351,25 @@ export function createAppController(root: HTMLElement) {
     const allYearsExpenseMaxCents = Math.max(
       1,
       ...allYearsRows.map((row) => row.actualTotalCents),
+    );
+    const allYearsIncomeTotalMaxCents = Math.max(
+      1,
+      ...allYearsRows.map((row) => row.totalIncomeCents),
+    );
+    const allYearsSalaryMaxCents = Math.max(
+      1,
+      ...allYearsRows.map((row) => row.salaryIncomeCents),
+    );
+    const allYearsIncomeVsCostMaxCents = Math.max(
+      1,
+      ...allYearsRows.flatMap((row) => [row.totalIncomeCents, row.actualTotalCents]),
+    );
+    const allYearsSalaryVsCostMaxCents = Math.max(
+      1,
+      ...allYearsRows.flatMap((row) => [
+        row.salaryIncomeCents,
+        row.actualTotalCents,
+      ]),
     );
 
     const dashboardPanelHtml = `
@@ -4891,6 +4925,7 @@ export function createAppController(root: HTMLElement) {
                   <tr>
                     <th>Jahr</th>
                     <th>Gehalt (€)</th>
+                    <th>Einkommen (Gehalt + Einkommen) (€)</th>
                     <th>Einkommen effektiv (€)</th>
                     <th>Budget gesamt (€)</th>
                     <th>Ist-Kosten (€)</th>
@@ -4904,6 +4939,7 @@ export function createAppController(root: HTMLElement) {
                 (row) => `<tr>
                         <td>${row.year}</td>
                         <td>${centsToEuro(row.salaryIncomeCents)}</td>
+                        <td>${centsToEuro(row.totalIncomeCents)}</td>
                         <td>${centsToEuro(row.effectiveIncomeCents)}</td>
                         <td>${centsToEuro(row.budgetTotalCents)}</td>
                         <td>${centsToEuro(row.actualTotalCents)}</td>
@@ -4914,6 +4950,138 @@ export function createAppController(root: HTMLElement) {
               .join("")}
                 </tbody>
               </table>
+
+              <div class="chart-grid">
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Einkommen pro Jahr</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Einkommen (Gehalt + Einkommen)</span>
+                    </div>
+                  </header>
+                  <div class="spark-bars" style="grid-template-columns: repeat(${Math.max(allYearsRows.length, 1)}, minmax(0, 1fr));">
+                    ${allYearsRows
+              .map((row) => {
+                const height = percent(
+                  row.totalIncomeCents,
+                  allYearsIncomeTotalMaxCents,
+                );
+                return `
+                          <div class="spark-bar" title="${row.year}: ${centsToEuro(row.totalIncomeCents)}">
+                            <div class="spark-bar-stack">
+                              <div class="spark-bar-track" aria-hidden="true">
+                                <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${height}"><span class="spark-bar-fill-value">${centsToEuro(row.totalIncomeCents)} €</span></div>
+                              </div>
+                            </div>
+                            <div class="spark-bar-label">${row.year}</div>
+                          </div>
+                        `;
+              })
+              .join("")}
+                  </div>
+                </section>
+
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Gehalt pro Jahr</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Gehalt</span>
+                    </div>
+                  </header>
+                  <div class="spark-bars" style="grid-template-columns: repeat(${Math.max(allYearsRows.length, 1)}, minmax(0, 1fr));">
+                    ${allYearsRows
+              .map((row) => {
+                const height = percent(
+                  row.salaryIncomeCents,
+                  allYearsSalaryMaxCents,
+                );
+                return `
+                          <div class="spark-bar" title="${row.year}: ${centsToEuro(row.salaryIncomeCents)}">
+                            <div class="spark-bar-stack">
+                              <div class="spark-bar-track" aria-hidden="true">
+                                <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${height}"><span class="spark-bar-fill-value">${centsToEuro(row.salaryIncomeCents)} €</span></div>
+                              </div>
+                            </div>
+                            <div class="spark-bar-label">${row.year}</div>
+                          </div>
+                        `;
+              })
+              .join("")}
+                  </div>
+                </section>
+
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Einkommen pro Jahr vs Kosten pro Jahr</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-income"></span>Einkommen</span>
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Kosten</span>
+                    </div>
+                  </header>
+                  <div class="spark-bars" style="grid-template-columns: repeat(${Math.max(allYearsRows.length, 1)}, minmax(0, 1fr));">
+                    ${allYearsRows
+              .map((row) => {
+                const incomeHeight = percent(
+                  row.totalIncomeCents,
+                  allYearsIncomeVsCostMaxCents,
+                );
+                const costHeight = percent(
+                  row.actualTotalCents,
+                  allYearsIncomeVsCostMaxCents,
+                );
+
+                return `
+                          <div class="spark-bar" title="${row.year}: Einkommen ${centsToEuro(row.totalIncomeCents)} | Kosten ${centsToEuro(row.actualTotalCents)}">
+                            <div class="spark-bar-stack">
+                              <div class="spark-bar-track" aria-hidden="true">
+                                <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${incomeHeight}"></div>
+                                <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${costHeight}"><span class="spark-bar-fill-value">${centsToEuro(row.actualTotalCents)} €</span></div>
+                              </div>
+                            </div>
+                            <div class="spark-bar-label">${row.year}</div>
+                          </div>
+                        `;
+              })
+              .join("")}
+                  </div>
+                </section>
+
+                <section class="chart-tile">
+                  <header class="chart-tile-header">
+                    <h4>Gehalt pro Jahr vs Kosten pro Jahr</h4>
+                    <div class="chart-legend">
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-income"></span>Gehalt</span>
+                      <span class="chart-legend-item"><span class="chart-dot chart-dot-expense"></span>Kosten</span>
+                    </div>
+                  </header>
+                  <div class="spark-bars" style="grid-template-columns: repeat(${Math.max(allYearsRows.length, 1)}, minmax(0, 1fr));">
+                    ${allYearsRows
+              .map((row) => {
+                const salaryHeight = percent(
+                  row.salaryIncomeCents,
+                  allYearsSalaryVsCostMaxCents,
+                );
+                const costHeight = percent(
+                  row.actualTotalCents,
+                  allYearsSalaryVsCostMaxCents,
+                );
+
+                return `
+                          <div class="spark-bar" title="${row.year}: Gehalt ${centsToEuro(row.salaryIncomeCents)} | Kosten ${centsToEuro(row.actualTotalCents)}">
+                            <div class="spark-bar-stack">
+                              <div class="spark-bar-track" aria-hidden="true">
+                                <div class="spark-bar-fill spark-bar-fill-budget spark-bar-fill-layered" style="height:${salaryHeight}"></div>
+                                <div class="spark-bar-fill spark-bar-fill-layered spark-bar-fill-actual" style="height:${costHeight}"><span class="spark-bar-fill-value">${centsToEuro(row.actualTotalCents)} €</span></div>
+                              </div>
+                            </div>
+                            <div class="spark-bar-label">${row.year}</div>
+                          </div>
+                        `;
+              })
+              .join("")}
+                  </div>
+                </section>
+              </div>
             `
       }
       </div>
