@@ -3739,8 +3739,24 @@ export function createAppController(root: HTMLElement) {
         ),
       ]),
     );
+    const yearIncomeByMonthMap = new Map(
+      (year?.months ?? []).map((monthItem) => [
+        monthItem.month,
+        monthItem.incomes.reduce(
+          (sum, entry) =>
+            sum +
+            (entry.incomeSource === "salary" || entry.incomeSource === "fresh"
+              ? entry.amountCents
+              : 0),
+          0,
+        ),
+      ]),
+    );
     const yearComparisonSalaryValues = yearComparisonRowsForStats.map(
       (row) => yearSalaryByMonthMap.get(row.month) ?? 0,
+    );
+    const yearComparisonIncomeValues = yearComparisonRowsForStats.map(
+      (row) => yearIncomeByMonthMap.get(row.month) ?? 0,
     );
 
     const yearComparisonStats = {
@@ -3751,6 +3767,7 @@ export function createAppController(root: HTMLElement) {
       misc: summarizeSeries(yearComparisonMiscValues),
       total: summarizeSeries(yearComparisonTotalValues),
       salary: summarizeSeries(yearComparisonSalaryValues),
+      income: summarizeSeries(yearComparisonIncomeValues),
       budget: summarizeSeries(yearComparisonBudgetValues),
       net: summarizeSeries(yearComparisonNetValues),
     };
@@ -3778,6 +3795,10 @@ export function createAppController(root: HTMLElement) {
       misc: yearComparisonMiscValues.reduce((sum, value) => sum + value, 0),
       total: yearComparisonTotalValues.reduce((sum, value) => sum + value, 0),
       salary: yearComparisonSalaryValues.reduce((sum, value) => sum + value, 0),
+      income: yearComparisonIncomeValues.reduce(
+        (sum, value) => sum + value,
+        0,
+      ),
       budget: yearComparisonBudgetValues.reduce((sum, value) => sum + value, 0),
     };
 
@@ -3790,6 +3811,7 @@ export function createAppController(root: HTMLElement) {
         const misc = yearComparisonStats.misc?.[key] ?? null;
         const total = yearComparisonStats.total?.[key] ?? null;
         const salary = yearComparisonStats.salary?.[key] ?? null;
+        const income = yearComparisonStats.income?.[key] ?? null;
         const budget = yearComparisonStats.budget?.[key] ?? null;
         const net = yearComparisonStats.net?.[key] ?? null;
 
@@ -3805,6 +3827,7 @@ export function createAppController(root: HTMLElement) {
                   <td>${formatStat(misc)}</td>
                   <td>${formatStat(total)}</td>
                   <td>${formatStat(salary)}</td>
+                  <td>${formatStat(income)}</td>
                   <td>${formatStat(budget)}</td>
                   <td>${formatStat(net)}</td>
                 </tr>`;
@@ -3820,7 +3843,9 @@ export function createAppController(root: HTMLElement) {
                   <td>${centsToEuro(yearComparisonSums.misc)}</td>
                   <td>${centsToEuro(yearComparisonSums.total)}</td>
                   <td>${centsToEuro(yearComparisonSums.salary)}</td>
+                  <td>${centsToEuro(yearComparisonSums.income)}</td>
                   <td>${centsToEuro(yearComparisonSums.budget)}</td>
+                  <td>-</td>
                 </tr>`;
 
     const yearTotalMaxCents = Math.max(
@@ -5896,6 +5921,7 @@ export function createAppController(root: HTMLElement) {
                   <th>Sonstige (€)</th>
                   <th>Gesamt (€)</th>
                   <th>Gehalt (€)</th>
+                  <th>Einkommen (€)</th>
                   <th>Budget gesamt (€)</th>
                   <th>Kalkulierter Saldo (€)</th>
                 </tr>
@@ -5911,6 +5937,8 @@ export function createAppController(root: HTMLElement) {
           const rowNetCents = rowIncomeFlow?.netCents ?? 0;
           const rowSalaryCents =
             yearSalaryByMonthMap.get(row.month) ?? 0;
+          const rowIncomeCents =
+            yearIncomeByMonthMap.get(row.month) ?? 0;
           const rowNetClass =
             rowNetCents < 0
               ? "danger"
@@ -5934,6 +5962,10 @@ export function createAppController(root: HTMLElement) {
           const previousSalaryCents =
             previousRow !== undefined
               ? (yearSalaryByMonthMap.get(previousRow.month) ?? 0)
+              : null;
+          const previousIncomeCents =
+            previousRow !== undefined
+              ? (yearIncomeByMonthMap.get(previousRow.month) ?? 0)
               : null;
           const previousBudgetCents =
             year && previousRow
@@ -5970,6 +6002,10 @@ export function createAppController(root: HTMLElement) {
             previousSalaryCents === null
               ? null
               : rowSalaryCents - previousSalaryCents;
+          const incomeDiffCents =
+            previousIncomeCents === null
+              ? null
+              : rowIncomeCents - previousIncomeCents;
           const budgetDiffCents =
             previousBudgetCents === null
               ? null
@@ -6036,6 +6072,7 @@ export function createAppController(root: HTMLElement) {
                   <td>${centsToEuro(row.summary.miscCents)} <span class="${costDiffClass(miscDiffCents)}">${diffLabel(miscDiffCents)}</span></td>
                   <td>${centsToEuro(row.summary.totalCents)} <span class="${costDiffClass(totalDiffCents)}">${diffLabel(totalDiffCents)}</span></td>
                   <td>${centsToEuro(rowSalaryCents)} <span class="${incomeDiffClass(salaryDiffCents)}">${diffLabel(salaryDiffCents)}</span></td>
+                  <td>${centsToEuro(rowIncomeCents)} <span class="${incomeDiffClass(incomeDiffCents)}">${diffLabel(incomeDiffCents)}</span></td>
                   <td>${centsToEuro(rowPlannedBudgetCents)} <span class="${budgetDiffClass(budgetDiffCents)}">${diffLabel(budgetDiffCents)}</span></td>
                   <td class="${rowNetClass}">${centsToEuro(rowNetCents)} <span class="${monthDiffClass}">${monthDiffLabel}</span></td>
                 </tr>`;
