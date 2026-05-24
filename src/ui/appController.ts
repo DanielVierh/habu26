@@ -8,6 +8,7 @@ import type {
   IncomeSource,
   MonthBook,
   MonthNumber,
+  SearchEvaluationResult,
   YearBook,
   YearNumber,
 } from "../domain/model";
@@ -16,6 +17,7 @@ import {
   createId,
   createIncomeEntry,
   createYearWithMonths,
+  evaluateKeywordAcrossYears,
 } from "../domain/rules";
 import {
   appendAuditLogEntry,
@@ -23,12 +25,14 @@ import {
   deleteYear,
   getAnnualVariableFixedTemplateState,
   getFixedTemplateState,
+  getSearchEvaluationState,
   getYear,
   listAuditLogEntries,
   listYears,
   restoreFromBackup,
   saveAnnualVariableFixedTemplates,
   saveFixedTemplates,
+  saveSearchEvaluations,
   saveYear,
 } from "../storage/repository";
 import {
@@ -139,8 +143,17 @@ interface State {
   showUnexportedChangeLogModal: boolean;
   persistentAuditLog: AuditLogEntry[];
   showPersistentAuditLogModal: boolean;
+  evaluationQuery: string;
+  evaluationCurrentResult: SearchEvaluationResult | null;
+  savedSearchEvaluations: SearchEvaluationResult[];
   lastBackupFileName: string | null;
-  topModal: "years" | "fixed" | "variable-fixed" | "dashboard" | null;
+  topModal:
+  | "years"
+  | "fixed"
+  | "variable-fixed"
+  | "dashboard"
+  | "evaluation"
+  | null;
   dashboardTab: "year" | "food" | "all";
   dashboardYear: number | null;
   recurringBudgetDefaults: RecurringBudgetDefaults;
@@ -197,6 +210,9 @@ export function createAppController(root: HTMLElement) {
     showUnexportedChangeLogModal: false,
     persistentAuditLog: [],
     showPersistentAuditLogModal: false,
+    evaluationQuery: "",
+    evaluationCurrentResult: null,
+    savedSearchEvaluations: [],
     lastBackupFileName: null,
     topModal: null,
     dashboardTab: "year",
@@ -612,7 +628,7 @@ export function createAppController(root: HTMLElement) {
   }
 
   function openTopModal(
-    kind: "years" | "fixed" | "variable-fixed" | "dashboard",
+    kind: "years" | "fixed" | "variable-fixed" | "dashboard" | "evaluation",
   ): void {
     if (kind === "dashboard") {
       const sortedYears = state.years
@@ -1431,11 +1447,13 @@ export function createAppController(root: HTMLElement) {
     state.recurringBudgetDefaults = loadRecurringBudgetDefaults();
     bindGlobalModalKeysOnce();
     bindScrollUpVisibilityOnce();
-    const [years, fixed, annualVariableFixed] = await Promise.all([
-      listYears(),
-      getFixedTemplateState(),
-      getAnnualVariableFixedTemplateState(),
-    ]);
+    const [years, fixed, annualVariableFixed, searchEvaluations] =
+      await Promise.all([
+        listYears(),
+        getFixedTemplateState(),
+        getAnnualVariableFixedTemplateState(),
+        getSearchEvaluationState(),
+      ]);
     state.years = years;
     state.annualVariableFixedTemplates = annualVariableFixed.templates;
     state.annualVariableFixedTemplateVersion = annualVariableFixed.version;
@@ -1443,6 +1461,7 @@ export function createAppController(root: HTMLElement) {
     normalizeAnnualVariableFixedCostsForYears(state.years);
     state.fixedTemplates = fixed.templates;
     state.fixedTemplateVersion = fixed.version;
+    state.savedSearchEvaluations = searchEvaluations.results;
     await persistNormalizedYears(state.years);
     if (years.length > 0) {
       state.selectedYear = getDefaultSelectedYear(years);
@@ -3254,11 +3273,13 @@ export function createAppController(root: HTMLElement) {
     const text = await file.text();
     const parsed = JSON.parse(text) as BackupPayload;
     await restoreFromBackup(parsed);
-    const [years, fixed, annualVariableFixed] = await Promise.all([
-      listYears(),
-      getFixedTemplateState(),
-      getAnnualVariableFixedTemplateState(),
-    ]);
+    const [years, fixed, annualVariableFixed, searchEvaluations] =
+      await Promise.all([
+        listYears(),
+        getFixedTemplateState(),
+        getAnnualVariableFixedTemplateState(),
+        getSearchEvaluationState(),
+      ]);
     state.years = years;
     state.annualVariableFixedTemplates = annualVariableFixed.templates;
     state.annualVariableFixedTemplateVersion = annualVariableFixed.version;
@@ -3266,12 +3287,62 @@ export function createAppController(root: HTMLElement) {
     normalizeAnnualVariableFixedCostsForYears(state.years);
     state.fixedTemplates = fixed.templates;
     state.fixedTemplateVersion = fixed.version;
+    state.savedSearchEvaluations = searchEvaluations.results;
+    state.evaluationCurrentResult = null;
+    state.evaluationQuery = "";
     await persistNormalizedYears(state.years);
     state.persistentAuditLog = await listAuditLogEntries();
     state.selectedYear = getDefaultSelectedYear(years);
     state.selectedMonth = getCurrentMonthNumber();
     markBackupCompleted(file.name);
     showToast("Backup wurde importiert.");
+    render();
+  }
+
+  function runKeywordEvaluation(keyword: string): void {
+    state.evaluationQuery = keyword;
+    state.evaluationCurrentResult = evaluateKeywordAcrossYears(
+      state.years,
+      keyword,
+      getCurrentYearNumber(),
+    );
+    render();
+  }
+
+  async function saveCurrentKeywordEvaluation(): Promise<void> {
+    const result = state.evaluationCurrentResult;
+    if (!result || !result.keywordNormalized) {
+      showToast("Bitte zuerst ein gültiges Suchwort auswerten.", "error");
+      return;
+    }
+
+    const existingIndex = state.savedSearchEvaluations.findIndex(
+      (entry) => entry.id === result.id,
+    );
+    if (existingIndex >= 0) {
+      state.savedSearchEvaluations[existingIndex] = result;
+    } else {
+      state.savedSearchEvaluations = [result, ...state.savedSearchEvaluations];
+    }
+
+    await saveSearchEvaluations(state.savedSearchEvaluations);
+    markDataChanged(`Auswertung gespeichert: ${result.keyword}`);
+    showToast(`Auswertung "${result.keyword}" wurde gespeichert.`);
+    render();
+  }
+
+  async function removeSavedKeywordEvaluation(id: string): Promise<void> {
+    const toRemove = state.savedSearchEvaluations.find((entry) => entry.id === id);
+    if (!toRemove) {
+      return;
+    }
+
+    state.savedSearchEvaluations = state.savedSearchEvaluations.filter(
+      (entry) => entry.id !== id,
+    );
+    await saveSearchEvaluations(state.savedSearchEvaluations);
+    markDataChanged(`Auswertung gelöscht: ${toRemove.keyword}`);
+    showToast(`Gespeicherte Auswertung "${toRemove.keyword}" wurde gelöscht.`);
     render();
   }
 
@@ -5462,6 +5533,151 @@ export function createAppController(root: HTMLElement) {
       </div>
     `;
 
+    const evaluationResult = state.evaluationCurrentResult;
+    const evaluationPanelHtml = `
+      <div class="grid">
+        <div class="inline">
+          <label>
+            Suchwort
+            <input id="evaluation-query" type="text" placeholder="z.B. Klamotten" value="${escapeHtml(state.evaluationQuery)}" />
+          </label>
+          <button class="btn btn-primary" id="run-evaluation" type="button">Auswerten</button>
+          <button class="btn" id="save-evaluation" type="button" ${evaluationResult && evaluationResult.keywordNormalized ? "" : "disabled"}>Ergebnis speichern</button>
+        </div>
+
+        ${evaluationResult
+        ? `
+              <div class="eval-grid">
+                <section class="eval-tile">
+                  <header class="eval-tile-header">
+                    <h4>Aktuelles Ergebnis</h4>
+                    <div class="eval-tile-columns"><span>Wert</span><span></span></div>
+                  </header>
+                  <div class="eval-rows">
+                    <div class="eval-row eval-strong">
+                      <div class="eval-label">Suchwort</div>
+                      <div class="eval-value">${escapeHtml(evaluationResult.keyword || "-")}</div>
+                      <div class="eval-value"></div>
+                    </div>
+                    <div class="eval-row eval-strong">
+                      <div class="eval-label">Treffer gesamt</div>
+                      <div class="eval-value">${evaluationResult.totalHitCount}</div>
+                      <div class="eval-value"></div>
+                    </div>
+                    <div class="eval-row eval-strong">
+                      <div class="eval-label">Betragssumme gesamt</div>
+                      <div class="eval-value budget-under">${centsToEuro(evaluationResult.totalCents)}</div>
+                      <div class="eval-value"></div>
+                    </div>
+                    <div class="eval-row eval-strong">
+                      <div class="eval-label">Betragssumme laufendes Jahr</div>
+                      <div class="eval-value">${centsToEuro(evaluationResult.currentYearCents)}</div>
+                      <div class="eval-value"></div>
+                    </div>
+                    <div class="eval-row eval-strong">
+                      <div class="eval-label">Monatsschnitt (Monate mit Treffern)</div>
+                      <div class="eval-value">${centsToEuro(evaluationResult.monthAverageCents)}</div>
+                      <div class="eval-value"></div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <h3>Treffer nach Jahr</h3>
+              <table>
+                <thead>
+                  <tr><th>Jahr</th><th>Treffer</th><th>Summe (€)</th><th>Treffer-Monate</th><th>Monatsschnitt (€)</th></tr>
+                </thead>
+                <tbody>
+                  ${evaluationResult.yearRows.length > 0
+          ? evaluationResult.yearRows
+            .map(
+              (row) => `<tr>
+                              <td>${row.year}</td>
+                              <td>${row.hitCount}</td>
+                              <td>${centsToEuro(row.totalCents)}</td>
+                              <td>${row.monthsWithHits}</td>
+                              <td>${centsToEuro(row.monthAverageCents)}</td>
+                            </tr>`,
+            )
+            .join("")
+          : '<tr><td colspan="5" class="muted">Keine Treffer gefunden.</td></tr>'
+        }
+                </tbody>
+              </table>
+
+              <h3>Treffer nach Monat</h3>
+              <table>
+                <thead>
+                  <tr><th>Jahr</th><th>Monat</th><th>Treffer</th><th>Summe (€)</th></tr>
+                </thead>
+                <tbody>
+                  ${evaluationResult.monthRows.length > 0
+          ? evaluationResult.monthRows
+            .map(
+              (row) => `<tr>
+                              <td>${row.year}</td>
+                              <td>${monthLabel(row.month)}</td>
+                              <td>${row.hitCount}</td>
+                              <td>${centsToEuro(row.totalCents)}</td>
+                            </tr>`,
+            )
+            .join("")
+          : '<tr><td colspan="4" class="muted">Keine Treffer gefunden.</td></tr>'
+        }
+                </tbody>
+              </table>
+            `
+        : '<p class="muted">Noch keine Auswertung ausgeführt.</p>'
+      }
+
+        <h3>Gespeicherte Auswertungen</h3>
+        ${state.savedSearchEvaluations.length === 0
+        ? '<p class="muted">Noch keine gespeicherten Auswertungen vorhanden.</p>'
+        : state.savedSearchEvaluations
+          .map(
+            (saved) => `
+                  <article class="card">
+                    <div class="inline">
+                      <strong>${escapeHtml(saved.keyword)}</strong>
+                      <span class="muted">${new Date(saved.createdAt).toLocaleString("de-DE")}</span>
+                      <button class="btn btn-quiet" data-remove-saved-evaluation="${saved.id}" type="button">Löschen</button>
+                    </div>
+                    <div class="inline">
+                      <span>Treffer: <strong>${saved.totalHitCount}</strong></span>
+                      <span>Summe: <strong>${centsToEuro(saved.totalCents)}</strong></span>
+                      <span>Laufendes Jahr: <strong>${centsToEuro(saved.currentYearCents)}</strong></span>
+                      <span>Monatsschnitt: <strong>${centsToEuro(saved.monthAverageCents)}</strong></span>
+                    </div>
+                    <table>
+                      <thead>
+                        <tr><th>Jahr</th><th>Treffer</th><th>Summe (€)</th><th>Treffer-Monate</th><th>Monatsschnitt (€)</th></tr>
+                      </thead>
+                      <tbody>
+                        ${saved.yearRows.length > 0
+                ? saved.yearRows
+                  .map(
+                    (row) => `<tr>
+                                <td>${row.year}</td>
+                                <td>${row.hitCount}</td>
+                                <td>${centsToEuro(row.totalCents)}</td>
+                                <td>${row.monthsWithHits}</td>
+                                <td>${centsToEuro(row.monthAverageCents)}</td>
+                              </tr>`,
+                  )
+                  .join("")
+                : '<tr><td colspan="5" class="muted">Keine Treffer gefunden.</td></tr>'
+              }
+                      </tbody>
+                    </table>
+                  </article>
+                `,
+          )
+          .join("")
+      }
+      </div>
+    `;
+
     const modalTitle =
       state.topModal === "years"
         ? "Jahr hinzufügen"
@@ -5471,7 +5687,9 @@ export function createAppController(root: HTMLElement) {
             ? "Variable Fixkosten"
             : state.topModal === "dashboard"
               ? "Dashboard"
-              : "";
+              : state.topModal === "evaluation"
+                ? "Auswertung"
+                : "";
 
     const modalBody =
       state.topModal === "years"
@@ -5482,7 +5700,9 @@ export function createAppController(root: HTMLElement) {
             ? annualVariableFixedTemplatesPanelHtml
             : state.topModal === "dashboard"
               ? dashboardPanelHtml
-              : "";
+              : state.topModal === "evaluation"
+                ? evaluationPanelHtml
+                : "";
 
     root.innerHTML = `
       <div class="app grid">
@@ -5504,6 +5724,7 @@ export function createAppController(root: HTMLElement) {
 
         <div class="top-shortcuts" role="navigation" aria-label="Schnellzugriff">
           <button class="btn" id="open-years-modal" type="button">Jahr hinzufügen</button>
+          <button class="btn" id="open-evaluation-modal" type="button">Auswertung</button>
           <button class="btn" id="open-fixed-modal" type="button">Fixe Kosten (zentral)</button>
           <button class="btn" id="open-variable-fixed-modal" type="button">Variable Fixkosten</button>
           <button class="btn" id="open-dashboard-modal" type="button">Dashboard</button>
@@ -6640,6 +6861,8 @@ export function createAppController(root: HTMLElement) {
 
     const openYearsModalButton =
       root.querySelector<HTMLButtonElement>("#open-years-modal");
+    const openEvaluationModalButton =
+      root.querySelector<HTMLButtonElement>("#open-evaluation-modal");
     const openFixedModalButton =
       root.querySelector<HTMLButtonElement>("#open-fixed-modal");
     const openVariableFixedModalButton = root.querySelector<HTMLButtonElement>(
@@ -6675,6 +6898,12 @@ export function createAppController(root: HTMLElement) {
     const newYearInput = root.querySelector<HTMLInputElement>("#new-year");
     const createYearButton =
       root.querySelector<HTMLButtonElement>("#create-year");
+    const evaluationQueryInput =
+      root.querySelector<HTMLInputElement>("#evaluation-query");
+    const runEvaluationButton =
+      root.querySelector<HTMLButtonElement>("#run-evaluation");
+    const saveEvaluationButton =
+      root.querySelector<HTMLButtonElement>("#save-evaluation");
     const yearSelect = root.querySelector<HTMLSelectElement>("#year-select");
     const monthSelect = root.querySelector<HTMLSelectElement>("#month-select");
 
@@ -6687,6 +6916,10 @@ export function createAppController(root: HTMLElement) {
 
     openYearsModalButton?.addEventListener("click", () => {
       openTopModal("years");
+    });
+
+    openEvaluationModalButton?.addEventListener("click", () => {
+      openTopModal("evaluation");
     });
 
     openFixedModalButton?.addEventListener("click", () => {
@@ -6799,6 +7032,34 @@ export function createAppController(root: HTMLElement) {
       }
       await createYear(yearValue);
     });
+
+    runEvaluationButton?.addEventListener("click", () => {
+      runKeywordEvaluation(evaluationQueryInput?.value ?? "");
+    });
+
+    evaluationQueryInput?.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") {
+        return;
+      }
+      event.preventDefault();
+      runKeywordEvaluation(evaluationQueryInput.value);
+    });
+
+    saveEvaluationButton?.addEventListener("click", async () => {
+      await saveCurrentKeywordEvaluation();
+    });
+
+    root
+      .querySelectorAll<HTMLButtonElement>("[data-remove-saved-evaluation]")
+      .forEach((button) => {
+        button.addEventListener("click", async () => {
+          const id = button.dataset.removeSavedEvaluation;
+          if (!id) {
+            return;
+          }
+          await removeSavedKeywordEvaluation(id);
+        });
+      });
 
     yearSelect?.addEventListener("change", () => {
       state.selectedYear = Number.parseInt(yearSelect.value, 10);

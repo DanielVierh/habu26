@@ -81,10 +81,40 @@ export interface AuditLogEntry {
   message: string;
 }
 
+export interface SearchEvaluationMonthRow {
+  year: YearNumber;
+  month: MonthNumber;
+  hitCount: number;
+  totalCents: EuroCents;
+}
+
+export interface SearchEvaluationYearRow {
+  year: YearNumber;
+  hitCount: number;
+  totalCents: EuroCents;
+  monthsWithHits: number;
+  monthAverageCents: EuroCents;
+}
+
+export interface SearchEvaluationResult {
+  id: string;
+  keyword: string;
+  keywordNormalized: string;
+  createdAt: string;
+  totalHitCount: number;
+  totalCents: EuroCents;
+  currentYearCents: EuroCents;
+  monthsWithHits: number;
+  monthAverageCents: EuroCents;
+  yearRows: SearchEvaluationYearRow[];
+  monthRows: SearchEvaluationMonthRow[];
+}
+
 export interface BackupPayload {
   exportedAt: string;
   years: YearBook[];
   fixedTemplates: FixedCostTemplate[];
   annualVariableFixedTemplates?: AnnualVariableFixedCostTemplate[];
   auditLogEntries?: AuditLogEntry[];
+  savedSearchEvaluations?: SearchEvaluationResult[];
 }

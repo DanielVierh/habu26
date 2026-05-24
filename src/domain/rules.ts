@@ -7,6 +7,9 @@ import type {
   IncomeSource,
   MonthBook,
   MonthNumber,
+  SearchEvaluationMonthRow,
+  SearchEvaluationResult,
+  SearchEvaluationYearRow,
   YearBook,
   YearNumber,
 } from "./model";
@@ -121,5 +124,143 @@ export function createIncomeEntry(
   return {
     ...entryBase,
     incomeSource,
+  };
+}
+
+function includesKeyword(value: string, keyword: string): boolean {
+  return value.toLocaleLowerCase("de-DE").includes(keyword);
+}
+
+export function evaluateKeywordAcrossYears(
+  years: YearBook[],
+  keyword: string,
+  currentYear: number,
+): SearchEvaluationResult {
+  const trimmedKeyword = keyword.trim();
+  const normalizedKeyword = trimmedKeyword.toLocaleLowerCase("de-DE");
+
+  if (!normalizedKeyword) {
+    return {
+      id: createId("search_eval"),
+      keyword: "",
+      keywordNormalized: "",
+      createdAt: nowIso(),
+      totalHitCount: 0,
+      totalCents: 0,
+      currentYearCents: 0,
+      monthsWithHits: 0,
+      monthAverageCents: 0,
+      yearRows: [],
+      monthRows: [],
+    };
+  }
+
+  let totalHitCount = 0;
+  let totalCents = 0;
+  let currentYearCents = 0;
+  let monthsWithHits = 0;
+
+  const yearRows: SearchEvaluationYearRow[] = [];
+  const monthRows: SearchEvaluationMonthRow[] = [];
+
+  years
+    .slice()
+    .sort((left, right) => left.year - right.year)
+    .forEach((year) => {
+      let yearHitCount = 0;
+      let yearTotalCents = 0;
+      let yearMonthsWithHits = 0;
+
+      year.months
+        .slice()
+        .sort((left, right) => left.month - right.month)
+        .forEach((month) => {
+          let monthHitCount = 0;
+          let monthTotalCents = 0;
+
+          month.fixedCosts.forEach((entry) => {
+            if (!includesKeyword(entry.name, normalizedKeyword)) {
+              return;
+            }
+            monthHitCount += 1;
+            monthTotalCents += entry.actualCents;
+          });
+
+          month.variableCosts.forEach((entry) => {
+            if (!includesKeyword(entry.description, normalizedKeyword)) {
+              return;
+            }
+            monthHitCount += 1;
+            monthTotalCents += entry.amountCents;
+          });
+
+          month.variablePositions.forEach((entry) => {
+            if (!includesKeyword(entry.name, normalizedKeyword)) {
+              return;
+            }
+            monthHitCount += 1;
+            monthTotalCents += entry.actualCents;
+          });
+
+          month.miscCosts.forEach((entry) => {
+            if (!includesKeyword(entry.description, normalizedKeyword)) {
+              return;
+            }
+            monthHitCount += 1;
+            monthTotalCents += entry.amountCents;
+          });
+
+          if (monthHitCount <= 0) {
+            return;
+          }
+
+          yearHitCount += monthHitCount;
+          yearTotalCents += monthTotalCents;
+          yearMonthsWithHits += 1;
+
+          totalHitCount += monthHitCount;
+          totalCents += monthTotalCents;
+          monthsWithHits += 1;
+
+          monthRows.push({
+            year: year.year,
+            month: month.month,
+            hitCount: monthHitCount,
+            totalCents: monthTotalCents,
+          });
+        });
+
+      if (yearHitCount <= 0) {
+        return;
+      }
+
+      if (year.year === currentYear) {
+        currentYearCents += yearTotalCents;
+      }
+
+      yearRows.push({
+        year: year.year,
+        hitCount: yearHitCount,
+        totalCents: yearTotalCents,
+        monthsWithHits: yearMonthsWithHits,
+        monthAverageCents:
+          yearMonthsWithHits > 0
+            ? Math.round(yearTotalCents / yearMonthsWithHits)
+            : 0,
+      });
+    });
+
+  return {
+    id: createId("search_eval"),
+    keyword: trimmedKeyword,
+    keywordNormalized: normalizedKeyword,
+    createdAt: nowIso(),
+    totalHitCount,
+    totalCents,
+    currentYearCents,
+    monthsWithHits,
+    monthAverageCents: monthsWithHits > 0 ? Math.round(totalCents / monthsWithHits) : 0,
+    yearRows,
+    monthRows,
   };
 }

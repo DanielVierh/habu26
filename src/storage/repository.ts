@@ -3,6 +3,7 @@ import type {
   AuditLogEntry,
   BackupPayload,
   FixedCostTemplate,
+  SearchEvaluationResult,
   YearBook,
 } from "../domain/model";
 import { db } from "./db";
@@ -95,6 +96,37 @@ export async function appendAuditLogEntry(entry: AuditLogEntry): Promise<void> {
   await db.auditLog.put(entry);
 }
 
+export async function getSearchEvaluationState(): Promise<{
+  results: SearchEvaluationResult[];
+  version: string;
+}> {
+  const existing = await db.searchEvaluationState.get(SINGLETON_ID);
+  if (!existing) {
+    const initial = {
+      id: SINGLETON_ID,
+      results: [],
+      version: versionToken(),
+      updatedAt: new Date().toISOString(),
+    };
+    await db.searchEvaluationState.put(initial);
+    return { results: [], version: initial.version };
+  }
+  return { results: existing.results, version: existing.version };
+}
+
+export async function saveSearchEvaluations(
+  results: SearchEvaluationResult[],
+): Promise<string> {
+  const version = versionToken();
+  await db.searchEvaluationState.put({
+    id: SINGLETON_ID,
+    results,
+    version,
+    updatedAt: new Date().toISOString(),
+  });
+  return version;
+}
+
 export async function listAuditLogEntries(): Promise<AuditLogEntry[]> {
   return db.auditLog.orderBy("timestampIso").toArray();
 }
@@ -111,11 +143,13 @@ export async function replaceAuditLogEntries(
 
 export async function createBackupPayload(): Promise<BackupPayload> {
   const years = await listYears();
-  const [fixed, annualVariableFixed, auditLogEntries] = await Promise.all([
-    getFixedTemplateState(),
-    getAnnualVariableFixedTemplateState(),
-    listAuditLogEntries(),
-  ]);
+  const [fixed, annualVariableFixed, auditLogEntries, searchEvaluations] =
+    await Promise.all([
+      getFixedTemplateState(),
+      getAnnualVariableFixedTemplateState(),
+      listAuditLogEntries(),
+      getSearchEvaluationState(),
+    ]);
 
   return {
     exportedAt: new Date().toISOString(),
@@ -123,6 +157,7 @@ export async function createBackupPayload(): Promise<BackupPayload> {
     fixedTemplates: fixed.templates,
     annualVariableFixedTemplates: annualVariableFixed.templates,
     auditLogEntries,
+    savedSearchEvaluations: searchEvaluations.results,
   };
 }
 
@@ -134,6 +169,7 @@ export async function restoreFromBackup(payload: BackupPayload): Promise<void> {
       db.fixedTemplateState,
       db.annualVariableFixedTemplateState,
       db.auditLog,
+      db.searchEvaluationState,
     ],
     async () => {
       await db.years.clear();
@@ -143,6 +179,7 @@ export async function restoreFromBackup(payload: BackupPayload): Promise<void> {
         payload.annualVariableFixedTemplates ?? [],
       );
       await replaceAuditLogEntries(payload.auditLogEntries ?? []);
+      await saveSearchEvaluations(payload.savedSearchEvaluations ?? []);
     },
   );
 }

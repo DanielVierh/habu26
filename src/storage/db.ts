@@ -3,6 +3,7 @@ import type {
   AnnualVariableFixedCostTemplate,
   AuditLogEntry,
   FixedCostTemplate,
+  SearchEvaluationResult,
   YearBook,
 } from "../domain/model";
 
@@ -20,6 +21,13 @@ interface AnnualVariableFixedTemplateState {
   updatedAt: string;
 }
 
+interface SearchEvaluationState {
+  id: "singleton";
+  results: SearchEvaluationResult[];
+  version: string;
+  updatedAt: string;
+}
+
 export interface AppDb extends Dexie {
   years: EntityTable<YearBook, "year">;
   fixedTemplateState: EntityTable<FixedTemplateState, "id">;
@@ -28,6 +36,7 @@ export interface AppDb extends Dexie {
     "id"
   >;
   auditLog: EntityTable<AuditLogEntry, "id">;
+  searchEvaluationState: EntityTable<SearchEvaluationState, "id">;
 }
 
 export const db = new Dexie("haushaltsbuch-db") as AppDb;
@@ -50,4 +59,16 @@ db.version(3).stores({
   auditLog: "id,timestampIso",
 });
 
-export type { AnnualVariableFixedTemplateState, FixedTemplateState };
+db.version(4).stores({
+  years: "year",
+  fixedTemplateState: "id",
+  annualVariableFixedTemplateState: "id",
+  auditLog: "id,timestampIso",
+  searchEvaluationState: "id",
+});
+
+export type {
+  AnnualVariableFixedTemplateState,
+  FixedTemplateState,
+  SearchEvaluationState,
+};
