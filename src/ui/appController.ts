@@ -3050,6 +3050,109 @@ export function createAppController(root: HTMLElement) {
     render();
   }
 
+  function parseSemicolonCsvLine(rawLine: string): string[] {
+    const values: string[] = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let index = 0; index < rawLine.length; index += 1) {
+      const char = rawLine[index];
+      const nextChar = rawLine[index + 1];
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          current += '"';
+          index += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+
+      if (char === ";" && !inQuotes) {
+        values.push(current.trim());
+        current = "";
+        continue;
+      }
+
+      current += char;
+    }
+
+    values.push(current.trim());
+    return values;
+  }
+
+  async function importMiscExpensesFromCsv(file: File): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      showToast("Bitte zuerst ein Jahr und einen Monat auswählen.", "error");
+      return;
+    }
+
+    const fileText = await file.text();
+    const lines = fileText
+      .replace(/^\uFEFF/, "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    if (lines.length === 0) {
+      showToast("CSV-Datei ist leer.", "error");
+      return;
+    }
+
+    const duplicateKeys = new Set(
+      month.miscCosts.map((entry) => `${entry.description}__${entry.amountCents}`),
+    );
+
+    let importedCount = 0;
+    let skippedDuplicateCount = 0;
+    let invalidLineCount = 0;
+
+    lines.forEach((line) => {
+      const columns = parseSemicolonCsvLine(line);
+      if (columns.length !== 2) {
+        invalidLineCount += 1;
+        return;
+      }
+
+      const description = columns[0]?.trim() ?? "";
+      const amountText = columns[1]?.trim() ?? "";
+      const amountCents = euroToCents(amountText);
+      if (!description || amountCents <= 0) {
+        invalidLineCount += 1;
+        return;
+      }
+
+      const duplicateKey = `${description}__${amountCents}`;
+      if (duplicateKeys.has(duplicateKey)) {
+        skippedDuplicateCount += 1;
+        return;
+      }
+
+      month.miscCosts.push(createExpense(description, amountCents));
+      duplicateKeys.add(duplicateKey);
+      importedCount += 1;
+    });
+
+    if (importedCount === 0) {
+      const noImportMessage =
+        invalidLineCount > 0 || skippedDuplicateCount > 0
+          ? `Keine Position importiert (Duplikate: ${skippedDuplicateCount}, ungültig: ${invalidLineCount}).`
+          : "Keine Position importiert.";
+      showToast(noImportMessage, "error");
+      return;
+    }
+
+    await persistSelectedYear(
+      `Sonstiges CSV-Import: ${importedCount} Position(en), Duplikate übersprungen: ${skippedDuplicateCount}, ungültige Zeilen: ${invalidLineCount}`,
+    );
+    showToast(
+      `Import abgeschlossen: ${importedCount} übernommen, ${skippedDuplicateCount} Duplikate, ${invalidLineCount} ungültig.`,
+    );
+    render();
+  }
+
   async function removeMiscExpense(expenseId: string): Promise<void> {
     const shouldDelete = confirm("Sonstiges-Position wirklich löschen?");
     if (!shouldDelete) {
@@ -6819,6 +6922,12 @@ export function createAppController(root: HTMLElement) {
                 <button class="btn btn-primary" id="add-misc" ${month ? "" : "disabled"}>Position anlegen</button>
                 <button class="btn" id="add-misc-recurring" ${month ? "" : "disabled"}>Wiederkehrend erfassen</button>
               </div>
+              <div class="inline">
+                <button class="btn" id="import-misc-csv" type="button" ${month ? "" : "disabled"}>Import</button>
+                <input id="import-misc-csv-input" type="file" accept=".csv,text/csv" ${month ? "" : "disabled"} style="display:none" />
+                <a class="btn btn-quiet" href="/misc-import-template.csv" download>CSV-Vorlage</a>
+              </div>
+              <p class="muted">Format ohne Header: Positionsbezeichnung;Betrag</p>
               <table>
                 <thead>
                   <tr><th>Beschreibung</th><th>Betrag (€)</th><th></th></tr>
@@ -7337,6 +7446,12 @@ export function createAppController(root: HTMLElement) {
     const addMiscRecurringButton = root.querySelector<HTMLButtonElement>(
       "#add-misc-recurring",
     );
+    const importMiscCsvButton = root.querySelector<HTMLButtonElement>(
+      "#import-misc-csv",
+    );
+    const importMiscCsvInput = root.querySelector<HTMLInputElement>(
+      "#import-misc-csv-input",
+    );
     const incomeDescriptionInput = root.querySelector<HTMLInputElement>(
       "#income-description",
     );
@@ -7426,6 +7541,26 @@ export function createAppController(root: HTMLElement) {
       );
       if (miscDescriptionInput) miscDescriptionInput.value = "";
       if (miscAmountInput) miscAmountInput.value = "";
+    });
+
+    importMiscCsvButton?.addEventListener("click", () => {
+      importMiscCsvInput?.click();
+    });
+
+    importMiscCsvInput?.addEventListener("change", async () => {
+      const file = importMiscCsvInput.files?.[0];
+      if (!file) {
+        return;
+      }
+
+      try {
+        await importMiscExpensesFromCsv(file);
+      } catch (error) {
+        console.error("Sonstiges-CSV-Import fehlgeschlagen", error);
+        showToast("CSV konnte nicht importiert werden.", "error");
+      }
+
+      importMiscCsvInput.value = "";
     });
 
     addIncomeButton?.addEventListener("click", async () => {
