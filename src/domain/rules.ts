@@ -135,6 +135,7 @@ export function evaluateKeywordAcrossYears(
   years: YearBook[],
   keyword: string,
   currentYear: number,
+  currentMonth: number,
 ): SearchEvaluationResult {
   const trimmedKeyword = keyword.trim();
   const normalizedKeyword = trimmedKeyword.toLocaleLowerCase("de-DE");
@@ -159,6 +160,8 @@ export function evaluateKeywordAcrossYears(
   let totalCents = 0;
   let currentYearCents = 0;
   let monthsWithHits = 0;
+  let monthAverageSourceCents = 0;
+  const cappedCurrentMonth = Math.max(1, Math.min(12, currentMonth));
 
   const yearRows: SearchEvaluationYearRow[] = [];
   const monthRows: SearchEvaluationMonthRow[] = [];
@@ -170,6 +173,8 @@ export function evaluateKeywordAcrossYears(
       let yearHitCount = 0;
       let yearTotalCents = 0;
       let yearMonthsWithHits = 0;
+      let yearAverageSourceCents = 0;
+      let yearAverageMonthsWithHits = 0;
 
       year.months
         .slice()
@@ -218,9 +223,24 @@ export function evaluateKeywordAcrossYears(
           yearTotalCents += monthTotalCents;
           yearMonthsWithHits += 1;
 
+          const isIncludedForYearAverage =
+            year.year < currentYear ||
+            (year.year === currentYear && month.month <= cappedCurrentMonth);
+          if (isIncludedForYearAverage) {
+            yearAverageMonthsWithHits += 1;
+            yearAverageSourceCents += monthTotalCents;
+          }
+
           totalHitCount += monthHitCount;
           totalCents += monthTotalCents;
-          monthsWithHits += 1;
+
+          const isIncludedForMonthAverage =
+            year.year < currentYear ||
+            (year.year === currentYear && month.month <= cappedCurrentMonth);
+          if (isIncludedForMonthAverage) {
+            monthsWithHits += 1;
+            monthAverageSourceCents += monthTotalCents;
+          }
 
           monthRows.push({
             year: year.year,
@@ -242,10 +262,10 @@ export function evaluateKeywordAcrossYears(
         year: year.year,
         hitCount: yearHitCount,
         totalCents: yearTotalCents,
-        monthsWithHits: yearMonthsWithHits,
+        monthsWithHits: yearAverageMonthsWithHits,
         monthAverageCents:
-          yearMonthsWithHits > 0
-            ? Math.round(yearTotalCents / yearMonthsWithHits)
+          yearAverageMonthsWithHits > 0
+            ? Math.round(yearAverageSourceCents / yearAverageMonthsWithHits)
             : 0,
       });
     });
@@ -259,7 +279,8 @@ export function evaluateKeywordAcrossYears(
     totalCents,
     currentYearCents,
     monthsWithHits,
-    monthAverageCents: monthsWithHits > 0 ? Math.round(totalCents / monthsWithHits) : 0,
+    monthAverageCents:
+      monthsWithHits > 0 ? Math.round(monthAverageSourceCents / monthsWithHits) : 0,
     yearRows,
     monthRows,
   };

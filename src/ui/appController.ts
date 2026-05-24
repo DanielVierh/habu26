@@ -1437,6 +1437,32 @@ export function createAppController(root: HTMLElement) {
     localStorage.setItem(LAST_BACKUP_FILENAME_STORAGE_KEY, trimmed);
   }
 
+  async function refreshSavedSearchEvaluations(): Promise<void> {
+    if (state.savedSearchEvaluations.length === 0) {
+      return;
+    }
+
+    const currentYear = getCurrentYearNumber();
+    const currentMonth = getCurrentMonthNumber();
+    const recalculated = state.savedSearchEvaluations.map((entry) => {
+      const recalculatedEntry = evaluateKeywordAcrossYears(
+        state.years,
+        entry.keyword,
+        currentYear,
+        currentMonth,
+      );
+
+      return {
+        ...recalculatedEntry,
+        id: entry.id,
+        createdAt: entry.createdAt,
+      };
+    });
+
+    state.savedSearchEvaluations = recalculated;
+    await saveSearchEvaluations(recalculated);
+  }
+
   async function init(): Promise<void> {
     ensureToastRoot();
     applyTheme(loadTheme());
@@ -1463,6 +1489,7 @@ export function createAppController(root: HTMLElement) {
     state.fixedTemplateVersion = fixed.version;
     state.savedSearchEvaluations = searchEvaluations.results;
     await persistNormalizedYears(state.years);
+    await refreshSavedSearchEvaluations();
     if (years.length > 0) {
       state.selectedYear = getDefaultSelectedYear(years);
       state.selectedMonth = getCurrentMonthNumber();
@@ -3291,6 +3318,7 @@ export function createAppController(root: HTMLElement) {
     state.evaluationCurrentResult = null;
     state.evaluationQuery = "";
     await persistNormalizedYears(state.years);
+    await refreshSavedSearchEvaluations();
     state.persistentAuditLog = await listAuditLogEntries();
     state.selectedYear = getDefaultSelectedYear(years);
     state.selectedMonth = getCurrentMonthNumber();
@@ -3305,6 +3333,7 @@ export function createAppController(root: HTMLElement) {
       state.years,
       keyword,
       getCurrentYearNumber(),
+      getCurrentMonthNumber(),
     );
     render();
   }

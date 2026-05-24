@@ -82,6 +82,7 @@ describe("rules", () => {
       [year2026, year2025],
       "klamotten",
       2026,
+      12,
     );
 
     expect(result.keyword).toBe("klamotten");
@@ -125,7 +126,7 @@ describe("rules", () => {
 
   it("liefert leere Auswertung bei leerem Suchwort", () => {
     const year = createYearWithMonths(2026, [], "v1");
-    const result = evaluateKeywordAcrossYears([year], "   ", 2026);
+    const result = evaluateKeywordAcrossYears([year], "   ", 2026, 12);
 
     expect(result.keyword).toBe("");
     expect(result.totalHitCount).toBe(0);
@@ -135,5 +136,42 @@ describe("rules", () => {
     expect(result.monthAverageCents).toBe(0);
     expect(result.yearRows).toEqual([]);
     expect(result.monthRows).toEqual([]);
+  });
+
+  it("berechnet Monatsschnitt im laufenden Jahr nur bis inkl. aktuellem Monat", () => {
+    const year2026 = createYearWithMonths(2026, [], "v1");
+    const mar2026 = year2026.months[2];
+    const dec2026 = year2026.months[11];
+    if (!mar2026 || !dec2026) {
+      throw new Error("Testdaten konnten nicht vorbereitet werden.");
+    }
+
+    mar2026.miscCosts.push({
+      id: "m-2",
+      description: "Klamotten März",
+      amountCents: 3000,
+      createdAt: "2026-03-05T08:00:00.000Z",
+    });
+    dec2026.miscCosts.push({
+      id: "m-3",
+      description: "Klamotten Dezember",
+      amountCents: 9000,
+      createdAt: "2026-12-05T08:00:00.000Z",
+    });
+
+    const result = evaluateKeywordAcrossYears([year2026], "klamotten", 2026, 3);
+
+    expect(result.totalCents).toBe(12000);
+    expect(result.monthsWithHits).toBe(1);
+    expect(result.monthAverageCents).toBe(3000);
+    expect(result.yearRows).toEqual([
+      {
+        year: 2026,
+        hitCount: 2,
+        totalCents: 12000,
+        monthsWithHits: 1,
+        monthAverageCents: 3000,
+      },
+    ]);
   });
 });
