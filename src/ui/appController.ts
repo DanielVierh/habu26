@@ -6925,7 +6925,7 @@ export function createAppController(root: HTMLElement) {
               <div class="inline">
                 <button class="btn" id="import-misc-csv" type="button" ${month ? "" : "disabled"}>Import</button>
                 <input id="import-misc-csv-input" type="file" accept=".csv,text/csv" ${month ? "" : "disabled"} style="display:none" />
-                <a class="btn btn-quiet" href="/misc-import-template.csv" download>CSV-Vorlage</a>
+                <span>In csv Datei (betrag;wert). Nä. Wert direkt untereinander</span>
               </div>
               <p class="muted">Format ohne Header: Positionsbezeichnung;Betrag</p>
               <table>
