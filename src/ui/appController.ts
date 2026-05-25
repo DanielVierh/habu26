@@ -3153,6 +3153,170 @@ export function createAppController(root: HTMLElement) {
     render();
   }
 
+  async function importFixedCostsFromCsv(file: File): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      showToast("Bitte zuerst ein Jahr und einen Monat auswählen.", "error");
+      return;
+    }
+
+    const fileText = await file.text();
+    const lines = fileText
+      .replace(/^\uFEFF/, "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    if (lines.length === 0) {
+      showToast("CSV-Datei ist leer.", "error");
+      return;
+    }
+
+    const duplicateKeys = new Set(
+      month.fixedCosts.map(
+        (entry) => `${entry.name}__${entry.plannedCents}__${entry.actualCents}`,
+      ),
+    );
+
+    let importedCount = 0;
+    let skippedDuplicateCount = 0;
+    let invalidLineCount = 0;
+
+    lines.forEach((line) => {
+      const columns = parseSemicolonCsvLine(line);
+      if (columns.length !== 2) {
+        invalidLineCount += 1;
+        return;
+      }
+
+      const name = columns[0]?.trim() ?? "";
+      const amountText = columns[1]?.trim() ?? "";
+      const amountCents = euroToCents(amountText);
+
+      if (!name || amountCents <= 0) {
+        invalidLineCount += 1;
+        return;
+      }
+
+      const duplicateKey = `${name}__${amountCents}__${amountCents}`;
+      if (duplicateKeys.has(duplicateKey)) {
+        skippedDuplicateCount += 1;
+        return;
+      }
+
+      month.fixedCosts.push({
+        id: createId("fixed"),
+        templateId: createId("fixed-local"),
+        name,
+        plannedCents: amountCents,
+        actualCents: amountCents,
+      });
+      duplicateKeys.add(duplicateKey);
+      importedCount += 1;
+    });
+
+    if (importedCount === 0) {
+      const noImportMessage =
+        invalidLineCount > 0 || skippedDuplicateCount > 0
+          ? `Keine Position importiert (Duplikate: ${skippedDuplicateCount}, ungültig: ${invalidLineCount}).`
+          : "Keine Position importiert.";
+      showToast(noImportMessage, "error");
+      return;
+    }
+
+    recalculateFixedBudget(month);
+
+    await persistSelectedYear(
+      `Fixkosten CSV-Import: ${importedCount} Position(en), Duplikate übersprungen: ${skippedDuplicateCount}, ungültige Zeilen: ${invalidLineCount}`,
+    );
+    showToast(
+      `Import abgeschlossen: ${importedCount} übernommen, ${skippedDuplicateCount} Duplikate, ${invalidLineCount} ungültig.`,
+    );
+    render();
+  }
+
+  async function importVariablePositionsFromCsv(file: File): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      showToast("Bitte zuerst ein Jahr und einen Monat auswählen.", "error");
+      return;
+    }
+
+    const fileText = await file.text();
+    const lines = fileText
+      .replace(/^\uFEFF/, "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    if (lines.length === 0) {
+      showToast("CSV-Datei ist leer.", "error");
+      return;
+    }
+
+    const duplicateKeys = new Set(
+      month.variablePositions.map(
+        (position) =>
+          `${position.name}__${position.budgetCents}__${position.actualCents}`,
+      ),
+    );
+
+    let importedCount = 0;
+    let skippedDuplicateCount = 0;
+    let invalidLineCount = 0;
+
+    lines.forEach((line) => {
+      const columns = parseSemicolonCsvLine(line);
+      if (columns.length !== 2) {
+        invalidLineCount += 1;
+        return;
+      }
+
+      const name = columns[0]?.trim() ?? "";
+      const amountText = columns[1]?.trim() ?? "";
+      const amountCents = euroToCents(amountText);
+
+      if (!name || amountCents <= 0) {
+        invalidLineCount += 1;
+        return;
+      }
+
+      const duplicateKey = `${name}__${amountCents}__${amountCents}`;
+      if (duplicateKeys.has(duplicateKey)) {
+        skippedDuplicateCount += 1;
+        return;
+      }
+
+      month.variablePositions.push({
+        id: createId("varpos"),
+        name,
+        budgetCents: amountCents,
+        actualCents: amountCents,
+      });
+      duplicateKeys.add(duplicateKey);
+      importedCount += 1;
+    });
+
+    if (importedCount === 0) {
+      const noImportMessage =
+        invalidLineCount > 0 || skippedDuplicateCount > 0
+          ? `Keine Position importiert (Duplikate: ${skippedDuplicateCount}, ungültig: ${invalidLineCount}).`
+          : "Keine Position importiert.";
+      showToast(noImportMessage, "error");
+      return;
+    }
+
+    recalculateVariableBudget(month);
+
+    await persistSelectedYear(
+      `Variable CSV-Import: ${importedCount} Position(en), Duplikate übersprungen: ${skippedDuplicateCount}, ungültige Zeilen: ${invalidLineCount}`,
+    );
+    showToast(
+      `Import abgeschlossen: ${importedCount} übernommen, ${skippedDuplicateCount} Duplikate, ${invalidLineCount} ungültig.`,
+    );
+    render();
+  }
+
   async function removeMiscExpense(expenseId: string): Promise<void> {
     const shouldDelete = confirm("Sonstiges-Position wirklich löschen?");
     if (!shouldDelete) {
@@ -6831,6 +6995,11 @@ export function createAppController(root: HTMLElement) {
                 </label>
                 <button class="btn btn-primary" id="add-fixed-cost" ${month ? "" : "disabled"}>Position anlegen</button>
               </div>
+              <div class="inline">
+                <button class="btn" id="import-fixed-csv" type="button" ${month ? "" : "disabled"}>Import</button>
+                <input id="import-fixed-csv-input" type="file" accept=".csv,text/csv" ${month ? "" : "disabled"} style="display:none" />
+              </div>
+              <p class="muted">Format ohne Header: Positionsbezeichnung;Betrag (Betrag wird als Budget und Ist übernommen)</p>
               <table>
                 <thead>
                   <tr><th>Name</th><th>Budget (€)</th><th>Ist (€)</th><th>Abweichung (€)</th><th></th></tr>
@@ -6875,6 +7044,11 @@ export function createAppController(root: HTMLElement) {
                 <button class="btn btn-primary" id="add-variable-position" ${month ? "" : "disabled"}>Position anlegen</button>
                 <button class="btn" id="add-variable-position-recurring" ${month ? "" : "disabled"}>Wiederkehrend erfassen</button>
               </div>
+              <div class="inline">
+                <button class="btn" id="import-variable-csv" type="button" ${month ? "" : "disabled"}>Import</button>
+                <input id="import-variable-csv-input" type="file" accept=".csv,text/csv" ${month ? "" : "disabled"} style="display:none" />
+              </div>
+              <p class="muted">Format ohne Header: Positionsbezeichnung;Betrag (Betrag wird als Budget und Ist übernommen)</p>
               <table>
                 <thead>
                   <tr><th>Position</th><th>Budget (€)</th><th>Ist (€)</th><th>Abweichung (€)</th><th></th></tr>
@@ -7438,6 +7612,12 @@ export function createAppController(root: HTMLElement) {
     );
     const addVariablePositionRecurringButton =
       root.querySelector<HTMLButtonElement>("#add-variable-position-recurring");
+    const importVariableCsvButton = root.querySelector<HTMLButtonElement>(
+      "#import-variable-csv",
+    );
+    const importVariableCsvInput = root.querySelector<HTMLInputElement>(
+      "#import-variable-csv-input",
+    );
     const miscDescriptionInput =
       root.querySelector<HTMLInputElement>("#misc-description");
     const miscAmountInput =
@@ -7470,6 +7650,12 @@ export function createAppController(root: HTMLElement) {
       root.querySelector<HTMLInputElement>("#fixed-cost-budget");
     const addFixedCostButton =
       root.querySelector<HTMLButtonElement>("#add-fixed-cost");
+    const importFixedCsvButton = root.querySelector<HTMLButtonElement>(
+      "#import-fixed-csv",
+    );
+    const importFixedCsvInput = root.querySelector<HTMLInputElement>(
+      "#import-fixed-csv-input",
+    );
 
     const carryoverOverrideInput = root.querySelector<HTMLInputElement>(
       "#carryover-override",
@@ -7493,6 +7679,26 @@ export function createAppController(root: HTMLElement) {
       await addFixedCost(fixedCostNameInput?.value ?? "", plannedCents);
       if (fixedCostNameInput) fixedCostNameInput.value = "";
       if (fixedCostBudgetInput) fixedCostBudgetInput.value = "";
+    });
+
+    importFixedCsvButton?.addEventListener("click", () => {
+      importFixedCsvInput?.click();
+    });
+
+    importFixedCsvInput?.addEventListener("change", async () => {
+      const file = importFixedCsvInput.files?.[0];
+      if (!file) {
+        return;
+      }
+
+      try {
+        await importFixedCostsFromCsv(file);
+      } catch (error) {
+        console.error("Fixkosten-CSV-Import fehlgeschlagen", error);
+        showToast("CSV konnte nicht importiert werden.", "error");
+      }
+
+      importFixedCsvInput.value = "";
     });
 
     addVariablePositionButton?.addEventListener("click", async () => {
@@ -7519,6 +7725,26 @@ export function createAppController(root: HTMLElement) {
       );
       if (variablePositionNameInput) variablePositionNameInput.value = "";
       if (variablePositionBudgetInput) variablePositionBudgetInput.value = "";
+    });
+
+    importVariableCsvButton?.addEventListener("click", () => {
+      importVariableCsvInput?.click();
+    });
+
+    importVariableCsvInput?.addEventListener("change", async () => {
+      const file = importVariableCsvInput.files?.[0];
+      if (!file) {
+        return;
+      }
+
+      try {
+        await importVariablePositionsFromCsv(file);
+      } catch (error) {
+        console.error("Variable-CSV-Import fehlgeschlagen", error);
+        showToast("CSV konnte nicht importiert werden.", "error");
+      }
+
+      importVariableCsvInput.value = "";
     });
 
     addMiscButton?.addEventListener("click", async () => {
