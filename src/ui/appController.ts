@@ -2589,6 +2589,35 @@ export function createAppController(root: HTMLElement) {
     render();
   }
 
+  async function clearAllFixedCostsForCurrentMonth(): Promise<void> {
+    const month = getSelectedMonthBook();
+    if (!month) {
+      return;
+    }
+
+    if (month.fixedCosts.length === 0) {
+      showToast("Keine Fixkosten zum Löschen vorhanden.", "error");
+      return;
+    }
+
+    const shouldDelete = confirm(
+      "Alle Fixkosten im aktuellen Monat wirklich löschen?",
+    );
+    if (!shouldDelete) {
+      return;
+    }
+
+    const removedCount = month.fixedCosts.length;
+    month.fixedCosts = [];
+    recalculateFixedBudget(month);
+
+    await persistSelectedYear(
+      `Alle Fixkosten im Monat gelöscht: ${removedCount} Position(en)`,
+    );
+    showToast(`${removedCount} Fixkosten-Position(en) wurden gelöscht.`);
+    render();
+  }
+
   async function updateMonthlyFixedBudget(amountCents: number): Promise<void> {
     await updateMonthlyBudgetWithPrompt(
       "fixedBudgetCents",
@@ -6998,6 +7027,7 @@ export function createAppController(root: HTMLElement) {
               <div class="inline">
                 <button class="btn" id="import-fixed-csv" type="button" ${month ? "" : "disabled"}>Import</button>
                 <input id="import-fixed-csv-input" type="file" accept=".csv,text/csv" ${month ? "" : "disabled"} style="display:none" />
+                <button class="btn btn-quiet" id="clear-fixed-costs" type="button" ${month ? "" : "disabled"}>Alle Positionen löschen</button>
               </div>
               <p class="muted">Format ohne Header: Positionsbezeichnung;Betrag (Betrag wird als Budget und Ist übernommen)</p>
               <table>
@@ -7656,6 +7686,9 @@ export function createAppController(root: HTMLElement) {
     const importFixedCsvInput = root.querySelector<HTMLInputElement>(
       "#import-fixed-csv-input",
     );
+    const clearFixedCostsButton = root.querySelector<HTMLButtonElement>(
+      "#clear-fixed-costs",
+    );
 
     const carryoverOverrideInput = root.querySelector<HTMLInputElement>(
       "#carryover-override",
@@ -7699,6 +7732,10 @@ export function createAppController(root: HTMLElement) {
       }
 
       importFixedCsvInput.value = "";
+    });
+
+    clearFixedCostsButton?.addEventListener("click", async () => {
+      await clearAllFixedCostsForCurrentMonth();
     });
 
     addVariablePositionButton?.addEventListener("click", async () => {
