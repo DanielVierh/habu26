@@ -6734,6 +6734,9 @@ export function createAppController(root: HTMLElement) {
                   <th>Einkommen (€)</th>
                   <th>Budget gesamt (€)</th>
                   <th>Kalkulierter Saldo (€)</th>
+                  <th>Gehalt - Ausgaben (€)</th>
+                  <th>Gehalt vs. Ausgaben (%)</th>
+                  <th>Einkommen - Ausgaben (€)</th>
                 </tr>
               </thead>
               <tbody>
@@ -6873,6 +6876,19 @@ export function createAppController(root: HTMLElement) {
                             ? "budget-under"
                             : "muted";
 
+                    const rowSalaryMinusExpensesCents =
+                      rowSalaryCents - row.summary.totalCents;
+                    const rowIncomeMinusExpensesCents =
+                      rowIncomeCents - row.summary.totalCents;
+                    const rowSalaryVsExpensesPercent =
+                      row.summary.totalCents > 0
+                        ? `${((rowSalaryCents / row.summary.totalCents) * 100).toFixed(1)} %`
+                        : "-";
+                    const rowSalaryCoverageClass = salaryCoverageClass(
+                      rowSalaryCents,
+                      row.summary.totalCents,
+                    );
+
                     return `<tr>
                   <td>${monthLabel(row.month)}</td>
                   <td>${centsToEuro(row.summary.foodCents)} <span class="${costDiffClass(foodDiffCents)}">${diffLabel(foodDiffCents)}</span></td>
@@ -6885,6 +6901,9 @@ export function createAppController(root: HTMLElement) {
                   <td>${centsToEuro(rowIncomeCents)} <span class="${incomeDiffClass(incomeDiffCents)}">${diffLabel(incomeDiffCents)}</span></td>
                   <td>${centsToEuro(rowPlannedBudgetCents)} <span class="${budgetDiffClass(budgetDiffCents)}">${diffLabel(budgetDiffCents)}</span></td>
                   <td class="${rowNetClass}">${centsToEuro(rowNetCents)} <span class="${monthDiffClass}">${monthDiffLabel}</span></td>
+                  <td class="${incomeBudgetBalanceClass(rowSalaryMinusExpensesCents)}">${centsToEuro(rowSalaryMinusExpensesCents)}</td>
+                  <td class="${rowSalaryCoverageClass}">${rowSalaryVsExpensesPercent}</td>
+                  <td class="${incomeBudgetBalanceClass(rowIncomeMinusExpensesCents)}">${centsToEuro(rowIncomeMinusExpensesCents)}</td>
                 </tr>`;
                   })
                   .join("")}
