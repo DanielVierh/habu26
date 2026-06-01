@@ -6107,10 +6107,14 @@ export function createAppController(root: HTMLElement) {
                     unexportedChangeLogForDisplay.length === 0
                       ? '<p class="muted">Keine ungesicherten Änderungen vorhanden.</p>'
                       : `<ol class="change-log-list">${unexportedChangeLogForDisplay
-                          .map(
-                            (entry) =>
-                              `<li><strong>${new Date(entry.timestampIso).toLocaleString("de-DE")}</strong><span>${escapeHtml(entry.message)}</span></li>`,
-                          )
+                          .map((entry) => {
+                            const d = new Date(entry.timestampIso);
+                            const weekday = d
+                              .toLocaleDateString("de-DE", { weekday: "short" })
+                              .slice(0, 2)
+                              .toUpperCase();
+                            return `<li><strong>${weekday} ${d.toLocaleString("de-DE")}</strong><span>${escapeHtml(entry.message)}</span></li>`;
+                          })
                           .join("")}</ol>`
                   }
                   <div class="inline">
@@ -6137,10 +6141,14 @@ export function createAppController(root: HTMLElement) {
                     persistentAuditLogForDisplay.length === 0
                       ? '<p class="muted">Noch keine Einträge in der Chronik vorhanden.</p>'
                       : `<ol class="change-log-list">${persistentAuditLogForDisplay
-                          .map(
-                            (entry) =>
-                              `<li><strong>${new Date(entry.timestampIso).toLocaleString("de-DE")}</strong><span>${escapeHtml(entry.message)}</span></li>`,
-                          )
+                          .map((entry) => {
+                            const d = new Date(entry.timestampIso);
+                            const weekday = d
+                              .toLocaleDateString("de-DE", { weekday: "short" })
+                              .slice(0, 2)
+                              .toUpperCase();
+                            return `<li><strong>${weekday} ${d.toLocaleString("de-DE")}</strong><span>${escapeHtml(entry.message)}</span></li>`;
+                          })
                           .join("")}</ol>`
                   }
                 </div>
