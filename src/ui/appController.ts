@@ -6687,33 +6687,27 @@ export function createAppController(root: HTMLElement) {
               <section class="eval-tile">
                 <header class="eval-tile-header">
                   <h4>Salden</h4>
-                  <div class="eval-tile-columns"><span>Monat</span><span>Jahr</span></div>
                 </header>
                 <div class="eval-rows">
                   <div class="eval-row eval-strong">
                     <div class="eval-label">Budget übrig</div>
                     <div class="eval-value ${incomeBudgetBalanceClass(monthBudgetRemainingCents)}">${centsToEuro(monthBudgetRemainingCents)}</div>
-                    <div class="eval-value ${incomeBudgetBalanceClass(yearBudgetRemainingCents)}">${centsToEuro(yearBudgetRemainingCents)}</div>
                   </div>
                   <div class="eval-row eval-strong">
                     <div class="eval-label">Einkommen - Budgets gesamt</div>
                     <div class="eval-value ${incomeBudgetBalanceClass(incomeMinusPlannedBudgetsCents)}">${centsToEuro(incomeMinusPlannedBudgetsCents)}</div>
-                    <div class="eval-value muted">-</div>
                   </div>
                   <div class="eval-row eval-strong">
                     <div class="eval-label">Eigenkapital (Monat)</div>
                     <div class="eval-value ${monthActualNetClass}">${centsToEuro(monthActualNetCents)}</div>
-                    <div class="eval-value muted">-</div>
                   </div>
                   <div class="eval-row eval-strong">
                     <div class="eval-label">Gehalt - Ausgaben</div>
                     <div class="eval-value ${incomeBudgetBalanceClass(monthSalaryMinusExpensesCents)}">${centsToEuro(monthSalaryMinusExpensesCents)}</div>
-                    <div class="eval-value ${incomeBudgetBalanceClass(yearSalaryMinusExpensesCents)}">${centsToEuro(yearSalaryMinusExpensesCents)}</div>
                   </div>
                   <div class="eval-row eval-strong">
                     <div class="eval-label">Gehalt vs. Ausgaben (%)</div>
                     <div class="eval-value ${monthSalaryCoverageClass}">${monthSalaryVsExpensesPercent}</div>
-                    <div class="eval-value ${yearSalaryCoverageClass}">${yearSalaryVsExpensesPercent}</div>
                   </div>
                 </div>
               </section>
