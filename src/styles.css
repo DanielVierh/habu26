@@ -582,8 +582,8 @@ body.panel-modal-open {
 }
 
 .panel-modal {
-  width: min(96vw, 1100px);
-  max-height: min(86vh, 900px);
+  width: min(96vw, 1800px);
+  max-height: min(95vh, 1200px);
   overflow: auto;
 }
 
