@@ -1036,6 +1036,40 @@ tbody tr:nth-child(even) {
   padding-top: 0.4rem;
 }
 
+.compact-month-summary-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.compact-month-summary-box {
+  border: 1px solid var(--table-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--table-head) 45%, var(--card-bg));
+  padding: 0.6rem 0.75rem;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.compact-month-summary-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.compact-month-summary-hint {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+}
+
+.compact-month-summary-amount {
+  text-align: right;
+  font-size: 1.02rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 .compact-costs-grid {
   display: grid;
   gap: 0.65rem;
