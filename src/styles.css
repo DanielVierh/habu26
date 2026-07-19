@@ -1049,6 +1049,8 @@ tbody tr:nth-child(even) {
   padding: 0.6rem 0.75rem;
   display: grid;
   gap: 0.15rem;
+  justify-items: center;
+  text-align: center;
 }
 
 .compact-month-summary-label {
@@ -1064,7 +1066,7 @@ tbody tr:nth-child(even) {
 }
 
 .compact-month-summary-amount {
-  text-align: right;
+  text-align: center;
   font-size: 1.02rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;

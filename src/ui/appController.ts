@@ -4309,6 +4309,8 @@ export function createAppController(root: HTMLElement) {
       monthSummary.totalCents,
       monthPlannedBudgetTotalCents,
     );
+    const monthTotalBudgetDiffCents =
+      monthPlannedBudgetTotalCents - monthSummary.totalCents;
     const compactActualValue = (valueCents: number): string =>
       valueCents === 0 ? "-" : centsToEuro(valueCents);
     const compactFixedTotalRowHtml = `<div class="compact-cost-row compact-cost-row-total">
@@ -6210,7 +6212,7 @@ export function createAppController(root: HTMLElement) {
               </article>
               <article class="compact-month-summary-box">
                 <div class="compact-month-summary-label">Ausgegeben</div>
-                <div class="compact-month-summary-amount compact-month-summary-amount-spent ${monthTotalBudgetStatusClass}">${compactActualValue(monthSummary.totalCents)}</div>
+                <div class="compact-month-summary-amount compact-month-summary-amount-spent ${monthTotalBudgetStatusClass}">${compactActualValue(monthSummary.totalCents)} <span class="eval-diff ${monthTotalBudgetStatusClass}">(Diff ${formatSignedEuroCents(monthTotalBudgetDiffCents)})</span></div>
               </article>
             </section>
 
