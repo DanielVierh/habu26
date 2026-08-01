@@ -861,6 +861,18 @@ tbody tr:nth-child(even) {
   background: var(--table-stripe);
 }
 
+.monthly-overview-table tbody tr.monthly-stats-row td {
+  border-top: 2px solid var(--table-border);
+  background: color-mix(in srgb, var(--table-head) 78%, var(--card-bg));
+  font-weight: 700;
+}
+
+.monthly-overview-table tbody tr.monthly-stats-mean td,
+.monthly-overview-table tbody tr.monthly-stats-min td,
+.monthly-overview-table tbody tr.monthly-stats-max td {
+  font-weight: 600;
+}
+
 .daily-table th:nth-child(2),
 .daily-table td:nth-child(2) {
   width: 82px;
@@ -1294,6 +1306,12 @@ tbody tr:nth-child(even) {
 
 .chart-grid-wide {
   grid-template-columns: repeat(auto-fit, minmax(364px, 1fr));
+}
+
+.monthly-line-chart-stack {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .chart-grid-wide .chart-dot-budget {

@@ -1881,6 +1881,26 @@ export function createAppController(root: HTMLElement) {
     );
   }
 
+  function summarizeRecordedIncomeSplitMonth(month: MonthBook): {
+    salaryIncomeCents: number;
+    freshIncomeCents: number;
+  } {
+    return month.incomes.reduce(
+      (sum, entry) => {
+        if (entry.incomeSource === "salary") {
+          sum.salaryIncomeCents += entry.amountCents;
+          return sum;
+        }
+        if (entry.incomeSource === "fresh" || entry.incomeSource == null) {
+          sum.freshIncomeCents += entry.amountCents;
+        }
+
+        return sum;
+      },
+      { salaryIncomeCents: 0, freshIncomeCents: 0 },
+    );
+  }
+
   function getYearOpeningCarryoverCents(
     year: YearBook,
     incomeFlowByMonth: Map<number, IncomeFlowSummary>,
@@ -1895,6 +1915,168 @@ export function createAppController(root: HTMLElement) {
       incomeFlowByMonth.get(monthKey(year.year, firstMonth.month))
         ?.carriedFromPreviousCents ?? 0
     );
+  }
+
+  function renderMonthlyLineChart(params: {
+    title: string;
+    subtitle?: string;
+    rows: Array<{
+      year: number;
+      month: number;
+      monthShortLabel: string;
+      monthLabel: string;
+    }>;
+    series: Array<{
+      label: string;
+      color: string;
+      values: number[];
+    }>;
+    zeroLine?: boolean;
+  }): string {
+    const { title, subtitle, rows, series, zeroLine = false } = params;
+    if (rows.length === 0) {
+      return "";
+    }
+
+    const chartWidth = Math.max(760, rows.length * 44);
+    const chartHeight = 320;
+    const paddingLeft = 56;
+    const paddingRight = 20;
+    const paddingTop = 18;
+    const paddingBottom = 42;
+    const innerWidth = chartWidth - paddingLeft - paddingRight;
+    const innerHeight = chartHeight - paddingTop - paddingBottom;
+
+    const allValues = series.flatMap((entry) => entry.values);
+    const minValue = zeroLine ? Math.min(0, ...allValues) : 0;
+    const maxValue = Math.max(1, ...allValues, zeroLine ? 0 : 1);
+    const range = Math.max(1, maxValue - minValue);
+
+    const xForIndex = (index: number): number =>
+      rows.length === 1
+        ? paddingLeft + innerWidth / 2
+        : paddingLeft + (index / (rows.length - 1)) * innerWidth;
+    const yForValue = (value: number): number =>
+      paddingTop + ((maxValue - value) / range) * innerHeight;
+
+    const tickValues = Array.from({ length: 5 }, (_, index) =>
+      Math.round(minValue + (range * index) / 4),
+    );
+
+    const linePaths = series.map((entry) =>
+      entry.values
+        .map(
+          (value, index) =>
+            `${index === 0 ? "M" : "L"} ${xForIndex(index).toFixed(1)} ${yForValue(value).toFixed(1)}`,
+        )
+        .join(" "),
+    );
+
+    const pointLabels = rows
+      .map((row, index) => {
+        const x = xForIndex(index);
+        const shouldLabel =
+          index === 0 ||
+          index === rows.length - 1 ||
+          row.month === 1 ||
+          index % 6 === 0;
+
+        if (!shouldLabel) {
+          return "";
+        }
+
+        const label =
+          row.month === 1
+            ? `${row.monthShortLabel} ${row.year}`
+            : row.monthShortLabel;
+        return `
+          <text class="year-trend-month-label" x="${x.toFixed(1)}" y="${chartHeight - 12}" text-anchor="middle">${escapeHtml(label)}</text>
+        `;
+      })
+      .join("");
+
+    return `
+      <section class="chart-tile">
+        <header class="chart-tile-header">
+          <div>
+            <h4>${escapeHtml(title)}</h4>
+            ${subtitle ? `<div class="muted">${escapeHtml(subtitle)}</div>` : ""}
+          </div>
+          <div class="chart-legend">
+            ${series
+              .map(
+                (entry) => `
+                  <span class="chart-legend-item">
+                    <span class="chart-dot" style="background:${entry.color}; border-color:${entry.color};"></span>
+                    ${escapeHtml(entry.label)}
+                  </span>
+                `,
+              )
+              .join("")}
+          </div>
+        </header>
+        <svg
+          class="year-trend-svg"
+          viewBox="0 0 ${chartWidth} ${chartHeight}"
+          role="img"
+          aria-label="${escapeHtml(title)}"
+          preserveAspectRatio="none"
+        >
+          ${tickValues
+            .map(
+              (tickValue) => `
+                <g>
+                  <line class="year-trend-grid-line" x1="${paddingLeft}" y1="${yForValue(tickValue).toFixed(1)}" x2="${chartWidth - paddingRight}" y2="${yForValue(tickValue).toFixed(1)}"></line>
+                  <text class="year-trend-axis-label" x="${paddingLeft - 10}" y="${(yForValue(tickValue) + 4).toFixed(1)}" text-anchor="end">${centsToEuro(tickValue)}</text>
+                </g>
+              `,
+            )
+            .join("")}
+          ${zeroLine ? `<line class="year-trend-zero-line" x1="${paddingLeft}" y1="${yForValue(0).toFixed(1)}" x2="${chartWidth - paddingRight}" y2="${yForValue(0).toFixed(1)}"></line>` : ""}
+          ${series
+            .map((entry, seriesIndex) => {
+              const path = linePaths[seriesIndex];
+              const pointMarkup = entry.values
+                .map((value, index) => {
+                  const currentRow = rows[index];
+                  if (!currentRow) {
+                    return "";
+                  }
+
+                  const shouldShowPoint =
+                    index === 0 ||
+                    index === entry.values.length - 1 ||
+                    currentRow.month === 1 ||
+                    index % 6 === 0;
+
+                  if (!shouldShowPoint) {
+                    return "";
+                  }
+
+                  return `
+                    <circle
+                      class="year-trend-node"
+                      cx="${xForIndex(index).toFixed(1)}"
+                      cy="${yForValue(value).toFixed(1)}"
+                      r="4.5"
+                      style="stroke:${entry.color};"
+                    ></circle>
+                  `;
+                })
+                .join("");
+
+              return `
+                <g>
+                  <path class="year-trend-line" d="${path}" style="stroke:${entry.color};"></path>
+                  ${pointMarkup}
+                </g>
+              `;
+            })
+            .join("")}
+          ${pointLabels}
+        </svg>
+      </section>
+    `;
   }
 
   function summarizeIncomeFlowByMonth(): Map<number, IncomeFlowSummary> {
@@ -5289,6 +5471,280 @@ export function createAppController(root: HTMLElement) {
       ...allYearsRows.map((row) => row.miscCents),
     );
 
+    const allYearsMonthlyRows = sortedYears
+      .slice()
+      .sort((left, right) => left.year - right.year)
+      .flatMap((yearItem) =>
+        yearItem.months
+          .slice()
+          .sort((left, right) => left.month - right.month)
+          .map((monthItem) => {
+            const summary = summarizeMonth(monthItem);
+            const incomeSplit = summarizeRecordedIncomeSplitMonth(monthItem);
+            const plannedBudgetCents = summarizePlannedBudgetsCents(monthItem);
+            const flowSummary = incomeFlowByMonth.get(
+              monthKey(yearItem.year, monthItem.month),
+            );
+            const carriedFromPreviousCents =
+              flowSummary?.carriedFromPreviousCents ?? 0;
+            const effectiveIncomeCents =
+              incomeSplit.salaryIncomeCents +
+              incomeSplit.freshIncomeCents +
+              carriedFromPreviousCents;
+
+            return {
+              year: yearItem.year,
+              month: monthItem.month,
+              monthLabel: monthLabel(monthItem.month),
+              monthShortLabel: monthLabel(monthItem.month).slice(0, 3),
+              salaryIncomeCents: incomeSplit.salaryIncomeCents,
+              freshIncomeCents: incomeSplit.freshIncomeCents,
+              totalIncomeCents:
+                incomeSplit.salaryIncomeCents + incomeSplit.freshIncomeCents,
+              foodCents: summary.foodCents,
+              goingOutCents: summary.goingOutCents,
+              fixedCents: summary.fixedCents,
+              variableCents: summary.variableCents,
+              miscCents: summary.miscCents,
+              totalCents: summary.totalCents,
+              budgetCents: plannedBudgetCents,
+              effectiveIncomeCents,
+              plannedNetCents: effectiveIncomeCents - plannedBudgetCents,
+              actualNetCents: effectiveIncomeCents - summary.totalCents,
+            };
+          }),
+      );
+
+    const allYearsMonthlyColumns = [
+      {
+        label: "Gehalt",
+        values: allYearsMonthlyRows.map((row) => row.salaryIncomeCents),
+      },
+      {
+        label: "Einkommen",
+        values: allYearsMonthlyRows.map((row) => row.totalIncomeCents),
+      },
+      {
+        label: "Essen",
+        values: allYearsMonthlyRows.map((row) => row.foodCents),
+      },
+      {
+        label: "Ausgehen",
+        values: allYearsMonthlyRows.map((row) => row.goingOutCents),
+      },
+      {
+        label: "Fixkosten",
+        values: allYearsMonthlyRows.map((row) => row.fixedCents),
+      },
+      {
+        label: "Variable",
+        values: allYearsMonthlyRows.map((row) => row.variableCents),
+      },
+      {
+        label: "Sonstige",
+        values: allYearsMonthlyRows.map((row) => row.miscCents),
+      },
+      {
+        label: "Gesamt",
+        values: allYearsMonthlyRows.map((row) => row.totalCents),
+      },
+      {
+        label: "Budget",
+        values: allYearsMonthlyRows.map((row) => row.budgetCents),
+      },
+      {
+        label: "Saldo geplant",
+        values: allYearsMonthlyRows.map((row) => row.plannedNetCents),
+      },
+      {
+        label: "Saldo Ist",
+        values: allYearsMonthlyRows.map((row) => row.actualNetCents),
+      },
+    ];
+
+    const renderMonthlyStatCell = (
+      values: number[],
+      mode: "sum" | "mean" | "min" | "max",
+    ): string => {
+      if (values.length === 0) {
+        return "-";
+      }
+
+      const sum = values.reduce((acc, value) => acc + value, 0);
+      if (mode === "sum") {
+        return centsToEuro(sum);
+      }
+      if (mode === "mean") {
+        return centsToEuro(Math.round(sum / values.length));
+      }
+      if (mode === "min") {
+        return centsToEuro(Math.min(...values));
+      }
+
+      return centsToEuro(Math.max(...values));
+    };
+
+    const allYearsMonthlyTableRowsHtml = allYearsMonthlyRows
+      .map(
+        (row) => `
+          <tr>
+            <td>${row.year}</td>
+            <td>${row.monthLabel}</td>
+            <td>${centsToEuro(row.salaryIncomeCents)}</td>
+            <td>${centsToEuro(row.totalIncomeCents)}</td>
+            <td>${centsToEuro(row.foodCents)}</td>
+            <td>${centsToEuro(row.goingOutCents)}</td>
+            <td>${centsToEuro(row.fixedCents)}</td>
+            <td>${centsToEuro(row.variableCents)}</td>
+            <td>${centsToEuro(row.miscCents)}</td>
+            <td>${centsToEuro(row.totalCents)}</td>
+            <td>${centsToEuro(row.budgetCents)}</td>
+            <td class="${incomeBudgetBalanceClass(row.plannedNetCents)}">${centsToEuro(row.plannedNetCents)}</td>
+            <td class="${incomeBudgetBalanceClass(row.actualNetCents)}">${centsToEuro(row.actualNetCents)}</td>
+          </tr>
+        `,
+      )
+      .join("");
+
+    const allYearsMonthlyStatsRowsHtml = [
+      { label: "Summe", mode: "sum" as const },
+      { label: "Mittelwert", mode: "mean" as const },
+      { label: "Minimum", mode: "min" as const },
+      { label: "Maximum", mode: "max" as const },
+    ]
+      .map(
+        (statRow) => `
+          <tr class="monthly-stats-row monthly-stats-${statRow.mode}">
+            <td colspan="2">${statRow.label}</td>
+            ${allYearsMonthlyColumns
+              .map(
+                (column) =>
+                  `<td>${renderMonthlyStatCell(column.values, statRow.mode)}</td>`,
+              )
+              .join("")}
+          </tr>
+        `,
+      )
+      .join("");
+
+    const allYearsMonthlySectionHtml =
+      allYearsMonthlyRows.length > 0
+        ? `
+          <article class="card">
+            <h3>Alle Monate im Zeitraum</h3>
+            <table class="monthly-overview-table">
+              <thead>
+                <tr>
+                  <th>Jahr</th>
+                  <th>Monat</th>
+                  <th>Gehalt (€)</th>
+                  <th>Einkommen (€)</th>
+                  <th>Essen (€)</th>
+                  <th>Ausgehen (€)</th>
+                  <th>Fixkosten (€)</th>
+                  <th>Variable (€)</th>
+                  <th>Sonstige (€)</th>
+                  <th>Gesamt (€)</th>
+                  <th>Budget gesamt (€)</th>
+                  <th>Saldo geplant (€)</th>
+                  <th>Saldo Ist (€)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${allYearsMonthlyTableRowsHtml}
+                ${allYearsMonthlyStatsRowsHtml}
+              </tbody>
+            </table>
+
+            <div class="monthly-line-chart-stack">
+              ${renderMonthlyLineChart({
+                title: "Kosten nach Rechnungskreisen",
+                subtitle: "Monatliche Summen über den gesamten Zeitraum.",
+                rows: allYearsMonthlyRows,
+                series: [
+                  {
+                    label: "Essen",
+                    color: "var(--danger-1)",
+                    values: allYearsMonthlyRows.map((row) => row.foodCents),
+                  },
+                  {
+                    label: "Ausgehen",
+                    color: "var(--danger-2)",
+                    values: allYearsMonthlyRows.map((row) => row.goingOutCents),
+                  },
+                  {
+                    label: "Fixkosten",
+                    color: "var(--text-muted)",
+                    values: allYearsMonthlyRows.map((row) => row.fixedCents),
+                  },
+                  {
+                    label: "Variable",
+                    color: "var(--primary-1)",
+                    values: allYearsMonthlyRows.map((row) => row.variableCents),
+                  },
+                  {
+                    label: "Sonstige",
+                    color: "var(--budget-under)",
+                    values: allYearsMonthlyRows.map((row) => row.miscCents),
+                  },
+                ],
+              })}
+              ${renderMonthlyLineChart({
+                title: "Einkommen über den gesamten Zeitraum",
+                subtitle:
+                  "Gehalt, weiteres Einkommen und die Summe der monatlichen Einnahmen.",
+                rows: allYearsMonthlyRows,
+                series: [
+                  {
+                    label: "Gehalt",
+                    color: "var(--primary-1)",
+                    values: allYearsMonthlyRows.map(
+                      (row) => row.salaryIncomeCents,
+                    ),
+                  },
+                  {
+                    label: "Einkommen ohne Gehalt",
+                    color: "var(--budget-under)",
+                    values: allYearsMonthlyRows.map(
+                      (row) => row.freshIncomeCents,
+                    ),
+                  },
+                  {
+                    label: "Einkommen gesamt",
+                    color: "var(--text-muted)",
+                    values: allYearsMonthlyRows.map(
+                      (row) => row.totalIncomeCents,
+                    ),
+                  },
+                ],
+              })}
+              ${renderMonthlyLineChart({
+                title: "Saldo über den gesamten Zeitraum",
+                subtitle: "Geplanter und tatsächlicher Saldo je Monat.",
+                rows: allYearsMonthlyRows,
+                zeroLine: true,
+                series: [
+                  {
+                    label: "Saldo geplant",
+                    color: "var(--text-muted)",
+                    values: allYearsMonthlyRows.map(
+                      (row) => row.plannedNetCents,
+                    ),
+                  },
+                  {
+                    label: "Saldo Ist",
+                    color: "var(--primary-1)",
+                    values: allYearsMonthlyRows.map(
+                      (row) => row.actualNetCents,
+                    ),
+                  },
+                ],
+              })}
+            </div>
+          </article>
+        `
+        : "";
+
     const allYearsRowByYear = new Map(
       allYearsRows.map((row) => [row.year, row] as const),
     );
@@ -6373,6 +6829,7 @@ export function createAppController(root: HTMLElement) {
                   </div>
                 </section>
               </div>
+              ${allYearsMonthlySectionHtml}
             `
         }
       </div>
