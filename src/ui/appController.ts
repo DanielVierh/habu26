@@ -5301,14 +5301,6 @@ export function createAppController(root: HTMLElement) {
         : [];
     const dashboardYearComparisonSeries = [
       {
-        key: "foodAndGoingOutCents",
-        label: "Essen & Trinken",
-        currentValueCents:
-          dashboardYearSummary.foodCents + dashboardYearSummary.goingOutCents,
-        getYearValue: (row: (typeof allYearsRows)[number] | undefined) =>
-          row?.foodAndGoingOutCents ?? 0,
-      },
-      {
         key: "salaryIncomeCents",
         label: "Gehalt",
         currentValueCents: dashboardYearSalaryIncomeCents,
@@ -5321,6 +5313,14 @@ export function createAppController(root: HTMLElement) {
         currentValueCents: dashboardYearIncomeCents,
         getYearValue: (row: (typeof allYearsRows)[number] | undefined) =>
           row?.totalIncomeCents ?? 0,
+      },
+      {
+        key: "foodAndGoingOutCents",
+        label: "Essen & Trinken",
+        currentValueCents:
+          dashboardYearSummary.foodCents + dashboardYearSummary.goingOutCents,
+        getYearValue: (row: (typeof allYearsRows)[number] | undefined) =>
+          row?.foodAndGoingOutCents ?? 0,
       },
       {
         key: "fixedCents",
@@ -5391,7 +5391,8 @@ export function createAppController(root: HTMLElement) {
           return paddingLeft + (index / (yearValues.length - 1)) * innerWidth;
         };
         const getY = (valueCents: number): number =>
-          paddingTop + ((maxValueCents - valueCents) / rangeValueCents) * innerHeight;
+          paddingTop +
+          ((maxValueCents - valueCents) / rangeValueCents) * innerHeight;
         const points = yearValues.map((point, index) => ({
           ...point,
           x: getX(index),
