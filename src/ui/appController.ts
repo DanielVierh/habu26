@@ -5289,6 +5289,139 @@ export function createAppController(root: HTMLElement) {
       ...allYearsRows.map((row) => row.miscCents),
     );
 
+    const allYearsRowByYear = new Map(
+      allYearsRows.map((row) => [row.year, row] as const),
+    );
+    const dashboardYearComparisonYears =
+      typeof dashboardYearNumber === "number"
+        ? allYearsRows
+            .filter((row) => row.year <= dashboardYearNumber)
+            .slice(-5)
+            .map((row) => row.year)
+        : [];
+    const dashboardYearComparisonSeries = [
+      {
+        key: "foodAndGoingOutCents",
+        label: "Essen & Trinken",
+        currentValueCents:
+          dashboardYearSummary.foodCents + dashboardYearSummary.goingOutCents,
+        getYearValue: (row: (typeof allYearsRows)[number] | undefined) =>
+          row?.foodAndGoingOutCents ?? 0,
+      },
+      {
+        key: "salaryIncomeCents",
+        label: "Gehalt",
+        currentValueCents: dashboardYearSalaryIncomeCents,
+        getYearValue: (row: (typeof allYearsRows)[number] | undefined) =>
+          row?.salaryIncomeCents ?? 0,
+      },
+      {
+        key: "incomeCents",
+        label: "Einkommen",
+        currentValueCents: dashboardYearIncomeCents,
+        getYearValue: (row: (typeof allYearsRows)[number] | undefined) =>
+          row?.totalIncomeCents ?? 0,
+      },
+      {
+        key: "fixedCents",
+        label: "Fixkosten",
+        currentValueCents: dashboardYearSummary.fixedCents,
+        getYearValue: (row: (typeof allYearsRows)[number] | undefined) =>
+          row?.fixedCents ?? 0,
+      },
+      {
+        key: "variableCents",
+        label: "Variable Kosten",
+        currentValueCents: dashboardYearSummary.variableCents,
+        getYearValue: (row: (typeof allYearsRows)[number] | undefined) =>
+          row?.variableCents ?? 0,
+      },
+      {
+        key: "actualTotalCents",
+        label: "Gesamtkosten",
+        currentValueCents: dashboardYearSummary.totalCents,
+        getYearValue: (row: (typeof allYearsRows)[number] | undefined) =>
+          row?.actualTotalCents ?? 0,
+      },
+      {
+        key: "miscCents",
+        label: "Sonstige",
+        currentValueCents: dashboardYearSummary.miscCents,
+        getYearValue: (row: (typeof allYearsRows)[number] | undefined) =>
+          row?.miscCents ?? 0,
+      },
+    ];
+    const dashboardYearComparisonRows = dashboardYearComparisonSeries.map(
+      (series) => {
+        const previousYearValueCents =
+          dashboardYearBook == null
+            ? null
+            : series.getYearValue(
+                allYearsRowByYear.get(dashboardYearBook.year - 1),
+              );
+        const diffCents =
+          previousYearValueCents === null
+            ? null
+            : series.currentValueCents - previousYearValueCents;
+        const yearValues = dashboardYearComparisonYears.map((year) => ({
+          year,
+          valueCents: series.getYearValue(allYearsRowByYear.get(year)),
+        }));
+        const minValueCents = Math.min(
+          0,
+          ...yearValues.map((point) => point.valueCents),
+        );
+        const maxValueCents = Math.max(
+          0,
+          ...yearValues.map((point) => point.valueCents),
+        );
+        const rangeValueCents = Math.max(1, maxValueCents - minValueCents);
+        const chartWidth = 360;
+        const chartHeight = 150;
+        const paddingTop = 14;
+        const paddingRight = 14;
+        const paddingBottom = 28;
+        const paddingLeft = 12;
+        const innerWidth = chartWidth - paddingLeft - paddingRight;
+        const innerHeight = chartHeight - paddingTop - paddingBottom;
+        const getX = (index: number): number => {
+          if (yearValues.length <= 1) {
+            return paddingLeft + innerWidth / 2;
+          }
+          return paddingLeft + (index / (yearValues.length - 1)) * innerWidth;
+        };
+        const getY = (valueCents: number): number =>
+          paddingTop + ((maxValueCents - valueCents) / rangeValueCents) * innerHeight;
+        const points = yearValues.map((point, index) => ({
+          ...point,
+          x: getX(index),
+          y: getY(point.valueCents),
+        }));
+        const linePath = points
+          .map(
+            (point, index) =>
+              `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`,
+          )
+          .join(" ");
+        const areaPath =
+          points.length > 0
+            ? `${linePath} L ${points[points.length - 1]?.x.toFixed(1)} ${(paddingTop + innerHeight).toFixed(1)} L ${points[0]?.x.toFixed(1)} ${(paddingTop + innerHeight).toFixed(1)} Z`
+            : "";
+
+        return {
+          ...series,
+          previousYearValueCents,
+          diffCents,
+          chartWidth,
+          chartHeight,
+          paddingBottom,
+          points,
+          linePath,
+          areaPath,
+        };
+      },
+    );
+
     const dashboardPanelHtml = `
       <div class="grid">
         <div class="inline" role="tablist" aria-label="Dashboard Ansichten">
@@ -5598,6 +5731,75 @@ export function createAppController(root: HTMLElement) {
                     .join("")}
                 </tbody>
               </table>
+
+              <section class="comparison-section">
+                <div class="comparison-section-head">
+                  <div>
+                    <h4>Jahresvergleich nach Rechnungskreis</h4>
+                    <p class="muted">Die Kacheln zeigen den ausgewählten Jahreswert, die Differenz zum Vorjahr und den Verlauf der letzten fünf verfügbaren Jahre.</p>
+                  </div>
+                </div>
+
+                <div class="comparison-grid">
+                  ${dashboardYearComparisonRows
+                    .map((row) => {
+                      const diffClass =
+                        row.diffCents === null
+                          ? ""
+                          : row.diffCents < 0
+                            ? "budget-under"
+                            : row.diffCents > 0
+                              ? "danger"
+                              : "";
+                      const diffLabel =
+                        row.diffCents === null
+                          ? "Vorjahreswert nicht vorhanden"
+                          : `Δ ${row.diffCents >= 0 ? "+" : ""}${centsToEuro(row.diffCents)}`;
+                      const currentYearLabel = dashboardYearBook?.year ?? "";
+
+                      return `
+                        <section class="chart-tile comparison-tile" aria-label="${escapeHtml(row.label)} Jahresvergleich">
+                          <header class="chart-tile-header comparison-tile-header">
+                            <div>
+                              <h4>${escapeHtml(row.label)}</h4>
+                              <div class="muted">${currentYearLabel}</div>
+                            </div>
+                          </header>
+                          <div class="comparison-tile-summary">
+                            <strong>${centsToEuro(row.currentValueCents)}</strong>
+                            <span class="comparison-tile-diff ${diffClass}">${diffLabel}</span>
+                          </div>
+                          <div class="comparison-tile-chart" role="img" aria-label="${escapeHtml(row.label)} Verlauf der letzten fünf Jahre">
+                            <svg
+                              class="comparison-line-svg"
+                              viewBox="0 0 ${row.chartWidth} ${row.chartHeight}"
+                              preserveAspectRatio="none"
+                            >
+                              <defs>
+                                <linearGradient id="comparison-fill-${row.key}" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stop-color="var(--primary-1)" stop-opacity="0.26"></stop>
+                                  <stop offset="100%" stop-color="var(--primary-1)" stop-opacity="0"></stop>
+                                </linearGradient>
+                              </defs>
+                              ${row.linePath ? `<path class="comparison-line-area" d="${row.areaPath}" fill="url(#comparison-fill-${row.key})"></path>` : ""}
+                              ${row.linePath ? `<path class="comparison-line-path" d="${row.linePath}"></path>` : ""}
+                              ${row.points
+                                .map(
+                                  (point, index) => `
+                                    <circle class="comparison-line-point ${index === row.points.length - 1 ? "is-current" : ""}" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="4.5"></circle>
+                                    <text class="comparison-line-year" x="${point.x.toFixed(1)}" y="${row.chartHeight - 10}" text-anchor="middle">${point.year}</text>
+                                  `,
+                                )
+                                .join("")}
+                            </svg>
+                          </div>
+                          <div class="comparison-tile-footer muted">${row.previousYearValueCents === null ? "Kein Vorjahreswert vorhanden" : `Vorjahr: ${centsToEuro(row.previousYearValueCents)}`}</div>
+                        </section>
+                      `;
+                    })
+                    .join("")}
+                </div>
+              </section>
             `
               : state.dashboardTab === "food"
                 ? `
