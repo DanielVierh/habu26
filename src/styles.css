@@ -41,6 +41,39 @@
   --shadow-2: rgba(15, 23, 42, 0.08);
 }
 
+:root[data-theme="high-contrast-light"] {
+  --bg-main: #ffffff;
+  --bg-accent-1: #ffffff;
+  --bg-accent-2: #ffffff;
+  --text-main: #000000;
+  --text-muted: #333333;
+  --text-soft: #111111;
+
+  --card-bg: #ffffff;
+  --card-border: rgba(15, 23, 42, 0.06);
+  --table-border: #e6e6e6;
+  --table-head: #ffffff;
+  --table-stripe: rgba(0, 0, 0, 0.03);
+
+  --input-bg: #ffffff;
+  --input-border: #d1d5db;
+  --focus-ring: rgba(0, 0, 0, 0.06);
+
+  --button-bg: #ffffff;
+  --button-border: #d1d5db;
+  --button-hover-bg: #f3f4f6;
+  --button-hover-border: #9ca3af;
+
+  --primary-1: #2563eb;
+  --primary-2: #1d4ed8;
+  --primary-3: #1e40af;
+
+  /* Do NOT override danger (red) or budget (green) variables here */
+
+  --shadow-1: rgba(15, 23, 42, 0.03);
+  --shadow-2: rgba(15, 23, 42, 0.06);
+}
+
 :root[data-theme="dark"] {
   --bg-main: #0b1220;
   --bg-accent-1: #0f172a;
