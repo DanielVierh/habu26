@@ -57,16 +57,16 @@
 
   --input-bg: #ffffff;
   --input-border: #d1d5db;
-  --focus-ring: rgba(0, 0, 0, 0.06);
+  --focus-ring: rgba(0, 0, 0, 0.395);
 
   --button-bg: #ffffff;
   --button-border: #d1d5db;
   --button-hover-bg: #f3f4f6;
   --button-hover-border: #9ca3af;
 
-  --primary-1: #2563eb;
-  --primary-2: #1d4ed8;
-  --primary-3: #1e40af;
+  --primary-1: #0f285f;
+  --primary-2: #0e2053;
+  --primary-3: #060d24;
 
   /* Do NOT override danger (red) or budget (green) variables here */
 
@@ -75,9 +75,9 @@
 }
 
 :root[data-theme="dark"] {
-  --bg-main: #0b1220;
-  --bg-accent-1: #0f172a;
-  --bg-accent-2: #1e293b;
+  --bg-main: #070a10;
+  --bg-accent-1: #090d16;
+  --bg-accent-2: #10161f;
   --text-main: #e2e8f0;
   --text-muted: #94a3b8;
   --text-soft: #cbd5e1;
@@ -90,16 +90,16 @@
 
   --input-bg: #0f172a;
   --input-border: #334155;
-  --focus-ring: rgba(59, 130, 246, 0.28);
+  --focus-ring: rgba(0, 0, 0, 0.665);
 
   --button-bg: #1e293b;
   --button-border: #334155;
   --button-hover-bg: #273449;
   --button-hover-border: #475569;
 
-  --primary-1: #3b82f6;
-  --primary-2: #2563eb;
-  --primary-3: #1d4ed8;
+  --primary-1: #2c3d59;
+  --primary-2: #080b10;
+  --primary-3: #08090e;
   --danger-1: #f87171;
   --danger-2: #ef4444;
   --danger-3: #dc2626;
