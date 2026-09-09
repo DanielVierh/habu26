@@ -385,33 +385,34 @@
 }
 
 :root[data-theme="ember-dark"] {
-  --bg-main: #1a0f0a;
-  --bg-accent-1: #25160e;
-  --bg-accent-2: #392215;
-  --text-main: #fff1e8;
-  --text-muted: #d7ab90;
-  --text-soft: #efc8b1;
-  --card-bg: rgba(33, 19, 13, 0.87);
-  --card-border: rgba(191, 116, 74, 0.42);
-  --table-border: #6b3c27;
-  --table-head: #472919;
-  --table-stripe: rgba(71, 41, 25, 0.53);
-  --input-bg: #2b190f;
-  --input-border: #895338;
-  --focus-ring: rgba(251, 146, 60, 0.3);
-  --button-bg: #542f1b;
-  --button-border: #996042;
-  --button-hover-bg: #6d3d23;
-  --button-hover-border: #bb7752;
-  --primary-1: #fb923c;
-  --primary-2: #f97316;
-  --primary-3: #ea580c;
-  --danger-1: #fca5a5;
-  --danger-2: #f87171;
-  --danger-3: #ef4444;
-  --budget-under: #4ade80;
-  --shadow-1: rgba(10, 5, 2, 0.44);
-  --shadow-2: rgba(10, 5, 2, 0.56);
+  /* Ember-dark redesigned: minimalistic black base with red accents */
+  --bg-main: #0b0b0b;
+  --bg-accent-1: #3e0303;
+  --bg-accent-2: #131313;
+  --text-main: #e6e6e6;
+  --text-muted: #9aa0a6;
+  --text-soft: #bdbdbd;
+  --card-bg: rgba(255, 255, 255, 0.02);
+  --card-border: rgba(255, 255, 255, 0.06);
+  --table-border: #1b1b1b;
+  --table-head: #0f0f0f;
+  --table-stripe: rgba(255, 255, 255, 0.02);
+  --input-bg: #0f0f0f;
+  --input-border: #222222;
+  --focus-ring: rgba(220, 38, 38, 0.14);
+  --button-bg: #0f0f0f;
+  --button-border: #222222;
+  --button-hover-bg: #171717;
+  --button-hover-border: #2a2a2a;
+  --primary-1: #ff3b3b;
+  --primary-2: #ff2b2b;
+  --primary-3: #e11d1d;
+  --danger-1: #ff8b8b;
+  --danger-2: #ff3b3b;
+  --danger-3: #e11d1d;
+  --budget-under: #22c55e;
+  --shadow-1: rgba(0, 0, 0, 0.6);
+  --shadow-2: rgba(0, 0, 0, 0.72);
 }
 
 :root[data-theme="neon-dark"] {
